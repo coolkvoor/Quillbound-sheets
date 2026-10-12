@@ -269,6 +269,21 @@ label.f.mod .in { min-height: 40px; color: #2a62c9; }
 .gear-row .in { min-height: 42px; }
 .gear-head { display: grid; grid-template-columns: minmax(0, 1fr) 4rem 4.4rem 44px; gap: 6px; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
+/* class and ability panels */
+.cp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.cp-row select { width: 100%; }
+.cp-row .lvl { display: flex; align-items: center; gap: 6px; }
+.cp-row .lvl .in { width: 3.4rem; text-align: center; }
+.cp-row .sub-note { grid-column: 1 / -1; }
+select.in { appearance: auto; }
+.stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper .btn { min-width: 44px; min-height: 44px; padding: 0; font-size: 1.3rem; }
+.stepper .in { width: 3.6rem; text-align: center; }
+.ap-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 3.4rem; gap: 8px; align-items: center; min-height: 52px; border-bottom: 1px solid var(--line); }
+.ap-row .tot { text-align: right; font-size: 1.4rem; font-weight: 700; }
+.ap-row .tot small { display: block; font-size: 0.75rem; font-weight: 400; color: var(--muted); }
+.ap-explain summary { cursor: pointer; color: var(--accent); min-height: 40px; display: flex; align-items: center; }
+
 /* proficiencies, coins */
 .profs { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center; }
 .lbl { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
@@ -340,7 +355,9 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <h3>Character</h3>
           <label class="f"><span>Name</span><input class="in" data-f="PC Name" id="f-name" autocomplete="off"></label>
           <label class="f"><span>Species</span><input class="in" data-f="Race" id="f-race" list="dl-race" autocomplete="off" placeholder="Pick or type a species"><datalist id="dl-race" data-items="Race"></datalist></label>
-          <label class="f"><span>Class</span><input class="in" data-f="Class and Levels" id="f-class" autocomplete="off" placeholder="e.g. Wizard 3, or Fighter 2 Rogue 1"><span class="hint">Type the class with its level. To level up, type the new level here, e.g. Wizard 4.</span></label>
+          <div class="f"><span class="flabel">Class</span>
+            <div class="line"><input class="in" data-f="Class and Levels" id="f-class" autocomplete="off" placeholder="e.g. Wizard 3, or Fighter 2 Rogue 1" aria-label="Class and levels"><button class="btn" id="class-open" type="button">Change</button></div>
+            <span class="hint">Use Change to pick a class, subclass and level, level up, or multiclass. Typing works too.</span></div>
           <label class="f"><span>Background</span><input class="in" data-f="Background" id="f-bg" list="dl-bg" autocomplete="off" placeholder="Pick or type a background"><datalist id="dl-bg" data-items="Background"></datalist></label>
           <p class="hint" id="content-hint"><span id="content-hint-text">Content: SRD only.</span> <a href="#content" data-goto="content" id="content-hint-link">Add books</a></p>
           <div class="stats">
@@ -350,7 +367,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           </div>
         </div>
         <div class="card">
-          <h3>Ability scores</h3>
+          <h3>Ability scores <button class="btn sm" id="abil-open" type="button">Edit scores</button></h3>
           <div class="abilities" id="abilities"></div>
         </div>
         <div class="card">
@@ -628,6 +645,31 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
     <fieldset class="picker-show" id="picker-show" hidden><legend>The spell list shows</legend><div id="picker-show-opts"></div></fieldset>
   </div>
   <div class="panel-foot"><button class="btn primary" id="picker-save" type="button">Make spell list</button></div>
+</dialog>
+
+<!-- MPMB's Class Selection dialog, on the app's own screen -->
+<dialog class="panel full" id="class-panel" aria-labelledby="cp-title">
+  <div class="panel-head"><h3 id="cp-title">Classes and levels</h3><button class="btn sm" id="cp-close" type="button">Cancel</button></div>
+  <div class="panel-body">
+    <p class="hint">The first row is the class taken at 1st level. Add a row to multiclass.</p>
+    <div id="cp-rows"></div>
+    <button class="btn" id="cp-add" type="button">Add a class</button>
+    <p class="note" id="cp-total"></p>
+  </div>
+  <div class="panel-foot"><button class="btn primary" id="cp-apply" type="button">Apply</button></div>
+</dialog>
+
+<!-- MPMB's Ability Scores dialog: one column at a time, the totals always shown -->
+<dialog class="panel full" id="abil-panel" aria-labelledby="ap-title">
+  <div class="panel-head"><h3 id="ap-title">Ability scores</h3><button class="btn sm" id="ap-close" type="button">Cancel</button></div>
+  <div class="picker-tabs" id="ap-cols" role="tablist" aria-label="Column"></div>
+  <div class="panel-body">
+    <p class="hint" id="ap-colnote"></p>
+    <div id="ap-rows"></div>
+    <p class="note" id="ap-pb"></p>
+    <details class="ap-explain"><summary>Where improvements come from</summary><div class="notice-msg hint" id="ap-explain"></div></details>
+  </div>
+  <div class="panel-foot"><button class="btn primary" id="ap-apply" type="button">Apply</button></div>
 </dialog>
 
 <!-- One spell's full text -->

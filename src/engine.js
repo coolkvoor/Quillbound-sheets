@@ -548,7 +548,13 @@
         const els = elementTypes(desc);
         const types = {};
         for (const k of Object.keys(els)) types[k] = els[k].type;
+        // every input reads back something in Acrobat, even if nothing was loaded: a text box "", a check box false
         const values = {};
+        for (const k of Object.keys(els)) {
+          const ty = els[k].type;
+          if (ty === 'edit_text') values[k] = '';
+          else if (ty === 'check_box' || ty === 'radio') values[k] = false;
+        }
         const setValue = (k, v) => {
           if (types[k] === 'edit_text' && v && typeof v === 'object') { let chosen = ''; for (const n of Object.keys(v)) if (Number(v[n]) > 0) chosen = n; values[k] = chosen; }
           else values[k] = v;

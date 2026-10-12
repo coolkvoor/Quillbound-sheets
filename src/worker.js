@@ -4,7 +4,7 @@
 // In the single-file build everything is already bundled in front of this file
 if (!self.MPMBEngine) {
   try { importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'); } catch (e) { importScripts('vendor/pdf-lib.min.js'); }
-  importScripts('loader.js', 'engine.js', 'selftest.js', 'content.js', 'spells.js', 'writer.js');
+  importScripts('loader.js', 'engine.js', 'selftest.js', 'content.js', 'spells.js', 'writer.js', 'classes.js', 'abilities.js');
 }
 // Everything below stays out of the global scope, which belongs to MPMB's code
 (function () {
@@ -25,6 +25,11 @@ function contentOp(fn) {
   const t = now();
   const r = fn();
   return { alerts: r.alerts, errors: r.errors, content: r.content, saved: MPMBContent.state(engine), ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
+}
+function actionOp(fn) {
+  const t = now();
+  const r = fn();
+  return { alerts: r.alerts || [], errors: r.errors || [], ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
 }
 function spellOp(fn) {
   const t = now();
@@ -106,6 +111,12 @@ const ops = {
   spellDetails({ key }) { return MPMBSpells.details(engine, key); },
   chooseSpells({ picks }) { return spellOp(() => MPMBSpells.choose(engine, picks)); },
   removeSpells() { return spellOp(() => MPMBSpells.remove(engine)); },
+  // Classes and ability scores: MPMB's dialogs, edited on the app's screens (classes.js, abilities.js)
+  classOptions() { return MPMBClasses.options(engine); },
+  applyClasses({ rows }) { return actionOp(() => MPMBClasses.apply(engine, rows)); },
+  abilityOptions() { return MPMBAbilities.options(engine); },
+  abilityPreview({ scores }) { return MPMBAbilities.preview(engine, scores); },
+  applyAbilities({ scores }) { return actionOp(() => MPMBAbilities.apply(engine, scores)); },
   tapSpellRow({ button }) { return spellOp(() => MPMBSpells.tapRow(engine, button)); },
   names({ pattern }) { const re = new RegExp(pattern); return engine.fieldNames().filter((n) => re.test(n)); },
   selftest() {
