@@ -3,7 +3,7 @@
 A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) character sheet PDF** and runs MPMB's own scripts in a stand-in for Adobe Acrobat. Users can play and build characters on a phone or tablet, with all D&D logic coming from MPMB's code inside their PDF.
 
 - Design doc (decisions, milestones, risks): https://claude.ai/code/artifact/DESIGN-DOC
-- 0.1 is published as a private Claude artifact: https://claude.ai/artifact/ARTIFACT
+- The test build is published as a private Claude artifact (0.2 since 2026-10-12): https://claude.ai/artifact/ARTIFACT. Publish `dist-single/index.html` (`node tools/build-single.js 0.2`); it loads pdf-lib from cdnjs so the page holds only this app's code.
 - Test devices: the phone (6.3", 1220×2656, about 393×852 CSS px at 3.1×) and the tablet (10.9", 1440×2304, about 800×1280 at 1.8×). Chrome on Android.
 
 ## Decisions (settled with the owner)
@@ -50,7 +50,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `node test/debug.js 'expr' ...`: runs the self-test steps, then evaluates expressions inside the sheet's realm.
 - `npx playwright install chromium` once on a new machine (the test falls back to Playwright's own Chromium).
 - `node test/ui.test.js [phone-portrait|phone-landscape|tablet-portrait|tablet-landscape]`: Playwright at the real device sizes, with screenshots in `test/shots/`. Env: `SCHEME=dark`, `NOCDN=1`, `DIST=dist-single`, `URL=file:///…`.
-- `tools/build.sh` → `dist/` (multi-file). `node tools/build-single.js` → `dist-single/index.html` (artifact page) and `dist-single/MPMB-Sheet-App.html` (one downloadable file; the worker starts from a blob URL).
+- `tools/build.sh` → `dist/` (multi-file). `node tools/build-single.js [version]` → `dist-single/index.html` (artifact page, pdf-lib from cdnjs) and `dist-single/MPMB-Sheet-App.html` (one downloadable file with pdf-lib bundled; the worker starts from a blob URL, or a data: URL when Chrome refuses blob workers on file:// pages).
 
 ## Acrobat fidelity: lessons learned (keep these true)
 
