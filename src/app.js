@@ -20,7 +20,7 @@
 
   // ---------------------------------------------------------------- worker connection
   function connect() {
-    const w = new Worker('worker.js');
+    const w = new Worker(window.MPMB_WORKER_URL || 'worker.js');
     const pending = new Map();
     let seq = 0;
     const api = {

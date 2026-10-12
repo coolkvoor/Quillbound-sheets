@@ -16,7 +16,7 @@ const DEVICES = {
 
 (async () => {
   const srv = await start(0);
-  const url = 'http://localhost:' + srv.address().port + '/';
+  const url = process.env.URL || ('http://localhost:' + srv.address().port + '/');
   const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--no-sandbox'] }).catch(async () => chromium.launch());
   const which = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(DEVICES);
   const scheme = process.env.SCHEME || 'light';

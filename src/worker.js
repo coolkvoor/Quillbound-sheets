@@ -1,9 +1,13 @@
 /* The engine worker: loads the PDF, runs MPMB's code, and answers the app's requests.
  * Each worker is one sheet (one JavaScript realm), because MPMB changes built-in prototypes. */
 'use strict';
-const PDFLIB_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
-try { importScripts(PDFLIB_CDN); } catch (e) { importScripts('vendor/pdf-lib.min.js'); }
-importScripts('loader.js', 'engine.js', 'selftest.js');
+// In the single-file build everything is already bundled in front of this file
+if (!self.MPMBEngine) {
+  try { importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'); } catch (e) { importScripts('vendor/pdf-lib.min.js'); }
+  importScripts('loader.js', 'engine.js', 'selftest.js');
+}
+// Everything below stays out of the global scope, which belongs to MPMB's code
+(function () {
 
 let engine = null;
 let watched = new Set();
@@ -62,7 +66,7 @@ const ops = {
   },
 };
 
-onmessage = async (e) => {
+self.onmessage = async (e) => {
   const { id, op, args } = e.data || {};
   try {
     if (!ops[op]) throw new Error('Unknown request: ' + op);
@@ -74,3 +78,4 @@ onmessage = async (e) => {
   }
 };
 postMessage({ type: 'ready' });
+})();

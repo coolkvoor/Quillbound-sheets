@@ -3,3 +3,4 @@ dist/
 test/sheet.pdf
 test/model.json
 test/shots/
+dist-single/
