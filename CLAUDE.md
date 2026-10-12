@@ -41,6 +41,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `node test/loader.test.js`: reads the sheet and writes `test/model.json`, which the other tests need.
 - `node test/engine.test.js`: runs MPMB in a Node `vm` realm and prints the self-test results.
 - `node test/debug.js 'expr' ...`: runs the self-test steps, then evaluates expressions inside the sheet's realm.
+- `npx playwright install chromium` once on a new machine (the test falls back to Playwright's own Chromium).
 - `node test/ui.test.js [phone-portrait|phone-landscape|tablet-portrait|tablet-landscape]`: Playwright at the real device sizes, with screenshots in `test/shots/`. Env: `SCHEME=dark`, `NOCDN=1`, `DIST=dist-single`, `URL=file:///…`.
 - `tools/build.sh` → `dist/` (multi-file). `node tools/build-single.js` → `dist-single/index.html` (artifact page) and `dist-single/MPMB-Sheet-App.html` (one downloadable file; the worker starts from a blob URL).
 
