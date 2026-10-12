@@ -269,6 +269,17 @@ label.f.mod .in { min-height: 40px; color: #2a62c9; }
 .gear-row .in { min-height: 42px; }
 .gear-head { display: grid; grid-template-columns: minmax(0, 1fr) 4rem 4.4rem 44px; gap: 6px; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
+/* XP, conditions, ammunition */
+.xp > .f:first-child { flex: 1 1 7rem; }
+.xp > .f:last-child { flex: 1.4 1 11rem; }
+.conds { gap: 0 6px; }
+.conds .tg { min-width: 9.5rem; }
+.ammo { display: grid; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.ammo:last-child { border-bottom: 0; }
+.ammo .figs { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.ammo .count { font-size: 1.5rem; font-weight: 700; min-width: 2.5rem; text-align: center; }
+details.more-bg summary { cursor: pointer; color: var(--accent); min-height: 40px; display: flex; align-items: center; }
+
 /* class and ability panels */
 .cp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .cp-row select { width: 100%; }
@@ -359,6 +370,11 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
             <div class="line"><input class="in" data-f="Class and Levels" id="f-class" autocomplete="off" placeholder="e.g. Wizard 3, or Fighter 2 Rogue 1" aria-label="Class and levels"><button class="btn" id="class-open" type="button">Change</button></div>
             <span class="hint">Use Change to pick a class, subclass and level, level up, or multiclass. Typing works too.</span></div>
           <label class="f"><span>Background</span><input class="in" data-f="Background" id="f-bg" list="dl-bg" autocomplete="off" placeholder="Pick or type a background"><datalist id="dl-bg" data-items="Background"></datalist></label>
+          <div class="row xp">
+            <label class="f"><span>Experience</span><input class="in num" data-f="Total Experience" id="f-xp" inputmode="numeric" autocomplete="off"></label>
+            <div class="f"><span class="flabel">Add XP</span><div class="line"><input class="in num" data-f="Add Experience" id="f-addxp" inputmode="numeric" autocomplete="off" aria-label="Experience to add"><button class="btn" type="button" data-mpmb="Add Experience Button" data-title="Add experience">Add</button></div></div>
+          </div>
+          <p class="hint">Next level at <b class="num" data-out="Next level">–</b> XP. <span id="xp-levelup" hidden><span id="xp-levelup-text"></span> <button class="linkish" id="xp-levelup-btn" type="button">Level up</button></span></p>
           <p class="hint" id="content-hint"><span id="content-hint-text">Content: SRD only.</span> <a href="#content" data-goto="content" id="content-hint-link">Add books</a></p>
           <div class="stats">
             <div class="stat"><span class="k">Level</span><span class="v num" data-out="Character Level">–</span></div>
@@ -430,6 +446,18 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           </div>
         </div>
         <div class="card">
+          <h3>Conditions</h3>
+          <div class="toggles conds" id="conditions"></div>
+          <div class="row">
+            <div class="f"><span class="flabel">Exhaustion</span><span class="stepper"><button class="btn" type="button" data-step="Condition.Exhaustion" data-by="-1" aria-label="Less exhaustion">−</button><input class="in num" data-f="Condition.Exhaustion" id="f-exh" inputmode="numeric" autocomplete="off" aria-label="Exhaustion level"><button class="btn" type="button" data-step="Condition.Exhaustion" data-by="1" aria-label="More exhaustion">+</button></span></div>
+            <div class="f"><span class="flabel">Effect</span><span data-out="Condition.Exhaustion Effect">–</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Ammunition</h3>
+          <div id="ammo"></div>
+        </div>
+        <div class="card">
           <h3>Actions</h3>
           <ul class="list" id="actions"></ul>
         </div>
@@ -493,6 +521,22 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <label class="f"><span>Ideal</span><textarea class="in" rows="2" data-f="Ideal" id="f-ideal"></textarea></label>
           <label class="f"><span>Bond</span><textarea class="in" rows="2" data-f="Bond" id="f-bond"></textarea></label>
           <label class="f"><span>Flaw</span><textarea class="in" rows="2" data-f="Flaw" id="f-flaw"></textarea></label>
+          <details class="more-bg" data-vis="Background_History"><summary>History, appearance, allies and enemies</summary>
+            <div class="stack">
+              <label class="f"><span>Character history</span><textarea class="in" rows="5" data-f="Background_History" id="f-history"></textarea></label>
+              <label class="f"><span>Appearance</span><textarea class="in" rows="3" data-f="Background_Appearance" id="f-appearance"></textarea></label>
+              <label class="f"><span>Allies and organisations</span><textarea class="in" rows="3" data-f="Background_Organisation" id="f-allies"></textarea></label>
+              <label class="f"><span>Enemies</span><textarea class="in" rows="3" data-f="Background_Enemies" id="f-enemies"></textarea></label>
+            </div>
+          </details>
+        </div>
+        <div class="card">
+          <h3>Notes</h3>
+          <label class="f"><span>Notes</span><textarea class="in" rows="6" data-f="Extra.Notes" id="f-notes"></textarea></label>
+          <div class="stack" data-vis="P5.ASnotes.Notes.Left">
+            <label class="f"><span>Notes page, left</span><textarea class="in" rows="6" data-f="P5.ASnotes.Notes.Left" id="f-notes-l"></textarea></label>
+            <label class="f"><span>Notes page, right</span><textarea class="in" rows="6" data-f="P5.ASnotes.Notes.Right" id="f-notes-r"></textarea></label>
+          </div>
         </div>
         <div class="card">
           <h3>Proficiencies</h3>

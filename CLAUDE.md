@@ -53,6 +53,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `node test/save.test.js`: builds a character (species option, spells, gear, feat), exports the engine state, restores it into a fresh sheet before MPMB starts, levels up, saves and restores again. Part of `npm test`.
 - `node test/writer.test.js`: writes a built character into the PDF, reads that PDF back with the loader as a new sheet (no saved state) and checks the character, MPMB's hidden state and the spell sheet page are in the file. Writes `test/saved-character.pdf` (gitignored) to open in Acrobat. Part of `npm test`.
 - `node test/classes.test.js` (subclass, level up, multiclass, remove) and `node test/abilities.test.js` (point buy, background bonus, maximum). Part of `npm test`.
+- `node test/extras.test.js`: XP (Add XP, the level question answered "not now"), ammunition, conditions and exhaustion, notes. Part of `npm test`.
 - `node test/debug.js 'expr' ...`: runs the self-test steps, then evaluates expressions inside the sheet's realm.
 - `npx playwright install chromium` once on a new machine (the test falls back to Playwright's own Chromium).
 - `node test/ui.test.js [phone-portrait|phone-landscape|tablet-portrait|tablet-landscape]`: Playwright at the real device sizes, with screenshots in `test/shots/`. Env: `SCHEME=dark`, `NOCDN=1`, `DIST=dist-single`, `URL=file:///…`.
@@ -76,6 +77,8 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - MPMB hides all page-1 spell slot boxes when the sheet's slot area is off (`SpellSlotsRemember` = `[false,false]`); the app shows boxes by count, using MPMB's own mapping (1: mid; 2: top1+bottom1; 3: top2.1+top2.2+bottom1; 4: top2.1+top2.2+bottom2.1+bottom2.2).
 - A spell row's state lives in its `spells.check.N` text field (`checkbox`/`checkedbox`, `oncelr`/`oncelr_used`, `markedbox`, `atwill`…); `spells.checkbox.N` is a push button that toggles it, or opens the row menu.
 - Every text box in a dialog reads back "" (check boxes and radios false) even when nothing was loaded, as in Acrobat; the Ability Scores dialog only loads non-zero boxes and does Number() on all of them.
+- Standing dialog answers (`engine.setStandingAnswer`) apply every time a dialog opens unless an answer is queued. The worker answers MPMB's EXPERIENCE POINTS DIALOG "not now" (cancel); the app shows Level up instead, which opens the class screen with the levels added to the first class.
+- MPMB's ammunition Reset button redraws the boxes for the current amount; it doesn't refill. On this sheet the tick boxes for arrows stay hidden, so "Use one" lowers the amount.
 - A dialog that only shows text (a read-only multi-line `edit_text`, e.g. MPMB's `ShowDialog`) is auto-closed, but its text is kept on the dialog log entry (`text`); the worker's `tap` returns it with the alerts and the app shows it in a panel.
 - MPMB's modifier ("blue text") fields are hidden until MPMB shows them (Skills → Options → Show fields to modify skill calculations); the app's `data-vis` binding follows that.
 - `engine.commit` runs the widget's On Focus and On Blur scripts around Keystroke/Validate/Calculate, as Acrobat does when you enter and leave a field (gear lines set their weight in On Blur).

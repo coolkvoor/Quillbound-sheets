@@ -447,6 +447,7 @@
     let timeoutId = 0;
     const fileQueue = [];       // texts for util.readFileIntoStream, picked by the user in the app
     const dialogAnswers = [];   // { name, steps: [{ set: {item_id: value} } | { pick } | { press: item_id } | { end }], capture }, used in order
+    const standingAnswers = {}; // dialog name -> answer used every time it opens (unless one is queued)
     const menuAnswers = [];     // cReturn values for the next app.popUpMenuEx calls, in order (null = nothing chosen)
     let lastMenu = null;        // the last menu nobody answered: [{ name, ret, marked, enabled, items }]
     function menuTree(arr) {
@@ -542,6 +543,7 @@
         push(log.dialogs, entry);
         let plan = null;
         for (let i = 0; i < dialogAnswers.length; i++) if (dialogAnswers[i].name === entry.name) { plan = dialogAnswers.splice(i, 1)[0]; break; }
+        if (!plan && standingAnswers[entry.name]) plan = standingAnswers[entry.name];
         if (plan) entry.answered = 'app';
         // Acrobat's rules per element type: a text box loaded with a list ({name: -1, chosen: 1}) becomes a drop-down
         // whose store() gives the chosen name as text; list boxes give their list object back (a fresh copy each time)
@@ -1048,6 +1050,7 @@
       start, commit, toggle, press, snapshot, drainChanges, evalExpr, getField, preset, action, exportState, importState,
       queueFile(text) { fileQueue.push(String(text)); },
       queueDialog(answer) { dialogAnswers.push(answer); },
+      setStandingAnswer(name, answer) { if (answer) standingAnswers[name] = Object.assign({ name }, answer); else delete standingAnswers[name]; },
       queueMenu(ret) { menuAnswers.push(ret === undefined ? null : ret); },
       takeMenu() { const m = lastMenu; lastMenu = null; return m; },
       clearQueues() { fileQueue.length = 0; dialogAnswers.length = 0; menuAnswers.length = 0; lastMenu = null; },

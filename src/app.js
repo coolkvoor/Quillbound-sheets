@@ -276,6 +276,31 @@
     }
   }
 
+  const CONDITIONS = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Surprised', 'Unconscious'];
+  function buildConditions() {
+    const box = $('#conditions');
+    box.textContent = '';
+    for (const c of CONDITIONS) box.append(el('span', { cls: 'tg' }, [el('button', { cls: 'dot sm', type: 'button', 'data-toggle': 'Condition.' + c, 'aria-pressed': 'false', 'aria-label': c }), el('span', { text: c })]));
+  }
+  // MPMB's two ammunition trackers on page 1
+  function buildAmmo() {
+    const box = $('#ammo');
+    box.textContent = '';
+    for (const [side, pre, label] of [['left', 'AmmoLeft', 'First'], ['right', 'AmmoRight', 'Second']]) {
+      const d = pre + 'Display.';
+      const shoot = el('button', { cls: 'btn', type: 'button', text: 'Use one', 'data-shoot': side });
+      box.append(el('div', { cls: 'ammo' }, [
+        el('input', { cls: 'in', 'data-f': d + 'Name', id: 'f-ammo-' + side, list: 'dl-ammo-' + side, autocomplete: 'off', placeholder: label + ' ammunition (arrows, bolts…)', 'aria-label': label + ' ammunition' }),
+        el('datalist', { id: 'dl-ammo-' + side, 'data-items': d + 'Name' }),
+        el('div', { cls: 'figs' }, [
+          el('input', { cls: 'in num', 'data-f': d + 'Amount', id: 'f-ammon-' + side, inputmode: 'numeric', autocomplete: 'off', 'aria-label': label + ' ammunition: how many', style: 'width:5rem' }),
+          shoot,
+          el('span', { cls: 'hint' }, [document.createTextNode('Weight '), el('b', { 'data-out': d + 'Weight' }), document.createTextNode(' each')]),
+        ]),
+      ]));
+    }
+  }
+
   // Magic items: the 6 lines on the Additional sheet (page 3); Equipment: the 46 lines on page 2
   const MAGIC = 6, GEAR = 46;
   function buildMagicItems() {
@@ -387,6 +412,12 @@
       b.setAttribute('aria-label', b.parentElement.querySelector('.n').textContent + (exp ? ' expertise' : prof ? ' proficiency' : ' not proficient'));
     }
     // rows that only show when MPMB filled them
+    // enough experience for a higher level: MPMB's question is answered "not now"; the app offers Level up instead
+    const lvlNow = Number(v('Character Level')) || 0;
+    const xpNow = Number(String(v('Total Experience')).replace(/,/g, '')) || 0;
+    const xpLevel = state.xpTable ? state.xpTable.reduce((a, t) => a + (xpNow >= t ? 1 : 0), 0) : 0;
+    $('#xp-levelup').hidden = !(lvlNow > 0 && xpLevel > lvlNow);
+    if (xpLevel > lvlNow) $('#xp-levelup-text').textContent = 'Enough XP for level ' + xpLevel + '.';
     // magic items and gear: filled lines plus the first empty one
     const showFilled = (sel, field, extra) => {
       let first = true;
@@ -493,13 +524,16 @@
 
   // ---------------------------------------------------------------- classes: MPMB's Class Selection dialog
   const cls = { opts: null, rows: [] };
-  async function openClasses() {
+  // levelTo: open with the levels needed to reach this total added to the first class (Level up)
+  async function openClasses(levelTo) {
     if (!state.worker) return;
     let o;
     try { o = await state.worker.call('classOptions', {}); } catch (e) { return; }
     if (!o.available) { if (o.alerts && o.alerts.length) showNotice(o.alerts); return; }
     cls.opts = o;
     cls.rows = o.rows.length ? o.rows.map((r) => ({ cls: r.cls, sub: r.sub, level: r.level || 1 })) : [{ cls: '', sub: '', level: Math.max(1, o.level || 1) }];
+    const total = cls.rows.reduce((a, r) => a + (r.cls ? r.level : 0), 0);
+    if (typeof levelTo === 'number' && levelTo > total && cls.rows[0].cls) cls.rows[0].level = Math.min(20, cls.rows[0].level + levelTo - total);
     renderClasses();
     $('#class-panel').showModal();
   }
@@ -615,7 +649,8 @@
     else toast('Ability scores applied.');
   }
   function wireClassAbility() {
-    $('#class-open').addEventListener('click', openClasses);
+    $('#class-open').addEventListener('click', () => openClasses());
+    $('#xp-levelup-btn').addEventListener('click', () => { const m = /level (\d+)/.exec($('#xp-levelup-text').textContent); openClasses(m ? Number(m[1]) : undefined); });
     $('#cp-close').addEventListener('click', () => $('#class-panel').close());
     $('#cp-add').addEventListener('click', () => { cls.rows.push({ cls: '', sub: '', level: 1 }); renderClasses(); });
     $('#cp-apply').addEventListener('click', applyClasses);
@@ -683,8 +718,10 @@
       if (e.key === 'Enter' && e.target.matches && e.target.matches('input[data-f]')) { e.preventDefault(); e.target.blur(); }
     });
     document.addEventListener('click', async (e) => {
-      const t = e.target.closest && e.target.closest('[data-toggle],[data-skill],[data-tab],[data-goto],[data-mpmb],[data-bookmark]');
+      const t = e.target.closest && e.target.closest('[data-toggle],[data-skill],[data-tab],[data-goto],[data-mpmb],[data-bookmark],[data-step],[data-shoot]');
       if (!t) return;
+      if (t.dataset.step && state.worker) { const cur = Number(shown(state.snap.get(t.dataset.step))) || 0; send('commit', { name: t.dataset.step, value: String(Math.max(0, cur + Number(t.dataset.by))) }); return; }
+      if (t.dataset.shoot && state.worker) { send('shootAmmo', { side: t.dataset.shoot }); return; }
       if (t.dataset.tab) { e.preventDefault(); goTo(t.dataset.tab); return; }
       if (t.dataset.goto) { e.preventDefault(); goTo(t.dataset.goto, 'sheetinfo'); return; }
       if (!state.worker) return;
@@ -1232,7 +1269,7 @@
 
   // ---------------------------------------------------------------- go
   async function showSheet() {
-    buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildCoins(); buildMagicItems(); buildGear(); buildMods();
+    buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildCoins(); buildMagicItems(); buildGear(); buildMods(); buildConditions(); buildAmmo();
     state.spellOpts = null; state.sheet = null;
     renderCasters(); renderSpellList();
     buildIndex();
@@ -1249,6 +1286,7 @@
     window.scrollTo(0, 0);
     setTab('main');
     refreshSpells();
+    state.worker.call('xpInfo', {}).then((x) => { state.xpTable = x.table; refreshDerived(); }).catch(() => {});
   }
   wireEvents();
   wireContent();

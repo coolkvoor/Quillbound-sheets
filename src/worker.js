@@ -56,6 +56,9 @@ const ops = {
     engine = MPMBEngine.createEngine(model, { global: self, evalGlobal }, { fileName });
     const restoredChar = state ? engine.importState(state) : false;
     if (!restoredChar && saved) engine.preset(saved);
+    // MPMB asks whether to raise the level when the XP total reaches a new one; the app asks the user itself
+    // (Level up opens the class screen), so MPMB's question is answered "not now"
+    engine.setStandingAnswer('EXPERIENCE POINTS DIALOG', { steps: [{ end: 'cancel' }] });
     const startMs = engine.start();
     // A saved PDF keeps the dropdowns MPMB filled; the app starts from the PDF as distributed (some lists empty, such as
     // magic items), so MPMB rebuilds them: Source Material → Apply. With saved content this also restores it.
@@ -79,6 +82,21 @@ const ops = {
   press({ name, widget }) { const t = now(); const r = engine.press(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   log() { return logSummary(); },
   exportState() { return engine.exportState(); },
+  // Spend one piece of ammunition the way the sheet does: tick the next box (MPMB counts down); if the boxes aren't
+  // shown (MPMB draws different ones per kind of ammunition), lower the amount instead. To restock, type the amount.
+  shootAmmo({ side }) {
+    const t = now(), seq = engine.logSeq;
+    const pre = side === 'right' ? 'AmmoRight' : 'AmmoLeft';
+    let done = false;
+    for (let i = 1; i <= 50 && !done; i++) {
+      const s = engine.snapshot(pre + '.Bullet.' + i);
+      if (s.exists && !s.hidden && !s.checked) { engine.toggle(pre + '.Bullet.' + i); done = true; }
+    }
+    if (!done) { const n = Number(engine.snapshot(pre + 'Display.Amount').value) || 0; if (n > 0) engine.commit(pre + 'Display.Amount', String(n - 1)); }
+    return { alerts: engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ title: a.title, msg: a.msg })), ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
+  },
+  // level by experience points, by MPMB's own table
+  xpInfo() { return JSON.parse(engine.evalExpr('JSON.stringify((function () { var lv = Number(What("Character Level")) || 0; var r = getCurrentLevelByXP(lv, What("Total Experience")); return { level: lv, xpLevel: r[0], table: ExperiencePointsList }; })())')); },
   // The character written into the sheet's own PDF (writer.js); the bytes go back to the app to offer as a download
   async savePdf() {
     const t = now();
