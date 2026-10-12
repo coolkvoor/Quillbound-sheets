@@ -4,7 +4,7 @@
 // In the single-file build everything is already bundled in front of this file
 if (!self.MPMBEngine) {
   try { importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'); } catch (e) { importScripts('vendor/pdf-lib.min.js'); }
-  importScripts('loader.js', 'engine.js', 'selftest.js');
+  importScripts('loader.js', 'engine.js', 'selftest.js', 'content.js');
 }
 // Everything below stays out of the global scope, which belongs to MPMB's code
 (function () {
@@ -20,26 +20,36 @@ function changesFor(names) {
   for (let i = 0; i < names.length; i++) if (watched.has(names[i])) out.push(engine.snapshot(names[i]));
   return out;
 }
+function contentOp(fn) {
+  const t = now();
+  const r = fn();
+  return { alerts: r.alerts, errors: r.errors, content: r.content, saved: MPMBContent.state(engine), ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
+}
 function logSummary() {
   const l = engine.log;
   return { alerts: l.alerts.slice(-40), dialogs: l.dialogs.slice(-40), menus: l.menus.slice(-20), errors: l.errors.slice(-40), unsupported: Object.assign({}, l.unsupported), urls: l.urls.slice(-10) };
 }
 
 const ops = {
-  async open({ bytes, fileName }) {
+  // saved: field values kept with this sheet in the app (add-on content and source choices), restored before MPMB starts
+  async open({ bytes, fileName, saved }) {
     try { evalGlobal('1+1'); } catch (e) { throw new Error('EVAL_BLOCKED'); }
     const t0 = now();
     const model = await MPMBLoader.load(new Uint8Array(bytes), self.PDFLib, progress);
     const loadMs = Math.round(now() - t0);
     const names = model.docScripts.map((s) => s.name);
     if (names.indexOf('Startup') === -1 || !model.info.SheetVersion) throw new Error('NOT_MPMB');
-    progress('Starting MPMB’s scripts');
+    progress(saved ? 'Starting MPMB’s scripts and your add-on content' : 'Starting MPMB’s scripts');
     engine = MPMBEngine.createEngine(model, { global: self, evalGlobal }, { fileName });
+    if (saved) engine.preset(saved);
     const startMs = engine.start();
+    const restored = saved ? MPMBContent.restore(engine) : null;
     engine.drainChanges();
     return {
       info: { title: model.info.Title || '', version: model.info.SheetVersion || '', type: model.info.SheetType || '', author: model.info.Author || '' },
       stats: { bytes: model.stats.bytes, loadMs, startMs, fields: model.fieldOrder.length, scripts: model.docScripts.length, pages: model.pageCount, templates: model.templates.length },
+      content: restored ? restored.content : MPMBContent.info(engine),
+      saved: MPMBContent.state(engine),
       log: logSummary(),
     };
   },
@@ -51,6 +61,11 @@ const ops = {
   toggle({ name, widget }) { const t = now(); const r = engine.toggle(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   press({ name, widget }) { const t = now(); const r = engine.press(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   log() { return logSummary(); },
+  // add-on content and sources: MPMB's own dialogs, answered for the user (content.js)
+  addContent({ text }) { return contentOp(() => MPMBContent.addFile(engine, text)); },
+  removeContent({ key }) { return contentOp(() => MPMBContent.removeFile(engine, key)); },
+  setUserScript({ text }) { return contentOp(() => MPMBContent.setUserScript(engine, text)); },
+  setSources({ excluded }) { return contentOp(() => MPMBContent.setSources(engine, excluded)); },
   names({ pattern }) { const re = new RegExp(pattern); return engine.fieldNames().filter((n) => re.test(n)); },
   selftest() {
     const timings = [];

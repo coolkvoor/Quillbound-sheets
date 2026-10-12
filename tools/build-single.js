@@ -4,7 +4,7 @@ const fs = require('fs'), path = require('path');
 const R = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(R, p), 'utf8');
 const VERSION = process.argv[2] || '0.1';
-let worker = [read('node_modules/pdf-lib/dist/pdf-lib.min.js'), read('src/loader.js'), read('src/engine.js'), read('src/selftest.js'), read('src/worker.js')].join('\n;\n');
+let worker = [read('node_modules/pdf-lib/dist/pdf-lib.min.js'), read('src/loader.js'), read('src/engine.js'), read('src/selftest.js'), read('src/content.js'), read('src/worker.js')].join('\n;\n');
 worker = worker.replace(/�/g, '\\ufffd');
 for (const bad of ['</script', '<!--']) if (worker.includes(bad) || read('src/app.js').includes(bad)) throw new Error('bundle contains ' + bad);
 let page = read('src/index.html').replace('<script src="app.js"></script>', '');

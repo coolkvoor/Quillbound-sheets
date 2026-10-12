@@ -32,7 +32,8 @@
     // ---- logs (shown in the app's Sheet tab) ----------------------------------------------------
     const log = { alerts: [], dialogs: [], menus: [], errors: [], urls: [], console: [], unsupported: {} };
     const MAXLOG = 200;
-    const push = (arr, item) => { arr.push(item); if (arr.length > MAXLOG) arr.shift(); };
+    let logSeq = 0;   // every log entry gets a number, so callers can ask "what happened since n"
+    const push = (arr, item) => { if (item && typeof item === 'object') item.seq = ++logSeq; arr.push(item); if (arr.length > MAXLOG) arr.shift(); };
     function logError(where, e) {
       const msg = e && e.message ? e.message : String(e);
       let at = '';
@@ -431,6 +432,8 @@
     // ---- Acrobat globals --------------------------------------------------------------------------
     const timeouts = [];
     let timeoutId = 0;
+    const fileQueue = [];       // texts for util.readFileIntoStream, picked by the user in the app
+    const dialogAnswers = [];   // { name, steps: [{ set: {item_id: value} } | { press: item_id }] }, used in order
     const appState = { calculate: true };
     const docState = { calculate: true, delay: false, dirty: false, pageNum: 0, disclosed: false };
     const pad = (n, w) => String(n).padStart(w || 2, '0');
@@ -500,27 +503,41 @@
         return type === 2 || type === 3 ? 4 : 1;   // Yes / OK
       },
       execDialog(d) {
-        // 0.1: answer with the defaults the dialog loads itself (as if the user pressed OK)
+        // Without a queued answer: the defaults the dialog loads itself (as if the user pressed OK).
+        // A queued answer for this dialog name replays what a user would do: set values, press buttons, then OK.
         const desc = (d && d.description) || {};
         const entry = { name: String(desc.name || 'Dialog'), title: firstText(desc), answered: 'defaults', t: Date.now() };
         push(log.dialogs, entry);
+        const plan = dialogAnswers.length && dialogAnswers[0].name === entry.name ? dialogAnswers.shift() : null;
+        if (plan) entry.answered = 'app';
         const values = {};
+        let ended = null;
         const el = new Proxy({}, {
           get(_, p) {
             if (p === 'load') return (o) => { if (o) for (const k in o) values[k] = o[k]; };
             if (p === 'store') return () => Object.assign({}, values);
+            if (p === 'end') return (r) => { ended = r === undefined ? 'ok' : r; };
             if (typeof p === 'symbol') return undefined;
             return function () { return undefined; };
           },
         });
         try {
           if (typeof d.initialize === 'function') d.initialize(el);
-          if (typeof d.validate === 'function') d.validate(el);
-          if (typeof d.commit === 'function') d.commit(el);
+          const steps = plan ? plan.steps || [] : [];
+          for (let i = 0; i < steps.length && ended === null; i++) {
+            const s = steps[i];
+            if (s.set) for (const k in s.set) values[k] = s.set[k];
+            if (s.pick && !pickItem(values[s.pick.id], s.pick.item)) { logError('dialog:' + entry.name, new Error('no item "' + s.pick.item + '" in ' + s.pick.id)); ended = 'cancel'; break; }
+            if (s.press && typeof d[s.press] === 'function') d[s.press](el);
+          }
+          if (ended === null || ended === 'ok') {
+            if (typeof d.validate === 'function') d.validate(el);
+            if (typeof d.commit === 'function') d.commit(el);
+          }
           if (typeof d.destroy === 'function') d.destroy(el);
         } catch (e) { logError('dialog:' + entry.name, e); }
         if (opts.onDialog) opts.onDialog(entry);
-        return 'ok';
+        return ended === null ? 'ok' : ended;
       },
       response(q, title, dflt) { push(log.dialogs, { name: 'Question', title: String(q || ''), answered: 'cancel', t: Date.now() }); return null; },
       popUpMenuEx() { const items = Array.prototype.slice.call(arguments).map((i) => (i && i.cName) || ''); push(log.menus, { items: items.slice(0, 12), t: Date.now() }); return null; },
@@ -538,6 +555,20 @@
       trustedFunction(f) { return f; }, beginPriv() {}, endPriv() {},
       thermometer: { begin() {}, end() {}, value: 0, duration: 100, text: '', cancelled: false },
     };
+    // Select one item in a list box's value object ({ item: -1, group: { item: -2 } }): positive = selected
+    function pickItem(obj, item) {
+      if (!obj || typeof obj !== 'object') return false;
+      let found = false;
+      for (const k of Object.keys(obj)) {
+        const v = obj[k];
+        if (v && typeof v === 'object') { if (pickItem(v, item)) found = true; } else {
+          const n = Math.abs(Number(v)) || 1;
+          obj[k] = k === item ? n : -n;
+          if (k === item) found = true;
+        }
+      }
+      return found;
+    }
     function firstText(desc) {
       try {
         const stack = [desc];
@@ -552,7 +583,8 @@
     const util = {
       printd, scand, printf,
       printx(fmt, s) { return String(s); },
-      readFileIntoStream() { unsupported('util.readFileIntoStream'); return null; },
+      // Acrobat opens a file picker here. The app picks the file first and queues its text; an empty queue is "cancel".
+      readFileIntoStream() { if (!fileQueue.length) { unsupported('util.readFileIntoStream'); return null; } return fileQueue.shift(); },
       stringFromStream(s) { return s === null || s === undefined ? '' : String(s); },
       streamFromString(s) { return String(s); },
       iconStreamFromIcon() { return null; },
@@ -846,16 +878,25 @@
     }
     function drainChanges() { const out = Array.from(dirty); dirty.clear(); return out; }
     function evalExpr(code) { return runGlobal(code, 'expr'); }
+    // Field values as if they had been saved in the PDF; call before start()
+    function preset(values) {
+      for (const n in values) { const rec = recs.get(n); if (rec) rec.value = normalize(rec, values[n]); }
+    }
+    // Run MPMB code the way a menu item or button would (pending timeouts run afterwards)
+    function action(code, label) { const r = runGlobal(code, label || 'action'); finishAction(); return r; }
 
     return {
-      start, commit, toggle, press, snapshot, drainChanges, evalExpr, getField,
+      start, commit, toggle, press, snapshot, drainChanges, evalExpr, getField, preset, action,
+      queueFile(text) { fileQueue.push(String(text)); },
+      queueDialog(answer) { dialogAnswers.push(answer); },
+      clearQueues() { fileQueue.length = 0; dialogAnswers.length = 0; },
       runBookmark(path) {
         let node = { children: g.bookmarkRoot.children };
         for (let i = 0; i < path.length; i++) { const kids = node.children || []; let next = null; for (let j = 0; j < kids.length; j++) if (kids[j].name === path[i]) { next = kids[j]; break; } if (!next) return false; node = next; }
         node.execute(); finishAction(); return true;
       },
       fieldNames() { return Array.from(recs.keys()); },
-      get log() { return log; }, get stats() { return stats; }, get pageCount() { return pages.length; },
+      get log() { return log; }, get logSeq() { return logSeq; }, get stats() { return stats; }, get pageCount() { return pages.length; },
     };
   }
 

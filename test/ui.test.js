@@ -6,6 +6,9 @@ const OUT = process.env.SHOTS || path.join(__dirname, 'shots');
 fs.mkdirSync(OUT, { recursive: true });
 const PDF = path.join(__dirname, 'sheet.pdf');
 const PDFLIB = fs.readFileSync(path.join(__dirname, '..', 'node_modules', 'pdf-lib', 'dist', 'pdf-lib.min.js'));
+// add-on content to add through the screen: CONTENT=file.js, or the first .js file in resources/ (skipped when none)
+const RES = path.join(__dirname, '..', 'resources');
+const CONTENT = process.env.CONTENT || (fs.existsSync(RES) ? fs.readdirSync(RES).filter((f) => /\.js$/i.test(f)).sort().map((f) => path.join(RES, f))[0] : null);
 
 const DEVICES = {
   'phone-portrait': { viewport: { width: 393, height: 852 }, deviceScaleFactor: 3.1, isMobile: true, hasTouch: true },
@@ -37,8 +40,21 @@ const DEVICES = {
     const openMs = Date.now() - t0;
     const facts = await page.$eval('#sheet-facts', (n) => n.innerText);
     console.log(`[${name}] opened in ${openMs} ms | ${facts.replace(/\n/g, ' | ')}`);
+    const idle = () => page.waitForFunction(() => !document.querySelector('#busy').classList.contains('on'));
+    // add-on content first, as MPMB recommends
+    if (CONTENT) {
+      await page.setInputFiles('#content-file', CONTENT);
+      await page.waitForSelector('#content-result.ok, #content-result.err', { timeout: 120000 });
+      const res = await page.$eval('#content-result', (n) => n.innerText.replace(/\n+/g, ' | '));
+      const off = await page.$('[data-source]:not(:checked)');
+      if (off) { await off.check(); await idle(); }
+      const got = await page.evaluate(() => ({ species: Array.from(document.querySelectorAll('#dl-race option')).map((o) => o.value), hint: document.querySelector('#content-hint').innerText, chip: document.querySelector('#sources-chip').textContent }));
+      console.log(`[${name}] content: ${res} | ${got.chip} | Aasimar listed: ${got.species.indexOf('Aasimar') !== -1} | ${got.hint}`);
+      await page.$eval('#content', (n) => n.scrollIntoView());
+      await page.screenshot({ path: path.join(OUT, name + '-0-content.png') });
+    }
     // build a character through the screen
-    const commit = async (sel, val) => { await page.fill(sel, val); await page.press(sel, 'Enter'); await page.waitForFunction(() => !document.querySelector('#busy').classList.contains('on')); };
+    const commit = async (sel, val) => { await page.fill(sel, val); await page.press(sel, 'Enter'); await idle(); };
     await commit('#f-name', 'Ilvara');
     for (const [k, v] of [['Str', '8'], ['Dex', '14'], ['Con', '14'], ['Int', '16'], ['Wis', '12'], ['Cha', '10']]) await commit('#f-abi-' + k, v);
     await commit('#f-race', 'Elf');
@@ -77,6 +93,14 @@ const DEVICES = {
     const test = await page.$eval('#test-out', (n) => n.innerText.split('\n').slice(0, 3).join(' | '));
     console.log(`[${name}] tab after jump: ${tab} | self-test: ${test}`);
     await page.screenshot({ path: path.join(OUT, name + '-4-sheet.png') });
+    if (CONTENT) {
+      // the content stays with the sheet: reload the app and reopen
+      await page.reload();
+      await page.click('#reopen');
+      await page.waitForSelector('#sheet:not([hidden])', { timeout: 120000 });
+      const back = await page.evaluate(() => ({ hint: document.querySelector('#content-hint').innerText, files: document.querySelector('#content-chip').textContent, aasimar: Array.from(document.querySelectorAll('#dl-race option')).some((o) => o.value === 'Aasimar') }));
+      console.log(`[${name}] after reopen: ${back.files} | Aasimar listed: ${back.aasimar} | ${back.hint}`);
+    }
     if (logs.length) console.log(`[${name}] console:`, logs.slice(0, 8).join(' || '));
     await ctx.close();
   }

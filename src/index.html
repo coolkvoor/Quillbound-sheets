@@ -55,7 +55,7 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; text-align: center; }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 .btn:active { transform: translateY(1px); }
-.btn[disabled] { opacity: 0.5; cursor: default; }
+.btn[disabled], .btn.is-disabled { opacity: 0.5; cursor: default; }
 .file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .note { font-size: 0.92rem; color: var(--muted); margin: 0; }
 .alert { border: 1px solid var(--bad); color: var(--bad); background: var(--surface); border-radius: 10px; padding: 12px 14px; margin: 0; }
@@ -165,6 +165,27 @@ label.f > span.hint { text-transform: none; letter-spacing: 0; font-size: 0.85re
 .uses { display: flex; align-items: center; gap: 6px; flex: none; }
 .uses input { width: 3.6rem; min-height: 40px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
 
+/* add-on content and sources */
+a { color: var(--accent); text-underline-offset: 2px; }
+textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 0.85rem; line-height: 1.35; resize: vertical; min-height: 9rem; }
+.file-row .fname { font-weight: 700; overflow-wrap: anywhere; }
+.file-row > div:first-child { min-width: 0; }
+.btn.sm { min-height: 40px; padding: 6px 12px; font-size: 0.92rem; flex: none; }
+.btn.danger { color: var(--bad); border-color: currentColor; }
+.result { border-left: 3px solid var(--line); padding: 4px 0 4px 10px; display: grid; gap: 4px; font-size: 0.95rem; }
+.result.ok { border-color: var(--good); }
+.result.err { border-color: var(--bad); }
+.result .msg { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.88rem; color: var(--muted); max-height: 14rem; overflow: auto; }
+.src-group { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; color: var(--muted); letter-spacing: 0.03em; margin: 10px 0 2px; }
+.src-group:first-child { margin-top: 0; }
+.src { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 12px; align-items: center; min-height: 52px; padding: 6px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.src input { width: 22px; height: 22px; margin: 0 0 0 4px; accent-color: var(--accent); }
+.src .n { font-weight: 500; }
+.src .abbr { color: var(--muted); font-size: 0.85rem; margin-left: 4px; }
+.src .hint { grid-column: 2; }
+.src.off .n { color: var(--muted); }
+#content-hint { margin: 0; }
+
 /* sheet tab */
 .pass { color: var(--good); font-weight: 700; }
 .fail { color: var(--bad); font-weight: 700; }
@@ -201,7 +222,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
     </div>
     <p class="alert" id="start-error" hidden></p>
     <p class="note">Works with MPMB's 2024 (5.5e) character sheets, including books you imported in Acrobat. Your file stays on this device.</p>
-    <p class="note">Version 0.1 test build. Changes are not saved yet, and MPMB's pop-up questions are answered with their default choices.</p>
+    <p class="note">Version 0.1 test build. Your character isn't saved yet, but add-on content you add is. MPMB's pop-up questions are answered with their default choices.</p>
   </div>
 </div>
 
@@ -225,6 +246,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <label class="f"><span>Species</span><input class="in" data-f="Race" id="f-race" list="dl-race" autocomplete="off" placeholder="Pick or type a species"><datalist id="dl-race" data-items="Race"></datalist></label>
           <label class="f"><span>Class</span><input class="in" data-f="Class and Levels" id="f-class" autocomplete="off" placeholder="e.g. Wizard 3, or Fighter 2 Rogue 1"><span class="hint">Type the class with its level. To level up, type the new level here, e.g. Wizard 4.</span></label>
           <label class="f"><span>Background</span><input class="in" data-f="Background" id="f-bg" list="dl-bg" autocomplete="off" placeholder="Pick or type a background"><datalist id="dl-bg" data-items="Background"></datalist></label>
+          <p class="hint" id="content-hint"><span id="content-hint-text">Content: SRD only.</span> <a href="#content" data-goto="content" id="content-hint-link">Add books</a></p>
           <div class="stats">
             <div class="stat"><span class="k">Level</span><span class="v num" data-out="Character Level">–</span></div>
             <div class="stat"><span class="k">Proficiency</span><span class="v num" data-out="Proficiency Bonus">–</span></div>
@@ -324,6 +346,29 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
     <section class="band" id="sheetinfo" aria-labelledby="t-sheet">
       <h2 class="band-title" id="t-sheet">Sheet <small id="sheet-ver"></small></h2>
       <div class="grid">
+        <div class="card" id="content">
+          <h3>Add-on content <span class="chip" id="content-chip">SRD only</span></h3>
+          <p class="note">MPMB add-on scripts add classes, species, spells and more from books you own, or your own homebrew. They stay with this sheet on this device.</p>
+          <ul class="list" id="content-files"></ul>
+          <div class="row">
+            <label class="btn primary file-btn" for="content-file">Add content file<input id="content-file" type="file"></label>
+            <button class="btn" id="paste-open" type="button" aria-expanded="false" aria-controls="paste-box">Paste a script</button>
+          </div>
+          <div class="stack" id="paste-box" hidden>
+            <label class="f"><span>Pasted script</span><textarea class="in code" id="paste-text" rows="8" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea><span class="hint">This replaces any script you pasted before. MPMB runs it now and every time the sheet opens.</span></label>
+            <div class="row">
+              <button class="btn primary" id="paste-save" type="button">Add script to sheet</button>
+              <button class="btn" id="paste-cancel" type="button">Cancel</button>
+            </div>
+          </div>
+          <div class="result" id="content-result" role="status" aria-live="polite" hidden></div>
+          <p class="note">Get add-on scripts from the <a href="https://www.flapkan.com/mpmb/index" target="_blank" rel="noopener">MPMB community index</a>, or read <a href="https://www.flapkan.com/how-to/add-more-content" target="_blank" rel="noopener">how adding content works</a>.</p>
+        </div>
+        <div class="card" id="sources">
+          <h3>Sources <span class="chip" id="sources-chip">1 in use</span></h3>
+          <p class="note">Choose which books MPMB's automation uses. Content from books you switch off doesn't appear in the lists.</p>
+          <div id="source-list"></div>
+        </div>
         <div class="card">
           <h3>Self-test</h3>
           <p class="note">Builds a level 3 Elf Wizard on a fresh copy of your sheet and checks MPMB's results. Your own character isn't touched.</p>
