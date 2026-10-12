@@ -1,14 +1,27 @@
 {
   "permissions": {
-    "defaultMode": "default",
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm test)",
+      "Bash(npm run *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "PowerShell(npm install)",
+      "PowerShell(npm test)",
+      "PowerShell(npm run *)",
+      "PowerShell(git add *)",
+      "PowerShell(git commit *)"
+    ],
     "deny": [
-      "Bash(rm *)",
-      "Bash(rmdir *)",
-      "PowerShell(Remove-Item *)",
       "Bash(git reset --hard *)",
       "Bash(git clean *)",
       "Bash(git push --force *)",
-      "Bash(git push -f *)"
+      "Bash(git push -f *)",
+      "PowerShell(git reset --hard *)",
+      "PowerShell(git clean *)",
+      "PowerShell(git push --force *)",
+      "PowerShell(git push -f *)"
     ]
   }
 }

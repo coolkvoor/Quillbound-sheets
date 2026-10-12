@@ -38,6 +38,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 ## Build and test
 
 - `npm install`, then put an MPMB 2024 sheet PDF at `test/sheet.pdf` (gitignored; never commit it).
+- `npm test` runs the loader test (writes `test/model.json`) and the engine test. Individually:
 - `node test/loader.test.js`: reads the sheet and writes `test/model.json`, which the other tests need.
 - `node test/engine.test.js`: runs MPMB in a Node `vm` realm and prints the self-test results.
 - `node test/debug.js 'expr' ...`: runs the self-test steps, then evaluates expressions inside the sheet's realm.
@@ -72,9 +73,10 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 
 ## Working safely on the owner's PC
 
-- `.claude/settings.json` starts sessions in Manual mode (asks before edits and commands) and denies delete commands (`rm`, `rmdir`, `Remove-Item`) and history-destroying git commands. Keep it that way.
-- If something should be deleted, tell the owner what and why, and let him delete it. Build scripts clean their own output folders.
-- Stay inside this project folder. Commit to git before larger changes so everything can be rolled back.
+- the owner's rule: **work freely inside this project folder, but never touch anything outside it without asking him first**, including reading, writing, deleting, installing globally or changing system settings.
+- `.claude/settings.json` starts sessions in Accept edits mode. File edits and file commands inside the folder run without prompts; anything outside the folder prompts. The project's own commands are pre-approved (`npm install`, `npm test`, `npm run …`, `git add`, `git commit`). Destructive git commands are blocked.
+- Use the npm scripts rather than ad-hoc commands: `npm test`, `npm run test:ui`, `npm run build`.
+- Never delete or overwrite `test/sheet.pdf` (the owner's own sheet). Commit before larger changes so everything can be rolled back.
 
 ## Copyright and publishing rules
 

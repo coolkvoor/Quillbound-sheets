@@ -1,19 +1,20 @@
 {
-  "name": "mpmb-app",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "mpmb-sheet-app",
+  "version": "0.1.0",
+  "description": "Phone-first web app that runs MPMB character sheets with their own automation",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test/loader.test.js && node test/engine.test.js",
+    "test:ui": "node test/ui.test.js",
+    "build": "node tools/build-single.js",
+    "build:multi": "sh tools/build.sh"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "license": "UNLICENSED",
   "dependencies": {
     "pdf-lib": "^1.17.1",
     "playwright-core": "^1.64.0"
-  }
+  },
+  "private": true
 }
