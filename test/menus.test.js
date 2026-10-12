@@ -42,6 +42,24 @@ e.commit('Limited Feature Used 1', '1');
 tap('LR');
 check('Long rest resets limited features', val('Limited Feature Used 1') === '', JSON.stringify(val('Limited Feature Used 1')));
 
+// a line menu: delete the first attack, the second one moves up
+m = tap('Attack.Button.1');
+const del = find(m, /^Delete/i);
+check('attack line menu has Delete', !!del, m && m.map((i) => i.name).filter((n) => n !== '-').join(', '));
+tap('Attack.Button.1', [del.ret]);
+check('Delete: Fire Bolt moves up to line 1', /fire bolt/i.test(val('Attack.1.Weapon Selection')) && val('Attack.2.Weapon Selection') === '', val('Attack.1.Weapon Selection') + ' / ' + JSON.stringify(val('Attack.2.Weapon Selection')));
+
+// a feat from MPMB's list, then its line menu
+e.commit('Feat Name 1', 'Alert');
+check('feat chosen from the list', /alert/i.test(val('Feat Name 1')) && val('Feat Description 1').length > 10, val('Feat Description 1').slice(0, 80));
+m = tap('Feat Button 1');
+check('feat line menu', !!m && m.length > 1, m && m.map((i) => i.name).filter((n) => n !== '-').slice(0, 6).join(', '));
+
+// a bookmark with a menu: Functions > Spells Options
+function tapBookmark(path, answers) { e.clearQueues(); for (const a of answers || []) e.queueMenu(a); e.runBookmark(path); const mm = e.takeMenu(); e.clearQueues(); return mm; }
+m = tapBookmark(['Functions', 'Spells Options']);
+check('Spells Options menu', !!find(m, /generate/i), m && m.map((i) => i.name).filter((n) => n !== '-').slice(0, 6).join(', '));
+
 check('no script errors', e.log.errors.length === 0, e.log.errors.map((x) => x.where + ': ' + x.msg + ' ' + x.at).join(' | '));
 console.log(failed ? failed + ' FAILED' : 'all passed');
 process.exitCode = failed ? 1 : 0;

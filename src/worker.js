@@ -48,12 +48,14 @@ const ops = {
     engine = MPMBEngine.createEngine(model, { global: self, evalGlobal }, { fileName });
     if (saved) engine.preset(saved);
     const startMs = engine.start();
-    const restored = saved ? MPMBContent.restore(engine) : null;
+    // A saved PDF keeps the dropdowns MPMB filled; the app starts from the PDF as distributed (some lists empty, such as
+    // magic items), so MPMB rebuilds them: Source Material → Apply. With saved content this also restores it.
+    const restored = MPMBContent.restore(engine);
     engine.drainChanges();
     return {
       info: { title: model.info.Title || '', version: model.info.SheetVersion || '', type: model.info.SheetType || '', author: model.info.Author || '' },
       stats: { bytes: model.stats.bytes, loadMs, startMs, fields: model.fieldOrder.length, scripts: model.docScripts.length, pages: model.pageCount, templates: model.templates.length },
-      content: restored ? restored.content : MPMBContent.info(engine),
+      content: restored.content,
       saved: MPMBContent.state(engine),
       log: logSummary(),
     };
@@ -73,11 +75,11 @@ const ops = {
   setSources({ excluded }) { return contentOp(() => MPMBContent.setSources(engine, excluded)); },
   // A tap on one of MPMB's buttons (or a bookmark) that may open menus. answers: the menu choices so far, in order.
   // If the action opens a menu nobody answered yet, it comes back as `menu` and the app asks the user, then taps again.
-  tap({ name, widget, bookmark, answers }) {
+  tap({ name, widget, bookmark, answers, modifier }) {
     const t = now(), seq = engine.logSeq;
     engine.clearQueues();
     for (const a of answers || []) engine.queueMenu(a);
-    if (bookmark) engine.runBookmark(bookmark); else engine.press(name, widget || 0);
+    if (bookmark) engine.runBookmark(bookmark); else engine.press(name, widget || 0, { modifier: !!modifier });
     const menu = engine.takeMenu();
     engine.clearQueues();
     return { menu, alerts: engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ title: a.title, msg: a.msg })), ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };

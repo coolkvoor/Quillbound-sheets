@@ -171,6 +171,8 @@
       ]));
     }
   }
+  // the "⋯" on a line: MPMB's line menu (move up/down, insert, delete, clear…)
+  const lineMenu = (field, title) => el('button', { cls: 'btn sm more', type: 'button', 'data-mpmb': field, 'data-title': title, 'aria-label': title + ': options', text: '⋯' });
   function buildAttacks() {
     const box = $('#attacks');
     box.textContent = '';
@@ -178,7 +180,10 @@
     for (let i = 1; i <= ATTACKS; i++) {
       const p = 'Attack.' + i + '.';
       box.append(el('div', { cls: 'attack', 'data-attack': String(i) }, [
-        el('label', { cls: 'f' }, [el('span', { text: 'Weapon or cantrip ' + i }), el('input', { cls: 'in', 'data-f': p + 'Weapon Selection', id: 'f-atk' + i, list: 'dl-weapons', autocomplete: 'off', placeholder: 'Pick or type a weapon or cantrip' })]),
+        el('div', { cls: 'line' }, [
+          el('label', { cls: 'f' }, [el('span', { text: 'Weapon or cantrip ' + i }), el('input', { cls: 'in', 'data-f': p + 'Weapon Selection', id: 'f-atk' + i, list: 'dl-weapons', autocomplete: 'off', placeholder: 'Pick or type a weapon or cantrip' })]),
+          lineMenu('Attack.Button.' + i, 'Attack ' + i),
+        ]),
         el('div', { cls: 'figs', 'data-figs': String(i) }, [
           el('span', {}, [el('span', { cls: 'muted', text: 'To hit ' }), el('b', { 'data-out': p + 'To Hit', text: '–' })]),
           el('span', {}, [el('span', { cls: 'muted', text: 'Damage ' }), el('b', { 'data-out': p + 'Damage', text: '–' }), el('span', { text: ' ' }), el('span', { 'data-out': p + 'Damage Type', text: '' })]),
@@ -197,6 +202,7 @@
         el('div', { cls: 'uses' }, [
           el('input', { 'data-f': 'Limited Feature Used ' + i, id: 'f-lf' + i, inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Uses spent', cls: 'num' }),
           el('span', { cls: 'muted', text: '/' }), el('b', { cls: 'num', 'data-out': 'Limited Feature Max Usages ' + i, text: '–' }),
+          lineMenu('Button.Limited Feature ' + i, 'Limited feature ' + i),
         ]),
       ]));
     }
@@ -205,13 +211,21 @@
   function buildFeats() {
     const box = $('#feats');
     box.textContent = '';
-    for (let i = 1; i <= FEATS; i++) box.append(el('li', { 'data-row': 'Feat Name ' + i }, [el('div', {}, [el('b', { 'data-out': 'Feat Name ' + i }), el('div', { cls: 'hint rich', 'data-rich': 'Feat Description ' + i })])]));
-    box.append(el('li', { cls: 'empty-note muted', text: 'No feats yet.' }));
+    box.append(el('datalist', { id: 'dl-feats', 'data-items': 'Feat Name 1' }));
+    for (let i = 1; i <= FEATS; i++) {
+      box.append(el('li', { 'data-feat': String(i) }, [el('div', { cls: 'grow' }, [
+        el('div', { cls: 'line' }, [
+          el('input', { cls: 'in', 'data-f': 'Feat Name ' + i, id: 'f-feat' + i, list: 'dl-feats', autocomplete: 'off', placeholder: 'Pick or type a feat', 'aria-label': 'Feat ' + i }),
+          lineMenu('Feat Button ' + i, 'Feat ' + i),
+        ]),
+        el('div', { cls: 'hint rich', 'data-rich': 'Feat Description ' + i }),
+      ])]));
+    }
   }
   function buildActions() {
     const box = $('#actions');
     box.textContent = '';
-    for (const [pre, n, label] of ACTIONS) for (let i = 1; i <= n; i++) box.append(el('li', { 'data-row': pre + ' ' + i }, [el('span', { 'data-out': pre + ' ' + i }), el('span', { cls: 'chip', text: label })]));
+    for (const [pre, n, label] of ACTIONS) for (let i = 1; i <= n; i++) box.append(el('li', { 'data-row': pre + ' ' + i }, [el('span', { cls: 'grow', 'data-out': pre + ' ' + i }), el('span', { cls: 'chip', text: label }), lineMenu('Button.' + pre + ' ' + i, label + ' ' + i)]));
     box.append(el('li', { cls: 'empty-note muted', text: 'No actions yet.' }));
   }
 
@@ -241,6 +255,42 @@
     box.textContent = '';
     for (const [f, k, long] of [['Copper Pieces', 'cp', 'Copper'], ['Silver Pieces', 'sp', 'Silver'], ['Electrum Pieces', 'ep', 'Electrum'], ['Gold Pieces', 'gp', 'Gold'], ['Platinum Pieces', 'pp', 'Platinum']]) {
       box.append(el('label', {}, [el('span', { text: k }), el('input', { cls: 'in num', 'data-f': f, id: 'f-coin-' + k, inputmode: 'numeric', autocomplete: 'off', 'aria-label': long + ' pieces' })]));
+    }
+  }
+
+  // Magic items: the 6 lines on the Additional sheet (page 3); Equipment: the 46 lines on page 2
+  const MAGIC = 6, GEAR = 46;
+  function buildMagicItems() {
+    const box = $('#magic-items');
+    box.textContent = '';
+    for (let i = 1; i <= MAGIC; i++) {
+      const p = 'Extra.Magic Item ';
+      box.append(el('div', { cls: 'mi', 'data-mi': String(i) }, [
+        el('div', { cls: 'line' }, [
+          el('input', { cls: 'in', 'data-f': p + i, id: 'f-mi' + i, list: 'dl-magic', autocomplete: 'off', placeholder: 'Pick or type a magic item', 'aria-label': 'Magic item ' + i }),
+          lineMenu('Extra.Magic Item Button ' + i, 'Magic item ' + i),
+        ]),
+        el('div', { cls: 'sub' }, [
+          el('span', { cls: 'att', 'data-att': String(i) }, [el('button', { cls: 'dot sm', type: 'button', 'data-toggle': p + 'Attuned ' + i, 'aria-pressed': 'false', 'aria-label': 'Attuned' }), el('span', { text: 'Attuned' })]),
+          el('span', {}, [el('span', { cls: 'muted', text: 'Weight ' }), el('b', { cls: 'num', 'data-out': p + 'Weight ' + i })]),
+        ]),
+        el('div', { cls: 'rich hint', 'data-rich': p + 'Description ' + i }),
+        el('input', { cls: 'in', 'data-f': p + 'Note ' + i, id: 'f-min' + i, autocomplete: 'off', placeholder: 'Notes (charges, who has it…)', 'aria-label': 'Magic item ' + i + ' notes' }),
+      ]));
+    }
+  }
+  function buildGear() {
+    const box = $('#gear-list');
+    box.textContent = '';
+    box.append(el('div', { cls: 'gear-head' }, [el('span', { text: 'Item' }), el('span', { text: 'Amount' }), el('span', { text: 'Weight' }), el('span')]));
+    for (let i = 1; i <= GEAR; i++) {
+      const p = 'Adventuring Gear ';
+      box.append(el('div', { cls: 'gear-row', 'data-gear': String(i) }, [
+        el('input', { cls: 'in', 'data-f': p + 'Row ' + i, id: 'f-gear' + i, autocomplete: 'off', placeholder: 'Add an item', 'aria-label': 'Item ' + i }),
+        el('input', { cls: 'in num', 'data-f': p + 'Amount ' + i, id: 'f-gearn' + i, inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Amount' }),
+        el('input', { cls: 'in num', 'data-f': p + 'Weight ' + i, id: 'f-gearw' + i, inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Weight' }),
+        lineMenu('Adventuring Gear Button ' + i, 'Item ' + i),
+      ]));
     }
   }
 
@@ -317,7 +367,36 @@
       b.setAttribute('aria-label', b.parentElement.querySelector('.n').textContent + (exp ? ' expertise' : prof ? ' proficiency' : ' not proficient'));
     }
     // rows that only show when MPMB filled them
-    for (const list of ['#limited', '#feats', '#actions']) {
+    // magic items and gear: filled lines plus the first empty one
+    const showFilled = (sel, field, extra) => {
+      let first = true;
+      for (const row of $$(sel)) {
+        const i = row.dataset.mi || row.dataset.gear;
+        const has = v(field(i)) !== '' || row.contains(document.activeElement);
+        row.hidden = !has && !first;
+        row.querySelector('.more').hidden = !has;
+        if (extra) extra(row, i, has);
+        if (!has) first = false;
+      }
+    };
+    let attuned = 0;
+    showFilled('[data-mi]', (i) => 'Extra.Magic Item ' + i, (row, i, has) => {
+      const att = state.snap.get('Extra.Magic Item Attuned ' + i);
+      row.querySelector('[data-att]').hidden = !has || !att || !att.exists || !!att.hidden;
+      if (has && att && att.checked) attuned++;
+      for (const n of row.querySelectorAll('.sub, .rich, [data-f$="Note ' + i + '"]')) n.hidden = !has;
+    });
+    $('#attuned-chip').textContent = attuned + ' attuned';
+    showFilled('[data-gear]', (i) => 'Adventuring Gear Row ' + i);
+    // feats: filled lines plus the first empty one, to pick a new feat
+    let featEmpty = true;
+    for (const li of $$('[data-feat]')) {
+      const has = v('Feat Name ' + li.dataset.feat) !== '' || li.contains(document.activeElement);
+      li.hidden = !has && !featEmpty;
+      li.querySelector('.more').hidden = !has;
+      if (!has) featEmpty = false;
+    }
+    for (const list of ['#limited', '#actions']) {
       let any = false;
       for (const li of $$(list + ' [data-row]')) { const has = v(li.dataset.row) !== ''; li.hidden = !has; any = any || has; }
       const note = $(list + ' .empty-note'); if (note) note.hidden = any;
@@ -328,6 +407,7 @@
       const has = v('Attack.' + row.dataset.attack + '.Weapon Selection') !== '' || row.contains(document.activeElement);
       row.hidden = !has && !firstEmpty;
       row.querySelector('[data-figs]').hidden = !has;
+      row.querySelector('.more').hidden = !has;
       if (!has) firstEmpty = false;
     }
     // hit dice
@@ -392,12 +472,12 @@
       if (e.key === 'Enter' && e.target.matches && e.target.matches('input[data-f]')) { e.preventDefault(); e.target.blur(); }
     });
     document.addEventListener('click', async (e) => {
-      const t = e.target.closest && e.target.closest('[data-toggle],[data-skill],[data-tab],[data-goto],[data-mpmb]');
+      const t = e.target.closest && e.target.closest('[data-toggle],[data-skill],[data-tab],[data-goto],[data-mpmb],[data-bookmark]');
       if (!t) return;
       if (t.dataset.tab) { e.preventDefault(); goTo(t.dataset.tab); return; }
       if (t.dataset.goto) { e.preventDefault(); goTo(t.dataset.goto, 'sheetinfo'); return; }
       if (!state.worker) return;
-      if (t.dataset.mpmb) { tapMpmb(t); return; }
+      if (t.dataset.mpmb || t.dataset.bookmark) { tapMpmb(t); return; }
       if (t.dataset.toggle) { send('toggle', { name: t.dataset.toggle }); return; }
       const f = t.dataset.skill;
       const prof = (state.snap.get(f + ' Prof') || {}).checked, exp = (state.snap.get(f + ' Exp') || {}).checked;
@@ -418,7 +498,7 @@
   }
 
   // ---------------------------------------------------------------- tabs that follow the scroll
-  const BANDS = ['main', 'combat', 'spells', 'features', 'sheetinfo'];
+  const BANDS = ['main', 'combat', 'spells', 'features', 'gear', 'sheetinfo'];
   let spyLock = 0;
   function setTab(id) { for (const a of $$('[data-tab]')) a.setAttribute('aria-current', a.dataset.tab === id ? 'true' : 'false'); }
   function goTo(id, tab) {
@@ -492,11 +572,13 @@
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
   }
   // A tap on one of MPMB's buttons: run it; if it opens a menu, ask, then run it again with the choice
+  // data-mpmb: the button's field name; data-bookmark: a bookmark path ("Functions/Spells Options"); data-modifier: Ctrl-click
   async function tapMpmb(btn) {
     const name = btn.dataset.mpmb, title = btn.dataset.title || btn.textContent.trim();
+    const where = btn.dataset.bookmark ? { bookmark: btn.dataset.bookmark.split('/') } : { name, modifier: btn.dataset.modifier === '1' };
     const answers = [];
     for (let i = 0; i < 6; i++) {
-      const res = await send('tap', { name, answers });
+      const res = await send('tap', Object.assign({ answers }, where));
       if (!res) return;
       if (res.menu) {
         const ret = await pickFromMenu(res.menu, title);
@@ -572,7 +654,8 @@
         const tag = tagText ? el('span', { cls: 'tag', text: tagText + (r.toggles === 'used' && r.on ? ', used' : '') }) : null;
         const save = r.save && !/^[–-]$/.test(r.save) ? r.save + ' save' : '';
         const meta = [r.time, r.range, r.components, r.duration, save, r.school.trim(), r.book ? r.book + ' ' + r.pageRef : ''].filter(Boolean).join(' · ');
-        ul.append(el('li', { cls: 'spell' }, [left, el('div', {}, [el('div', {}, [nameBtn].concat(tag ? [tag] : [])), el('div', { cls: 'meta', text: meta }), el('div', { cls: 'desc', text: r.description })])]));
+        const more = r.button ? el('button', { cls: 'btn sm more', type: 'button', 'data-mpmb': r.button, 'data-modifier': '1', 'data-title': r.name, 'aria-label': r.name + ': options', text: '⋯' }) : el('span');
+        ul.append(el('li', { cls: 'spell' }, [left, el('div', {}, [el('div', {}, [nameBtn].concat(tag ? [tag] : [])), el('div', { cls: 'meta', text: meta }), el('div', { cls: 'desc', text: r.description })]), more]));
       }
     }
   }
@@ -920,7 +1003,7 @@
 
   // ---------------------------------------------------------------- go
   async function showSheet() {
-    buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildCoins();
+    buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildCoins(); buildMagicItems(); buildGear();
     state.spellOpts = null; state.sheet = null;
     renderCasters(); renderSpellList();
     buildIndex();

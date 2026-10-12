@@ -46,6 +46,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `node test/engine.test.js`: runs MPMB in a Node `vm` realm and prints the self-test results.
 - `node test/content.test.js [file.js]`: adds an add-on content file, changes sources, pastes a script, restores into a fresh realm, removes it. Uses the first `.js` in `resources/` (gitignored, the owner's own files) and skips when there is none. Part of `npm test`.
 - `node test/spells.test.js`: Wizard 3 spell choices, spell sheet generation, prepared-only lists, row taps, regenerate, remove. `node test/menus.test.js`: Elf lineage menu, Set Max HP menu, long rest. Both part of `npm test`.
+- `node test/gear.test.js`: gear weights (On Blur), the Equipment menu (packs), magic items with attunement, line menus. Part of `npm test`.
 - `node test/debug.js 'expr' ...`: runs the self-test steps, then evaluates expressions inside the sheet's realm.
 - `npx playwright install chromium` once on a new machine (the test falls back to Playwright's own Chromium).
 - `node test/ui.test.js [phone-portrait|phone-landscape|tablet-portrait|tablet-landscape]`: Playwright at the real device sizes, with screenshots in `test/shots/`. Env: `SCHEME=dark`, `NOCDN=1`, `DIST=dist-single`, `URL=file:///…`.
@@ -68,6 +69,8 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - Dialog `store()` follows Acrobat per element type: an `edit_text` loaded with a list object is a drop-down whose `store()` gives the chosen name as **text** (MPMB's spell pickers rely on this); list boxes give a fresh copy of their object. `insertEntryInList`/`removeAllEntriesFromList` change the list (the spell sheet order dialog fills its list this way; without them every spell sheet came out empty).
 - MPMB hides all page-1 spell slot boxes when the sheet's slot area is off (`SpellSlotsRemember` = `[false,false]`); the app shows boxes by count, using MPMB's own mapping (1: mid; 2: top1+bottom1; 3: top2.1+top2.2+bottom1; 4: top2.1+top2.2+bottom2.1+bottom2.2).
 - A spell row's state lives in its `spells.check.N` text field (`checkbox`/`checkedbox`, `oncelr`/`oncelr_used`, `markedbox`, `atwill`…); `spells.checkbox.N` is a push button that toggles it, or opens the row menu.
+- `engine.commit` runs the widget's On Focus and On Blur scripts around Keystroke/Validate/Calculate, as Acrobat does when you enter and leave a field (gear lines set their weight in On Blur).
+- The distributed PDF has some dropdowns empty (magic items: 1 entry); the worker runs MPMB's Source Material → Apply (`content.restore`) at every open so MPMB fills them.
 - A saved PDF also holds the dropdown items MPMB set; the app starts from the pristine PDF, so after restoring content MPMB must rebuild them (`resourceDecisionDialog(false, false, true)`).
 - MPMB bug: emptying the script in `AddUserScript` calls `InitiateLists()` without re-running the imported files, so their content vanishes until reopening and the next source update resets their default exclusions. `content.js` removes a pasted script with the file dialog's steps instead.
 
@@ -76,7 +79,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - **Dialogs are auto-answered** with the values the dialog loads itself (initialize → commit → "ok"), unless an app screen queues answers (content, sources, spells). Effects:
   - The Level box opens MPMB's class selection dialog, so levelling up currently means typing "Wizard 4" into the Class field.
   - Subclass, feats and ASI choices are impossible for now (subclass may also come through a menu; not checked).
-- Menus work through probe-and-replay (species options, Choose Feature, Max HP, background traits, skill options, rests). Not wired yet: attack/action/limited-feature/feat line menus, spell row menus, the Functions bookmarks (pages layout, text options…).
+- Menus work through probe-and-replay (species options, Choose Feature, Max HP, background traits, skill options, rests). Line menus (attacks, actions, limited features, feats, magic items, gear, spell rows via Ctrl-click), Spells Options and the Equipment menu are wired too. Not wired: the other Functions bookmarks (pages layout, text options, colours, Adventurers League).
 - Real dialogs need the engine to wait synchronously for the user. The plan is the worker + `Atomics.wait`, which needs cross-origin isolation (COOP/COEP headers). Claude artifacts can't send headers, so milestone 3 needs real hosting (GitHub Pages + coi-serviceworker, or Cloudflare Pages `_headers`).
 - The character isn't saved yet (add-on content and source choices are, per sheet, in IndexedDB). Template spawning is basic and untested.
 - Sources can be switched on/off per book; MPMB's per-category exclusions (single classes, spells, etc.) need the dialog renderer.

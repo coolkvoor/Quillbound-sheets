@@ -863,11 +863,20 @@
       return stats.startupMs;
     }
 
-    // A user typing a value and leaving the field (or picking from a list): Keystroke(commit) → Validate → store → Calculate
+    // A user entering a field, typing a value and leaving it (or picking from a list):
+    // On Focus → Keystroke(commit) → Validate → store → Calculate → On Blur
     function commit(name, value) {
       const rec = recs.get(name);
       if (!rec) return { ok: false, reason: 'no such field' };
       const fld = fieldObj(rec);
+      const w = rec.widgets[0];
+      if (w && w.scripts.Fo) runScript(w.scripts.Fo, mkEvent('Focus', fld, { value: typedValue(rec) }), 'field:' + name + ':focus');
+      const r = commitValue(rec, fld, name, value);
+      if (w && w.scripts.Bl) runScript(w.scripts.Bl, mkEvent('Blur', fld, { value: typedValue(rec) }), 'field:' + name + ':blur');
+      finishAction();
+      return r;
+    }
+    function commitValue(rec, fld, name, value) {
       if (rec.scripts.K) {
         const ev = mkEvent('Keystroke', fld, { value, change: '', changeEx: value, willCommit: true, commitKey: 2 });
         runScript(rec.scripts.K, ev, 'field:' + name + ':keystroke');
@@ -903,13 +912,14 @@
       finishAction();
       return { ok: true };
     }
-    // A tap on a push button
-    function press(name, widgetIndex) {
+    // A tap on a push button; mods: { modifier, shift } for a Ctrl/Shift-click (MPMB opens some menus that way)
+    function press(name, widgetIndex, mods) {
       const rec = recs.get(name);
       if (!rec) return { ok: false };
       const i = widgetIndex || 0, w = rec.widgets[i], fld = widgetObj(rec, i);
-      if (w && w.scripts.D) runScript(w.scripts.D, mkEvent('Mouse Down', fld), 'field:' + name + ':mousedown');
-      if (w && w.scripts.A) runScript(w.scripts.A, mkEvent('Mouse Up', fld), 'field:' + name + ':mouseup');
+      const extra = { modifier: !!(mods && mods.modifier), shift: !!(mods && mods.shift) };
+      if (w && w.scripts.D) runScript(w.scripts.D, mkEvent('Mouse Down', fld, extra), 'field:' + name + ':mousedown');
+      if (w && w.scripts.A) runScript(w.scripts.A, mkEvent('Mouse Up', fld, extra), 'field:' + name + ':mouseup');
       finishAction();
       return { ok: true };
     }

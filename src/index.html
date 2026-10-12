@@ -190,6 +190,12 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .card h3 .btn.sm { font-family: var(--font-body); letter-spacing: 0; font-weight: 500; }
 .linkish { border: 0; background: none; padding: 4px 6px; margin: -4px 0; color: var(--accent); font-size: 0.82rem; text-transform: none; letter-spacing: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .f > .flabel { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.line { display: flex; gap: 8px; align-items: end; }
+.line > .f, .line > .in { flex: 1; min-width: 0; }
+.btn.more { flex: none; min-width: 44px; min-height: 44px; padding: 0 10px; font-size: 1.2rem; line-height: 1; }
+.list li .btn.more { min-height: 40px; }
+.grow { flex: 1; min-width: 0; }
+.list li > .grow { display: grid; gap: 4px; }
 .rests { gap: 8px; }
 .rests > .btn { flex: 1 1 0; }
 dialog.panel { border: 0; padding: 0; background: var(--surface); color: var(--ink); width: 100%; max-width: 40rem; max-height: 88vh; margin: auto auto 0; border-radius: 16px 16px 0 0; display: none; flex-direction: column; box-shadow: 0 -6px 30px rgb(0 0 0 / 0.25); }
@@ -225,7 +231,7 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .spell-level { font-family: var(--font-display); font-weight: 700; color: var(--accent); margin: 12px 0 2px; font-size: 1rem; }
 .caster-head { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; margin-top: 6px; }
 .spells-ul { list-style: none; margin: 0; padding: 0; }
-.spell { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 0 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.spell { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 0 8px; align-items: start; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .spell .sp-name { border: 0; background: none; padding: 0; font-weight: 700; text-align: left; cursor: pointer; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 .spell .meta { font-size: 0.85rem; color: var(--muted); }
 .spell .desc { font-size: 0.92rem; }
@@ -244,6 +250,15 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .picker-show { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: grid; gap: 4px; }
 .picker-show label { display: flex; gap: 10px; align-items: center; min-height: 40px; }
 .picker-show input { width: 20px; height: 20px; accent-color: var(--accent); }
+
+/* gear */
+.mi { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mi:last-child { border-bottom: 0; }
+.mi .att { display: inline-flex; align-items: center; font-size: 0.9rem; color: var(--muted); }
+.mi .sub { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 0.9rem; }
+.gear-row { display: grid; grid-template-columns: minmax(0, 1fr) 4rem 4.4rem auto; gap: 6px; align-items: center; padding: 3px 0; }
+.gear-row .in { min-height: 42px; }
+.gear-head { display: grid; grid-template-columns: minmax(0, 1fr) 4rem 4.4rem 44px; gap: 6px; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
 /* proficiencies, coins */
 .profs { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center; }
@@ -269,7 +284,8 @@ dl.kv dd { margin: 0; overflow-wrap: anywhere; }
 
 /* tab bar */
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
-nav.tabs ul { list-style: none; margin: 0 auto; padding: 0 4px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); max-width: 44rem; }
+nav.tabs ul { list-style: none; margin: 0 auto; padding: 0 4px; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 48rem; }
+@media (max-width: 420px) { nav.tabs a { font-size: 0.86rem; letter-spacing: 0; } }
 nav.tabs a { display: grid; place-items: center; min-height: var(--tabbar-h); text-decoration: none; color: var(--muted); font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; position: relative; }
 nav.tabs a[aria-current="true"] { color: var(--accent); }
 nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
@@ -397,7 +413,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
       <h2 class="band-title" id="t-spells">Spells</h2>
       <div class="grid">
         <div class="card" id="casters-card">
-          <h3>Spellcasting</h3>
+          <h3>Spellcasting <button class="btn sm" type="button" data-bookmark="Functions/Spells Options" data-title="Spell options">Options</button></h3>
           <div id="casters"><p class="note">Choose a class that casts spells to fill this in.</p></div>
         </div>
         <div class="card" id="slots-card">
@@ -458,8 +474,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <div class="stack"><span class="lbl">Languages</span><ul class="tags" id="languages"></ul></div>
         </div>
         <div class="card">
-          <h3>Coins and details</h3>
-          <div class="coins" id="coins"></div>
+          <h3>Details</h3>
           <div class="row">
             <label class="f"><span>Alignment</span><input class="in" data-f="Alignment" id="f-align" list="dl-align" autocomplete="off"><datalist id="dl-align" data-items="Alignment"></datalist></label>
             <label class="f"><span>Faith or deity</span><input class="in" data-f="Faith/Deity" id="f-faith" autocomplete="off"></label>
@@ -469,6 +484,33 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
             <label class="f"><span>Height</span><input class="in" data-f="Height" id="f-height" autocomplete="off"></label>
             <label class="f"><span>Weight</span><input class="in" data-f="Weight" id="f-weight" autocomplete="off"></label>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="gear" aria-labelledby="t-gear">
+      <h2 class="band-title" id="t-gear">Gear</h2>
+      <div class="grid">
+        <div class="card span-2">
+          <h3>Magic items <span class="chip" id="attuned-chip">0 attuned</span></h3>
+          <datalist id="dl-magic" data-items="Extra.Magic Item 1"></datalist>
+          <div id="magic-items"></div>
+        </div>
+        <div class="card span-2">
+          <h3>Equipment <button class="btn sm" type="button" data-mpmb="Equipment.menu" data-title="Add equipment">Add gear</button></h3>
+          <p class="hint">Type an item; MPMB fills in its weight. The menu adds packs and starting gear.</p>
+          <div id="gear-list"></div>
+        </div>
+        <div class="card">
+          <h3>Coins and weight</h3>
+          <div class="coins" id="coins"></div>
+          <div class="stats">
+            <div class="stat"><span class="k">Carried</span><span class="v num small" data-out="Weight Carried">–</span></div>
+            <div class="stat"><span class="k">Encumbered</span><span class="v num small" data-out="Weight Encumbered">–</span></div>
+            <div class="stat"><span class="k">Heavily</span><span class="v num small" data-out="Weight Heavily Encumbered">–</span></div>
+            <div class="stat"><span class="k">Push / lift</span><span class="v num small" data-out="Weight Push/Drag/Lift">–</span></div>
+          </div>
+          <label class="f"><span>Lifestyle</span><input class="in" data-f="Lifestyle" id="f-lifestyle" list="dl-life" autocomplete="off"><datalist id="dl-life" data-items="Lifestyle"></datalist></label>
         </div>
       </div>
     </section>
@@ -525,6 +567,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
       <li><a href="#combat" data-tab="combat">Combat</a></li>
       <li><a href="#spells" data-tab="spells">Spells</a></li>
       <li><a href="#features" data-tab="features">Features</a></li>
+      <li><a href="#gear" data-tab="gear">Gear</a></li>
       <li><a href="#sheetinfo" data-tab="sheetinfo">Sheet</a></li>
     </ul>
   </nav>
