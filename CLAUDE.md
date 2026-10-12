@@ -70,6 +70,12 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - Menus (`app.popUpMenuEx`) return null. Nothing is saved yet. Template spawning is basic and untested.
 - `util.readFileIntoStream()` returns null; hooking it to a file picker is the route for "Add Extra Materials" (book import).
 
+## Working safely on the owner's PC
+
+- `.claude/settings.json` starts sessions in Manual mode (asks before edits and commands) and denies delete commands (`rm`, `rmdir`, `Remove-Item`) and history-destroying git commands. Keep it that way.
+- If something should be deleted, tell the owner what and why, and let him delete it. Build scripts clean their own output folders.
+- Stay inside this project folder. Commit to git before larger changes so everything can be rolled back.
+
 ## Copyright and publishing rules
 
 - Never commit or bundle MPMB PDFs, MPMB's code, or add-on book scripts. Users bring their own. Non-SRD content belongs to Wizards of the Coast; MPMB's code is GPL-3.0 by Joost Wijnen.
