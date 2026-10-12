@@ -1,0 +1,5 @@
+node_modules/
+dist/
+test/sheet.pdf
+test/model.json
+test/shots/

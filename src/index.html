@@ -1,0 +1,357 @@
+<title>MPMB Sheet App</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap">
+<style>
+/* Layout: a character folio. One scrolling page of bands (Main, Combat, Features, Sheet),
+   cards flow 1 → 2 → 3 columns with the screen, and a bottom tab bar follows the scroll. */
+:root {
+  --bg: #f3f2f7;        /* cool violet-grey ground */
+  --surface: #ffffff;
+  --ink: #1d1926;
+  --muted: #615a72;
+  --line: #dcd7e5;
+  --accent: #5a2a8e;    /* MPMB purple */
+  --accent-ink: #ffffff;
+  --accent-soft: #ece3f7;
+  --hp: #b0223b;
+  --good: #23784a;
+  --bad: #b0223b;
+  --warn: #9a6200;
+  --font-display: "Alegreya SC", "Iowan Old Style", Georgia, serif;
+  --font-body: "Alegreya Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --radius: 12px;
+  --tabbar-h: 60px;
+  --header-h: 56px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121016; --surface: #1c1922; --ink: #ece8f3; --muted: #a59eb5; --line: #2f2a39;
+    --accent: #b590f0; --accent-ink: #1b1027; --accent-soft: #2a2040; --hp: #f06b81; --good: #62c48e; --bad: #f06b81; --warn: #e3ab4d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121016; --surface: #1c1922; --ink: #ece8f3; --muted: #a59eb5; --line: #2f2a39;
+  --accent: #b590f0; --accent-ink: #1b1027; --accent-soft: #2a2040; --hp: #f06b81; --good: #62c48e; --bad: #f06b81; --warn: #e3ab4d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 17px; line-height: 1.4; -webkit-text-size-adjust: 100%; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums lining-nums; }
+.sc { font-family: var(--font-display); letter-spacing: 0.02em; }
+.muted { color: var(--muted); }
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+
+/* ---------- start screen ---------- */
+#start { min-height: 100%; display: grid; place-items: center; padding: 24px 16px; }
+.start-card { width: 100%; max-width: 30rem; display: grid; gap: 20px; }
+.brand { display: grid; gap: 6px; }
+.brand h1 { font-family: var(--font-display); font-size: 2.1rem; font-weight: 700; color: var(--accent); line-height: 1.05; }
+.brand p { margin: 0; color: var(--muted); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; text-align: center; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+.btn:active { transform: translateY(1px); }
+.btn[disabled] { opacity: 0.5; cursor: default; }
+.file-btn input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.note { font-size: 0.92rem; color: var(--muted); margin: 0; }
+.alert { border: 1px solid var(--bad); color: var(--bad); background: var(--surface); border-radius: 10px; padding: 12px 14px; margin: 0; }
+#loading { display: grid; gap: 10px; justify-items: start; }
+.bar { width: 100%; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 35%; background: var(--accent); border-radius: 3px; animation: slide 1.2s ease-in-out infinite; }
+@keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+@media (prefers-reduced-motion: reduce) { .bar i { animation: none; width: 100%; opacity: 0.5; } html { scroll-behavior: auto !important; } }
+
+/* ---------- sheet ---------- */
+#sheet { min-height: 100%; }
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); padding: 8px 16px; display: flex; align-items: center; gap: 12px; min-height: var(--header-h); }
+header.top .who { min-width: 0; flex: 1; }
+header.top .name { font-family: var(--font-display); font-weight: 700; font-size: 1.25rem; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+header.top .line { font-size: 0.92rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.busy { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); opacity: 0; transition: opacity .15s; flex: none; }
+.busy.on { opacity: 1; }
+.chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 0.85rem; color: var(--muted); background: var(--surface); white-space: nowrap; }
+.chip.warn { color: var(--warn); border-color: currentColor; }
+
+main.bands { padding: 8px 16px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
+section.band { scroll-margin-top: calc(var(--header-h) + 8px); padding-top: 12px; }
+.band-title { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; color: var(--accent); margin: 8px 0 10px; display: flex; align-items: baseline; gap: 10px; }
+.band-title small { font-family: var(--font-body); font-size: 0.85rem; font-weight: 500; color: var(--muted); }
+/* cards flow down columns like a folio: 1 column on phones, 2 on phone landscape and tablet portrait, 3 on tablet landscape */
+.grid { column-count: 1; column-gap: 12px; }
+@media (min-width: 600px) { .grid { column-count: 2; } }
+@media (min-width: 1000px) { .grid { column-count: 3; } }
+.grid > .card { break-inside: avoid; margin-bottom: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 12px; min-width: 0; container-type: inline-size; }
+.card h3 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; letter-spacing: 0.03em; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.card h3 .chip { font-family: var(--font-body); letter-spacing: 0; }
+
+label.f { display: grid; gap: 4px; min-width: 0; }
+label.f > span { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+label.f > span.hint { text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
+.in { width: 100%; min-height: 46px; border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: var(--bg); font-size: 1rem; min-width: 0; }
+.in:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px var(--accent-soft); }
+.in[readonly] { background: transparent; border-style: dashed; }
+.in.num { text-align: center; }
+.hint { font-size: 0.85rem; color: var(--muted); }
+.row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
+.row > * { flex: 1 1 8rem; min-width: 0; }
+
+/* stat boxes */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(6.2rem, 1fr)); gap: 8px; }
+.stat { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: grid; gap: 2px; justify-items: center; text-align: center; background: var(--bg); }
+.stat .k { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.stat .v { font-size: 1.6rem; font-weight: 700; line-height: 1.1; }
+.stat.big .v { font-size: 2.1rem; }
+.stat .v.small { font-size: 1.15rem; }
+.stat input.lvl { width: 3.4rem; min-height: 40px; font-size: 1.5rem; font-weight: 700; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.hd { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1 1 100%; }
+.hd .uses input { width: 3.6rem; }
+.results { display: grid; gap: 0; }
+.res { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.res .lab { font-weight: 500; }
+.res .val { grid-column: 1 / -1; font-size: 0.88rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.stack { display: grid; gap: 10px; }
+
+/* abilities */
+.abilities { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.abi { border: 1px solid var(--line); border-radius: 10px; padding: 8px 6px 10px; display: grid; gap: 4px; justify-items: center; background: var(--bg); }
+.abi .k { font-family: var(--font-display); font-weight: 700; font-size: 1rem; letter-spacing: 0.06em; color: var(--accent); }
+.abi .mod { font-size: 1.9rem; font-weight: 700; line-height: 1; }
+.abi input { width: 4.2rem; min-height: 40px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 1rem; }
+.save { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--muted); min-height: 32px; }
+
+/* toggles: proficiency dots, check boxes */
+.dot { width: 44px; height: 44px; flex: none; display: inline-grid; place-items: center; border: 0; background: transparent; cursor: pointer; padding: 0; border-radius: 50%; }
+.dot::before { content: ""; width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--muted); }
+.dot[aria-pressed="true"]::before { background: var(--accent); border-color: var(--accent); }
+.dot.exp[aria-pressed="true"]::before { box-shadow: 0 0 0 3px var(--surface), 0 0 0 5px var(--accent); }
+.dot.sm { width: 32px; height: 32px; }
+.dot.sm::before { width: 13px; height: 13px; }
+
+/* skills */
+.skills { display: grid; grid-template-columns: minmax(0, 1fr); }
+@container (min-width: 520px) { .skills.two { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; } }
+.skill { display: flex; align-items: center; gap: 2px; min-height: 44px; border-bottom: 1px solid var(--line); }
+.skill .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.skill .a { font-size: 0.8rem; color: var(--muted); width: 2.4rem; text-align: right; margin-right: 8px; }
+.skill .v { width: 2.6rem; text-align: right; font-weight: 700; }
+
+/* HP */
+.hp { display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 8px; align-items: center; }
+.hp .btn { min-height: 56px; font-size: 1.5rem; padding: 0; }
+.hp input { min-height: 56px; font-size: 1.8rem; font-weight: 700; text-align: center; color: var(--hp); }
+.deaths { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.deaths .grp { display: flex; align-items: center; gap: 0; }
+.deaths .lbl { font-size: 0.85rem; color: var(--muted); margin-right: 4px; }
+
+/* attacks */
+.attack { border-top: 1px solid var(--line); padding-top: 10px; display: grid; gap: 8px; }
+.attack:first-of-type { border-top: 0; padding-top: 0; }
+.attack .figs { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.95rem; }
+.attack .figs b { font-variant-numeric: tabular-nums; }
+.attack .desc { font-size: 0.88rem; color: var(--muted); }
+
+/* rich text from MPMB's own formatting */
+.rich { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.98rem; line-height: 1.5; }
+.rich .c { color: var(--accent); }
+.rich:empty::before { content: attr(data-empty); color: var(--muted); }
+.list { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.list li { padding: 8px 0; border-bottom: 1px solid var(--line); display: flex; gap: 10px; justify-content: space-between; align-items: center; }
+.list li:last-child { border-bottom: 0; }
+.uses { display: flex; align-items: center; gap: 6px; flex: none; }
+.uses input { width: 3.6rem; min-height: 40px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+
+/* sheet tab */
+.pass { color: var(--good); font-weight: 700; }
+.fail { color: var(--bad); font-weight: 700; }
+.log { display: grid; gap: 6px; font-size: 0.9rem; max-height: 22rem; overflow: auto; }
+.log div { border-left: 3px solid var(--line); padding-left: 8px; overflow-wrap: anywhere; }
+.log div.err { border-color: var(--bad); }
+dl.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: 0.95rem; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; overflow-wrap: anywhere; }
+
+/* tab bar */
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
+nav.tabs ul { list-style: none; margin: 0 auto; padding: 0 8px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 40rem; }
+nav.tabs a { display: grid; place-items: center; min-height: var(--tabbar-h); text-decoration: none; color: var(--muted); font-family: var(--font-display); font-weight: 700; font-size: 1.02rem; letter-spacing: 0.03em; position: relative; }
+nav.tabs a[aria-current="true"] { color: var(--accent); }
+nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
+@media (max-height: 460px) { :root { --tabbar-h: 48px; --header-h: 48px; } header.top { min-height: 48px; padding-block: 4px; } }
+</style>
+
+<div id="start">
+  <div class="start-card">
+    <div class="brand">
+      <h1>MPMB Sheet App</h1>
+      <p>Play and build your MPMB character on your phone or tablet, using the sheet's own automation.</p>
+    </div>
+    <div id="start-actions" class="stack">
+      <label class="btn primary file-btn" for="file">Open MPMB sheet (PDF)<input id="file" type="file" accept="application/pdf,.pdf"></label>
+      <button class="btn" id="reopen" type="button" hidden></button>
+    </div>
+    <div id="loading" hidden>
+      <div id="loading-text">Reading the PDF</div>
+      <div class="bar"><i></i></div>
+      <p class="note" id="loading-sub"></p>
+    </div>
+    <p class="alert" id="start-error" hidden></p>
+    <p class="note">Works with MPMB's 2024 (5.5e) character sheets, including books you imported in Acrobat. Your file stays on this device.</p>
+    <p class="note">Version 0.1 test build. Changes are not saved yet, and MPMB's pop-up questions are answered with their default choices.</p>
+  </div>
+</div>
+
+<div id="sheet" hidden>
+  <header class="top">
+    <div class="who">
+      <div class="name" id="hdr-name">Unnamed character</div>
+      <div class="line" id="hdr-line">Choose a species and class to begin</div>
+    </div>
+    <span class="chip warn" title="Version 0.1 does not save changes yet">Not saved</span>
+    <span class="busy" id="busy" aria-hidden="true"></span>
+  </header>
+
+  <main class="bands" id="bands">
+    <section class="band" id="main" aria-labelledby="t-main">
+      <h2 class="band-title" id="t-main">Main</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Character</h3>
+          <label class="f"><span>Name</span><input class="in" data-f="PC Name" id="f-name" autocomplete="off"></label>
+          <label class="f"><span>Species</span><input class="in" data-f="Race" id="f-race" list="dl-race" autocomplete="off" placeholder="Pick or type a species"><datalist id="dl-race" data-items="Race"></datalist></label>
+          <label class="f"><span>Class</span><input class="in" data-f="Class and Levels" id="f-class" autocomplete="off" placeholder="e.g. Wizard 3, or Fighter 2 Rogue 1"><span class="hint">Type the class with its level. To level up, type the new level here, e.g. Wizard 4.</span></label>
+          <label class="f"><span>Background</span><input class="in" data-f="Background" id="f-bg" list="dl-bg" autocomplete="off" placeholder="Pick or type a background"><datalist id="dl-bg" data-items="Background"></datalist></label>
+          <div class="stats">
+            <div class="stat"><span class="k">Level</span><span class="v num" data-out="Character Level">–</span></div>
+            <div class="stat"><span class="k">Proficiency</span><span class="v num" data-out="Proficiency Bonus">–</span></div>
+            <div class="stat"><span class="k">Inspiration</span><button class="dot" type="button" data-toggle="Inspiration" aria-pressed="false" aria-label="Heroic inspiration"></button></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Ability scores</h3>
+          <div class="abilities" id="abilities"></div>
+        </div>
+        <div class="card">
+          <h3>Senses and saves</h3>
+          <div class="stats">
+            <div class="stat"><span class="k">Passive Perception</span><span class="v num" data-out="Passive Perception">–</span></div>
+          </div>
+          <label class="f"><span>Senses</span><div class="rich" data-rich="Vision" data-empty="None yet"></div></label>
+          <label class="f"><span>Saving throw notes</span><div class="rich" data-rich="Saving Throw advantages / disadvantages" data-empty="None yet"></div></label>
+        </div>
+        <div class="card span-2">
+          <h3>Skills <span class="chip">Tap a dot for proficiency</span></h3>
+          <div class="skills two" id="skills"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="combat" aria-labelledby="t-combat">
+      <h2 class="band-title" id="t-combat">Combat</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Defense</h3>
+          <div class="stats">
+            <div class="stat big"><span class="k">Armor Class</span><span class="v num" data-out="AC">–</span></div>
+            <div class="stat"><span class="k">Initiative</span><span class="v num" data-out="Initiative bonus">–</span></div>
+            <div class="stat"><span class="k">Speed</span><span class="v num small" data-out="Speed">–</span></div>
+          </div>
+          <label class="f"><span>Armor</span><input class="in" data-f="AC Armor Description" id="f-armor" list="dl-armor" autocomplete="off" placeholder="Pick or type armor"><datalist id="dl-armor" data-items="AC Armor Description"></datalist></label>
+          <label class="f"><span>Shield</span><input class="in" data-f="AC Shield Bonus Description" id="f-shield" autocomplete="off" placeholder="e.g. Shield"></label>
+        </div>
+        <div class="card">
+          <h3>Hit points</h3>
+          <div class="hp">
+            <button class="btn" type="button" id="hp-minus" aria-label="Lose 1 hit point">−</button>
+            <input class="in num" data-f="HP Current" id="f-hp" inputmode="numeric" autocomplete="off" aria-label="Current hit points">
+            <button class="btn" type="button" id="hp-plus" aria-label="Gain 1 hit point">+</button>
+          </div>
+          <div class="row">
+            <label class="f"><span>Max</span><input class="in num" data-f="HP Max" id="f-hpmax" inputmode="numeric" autocomplete="off"></label>
+            <label class="f"><span>Temporary</span><input class="in num" data-f="HP Temp" id="f-hptemp" inputmode="numeric" autocomplete="off"></label>
+          </div>
+          <div class="row" id="hitdice"></div>
+          <div class="deaths">
+            <div class="grp"><span class="lbl">Successes</span>
+              <button class="dot sm" type="button" data-toggle="Death Save Success1" aria-pressed="false" aria-label="Death save success 1"></button>
+              <button class="dot sm" type="button" data-toggle="Death Save Success2" aria-pressed="false" aria-label="Death save success 2"></button>
+              <button class="dot sm" type="button" data-toggle="Death Save Success3" aria-pressed="false" aria-label="Death save success 3"></button>
+            </div>
+            <div class="grp"><span class="lbl">Failures</span>
+              <button class="dot sm" type="button" data-toggle="Death Save Fail1" aria-pressed="false" aria-label="Death save failure 1"></button>
+              <button class="dot sm" type="button" data-toggle="Death Save Fail2" aria-pressed="false" aria-label="Death save failure 2"></button>
+              <button class="dot sm" type="button" data-toggle="Death Save Fail3" aria-pressed="false" aria-label="Death save failure 3"></button>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Actions</h3>
+          <ul class="list" id="actions"></ul>
+        </div>
+        <div class="card span-2">
+          <h3>Attacks and cantrips</h3>
+          <div id="attacks"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="features" aria-labelledby="t-features">
+      <h2 class="band-title" id="t-features">Features</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Limited features</h3>
+          <ul class="list" id="limited"></ul>
+        </div>
+        <div class="card span-2">
+          <h3>Class features</h3>
+          <div class="rich" data-rich="Class Features" data-empty="Choose a class to fill this in."></div>
+        </div>
+        <div class="card">
+          <h3>Species traits</h3>
+          <div class="rich" data-rich="Racial Traits" data-empty="Nothing yet. Some species need a choice that comes in a later version."></div>
+        </div>
+        <div class="card">
+          <h3>Feats</h3>
+          <ul class="list" id="feats"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="band" id="sheetinfo" aria-labelledby="t-sheet">
+      <h2 class="band-title" id="t-sheet">Sheet <small id="sheet-ver"></small></h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Self-test</h3>
+          <p class="note">Builds a level 3 Elf Wizard on a fresh copy of your sheet and checks MPMB's results. Your own character isn't touched.</p>
+          <button class="btn primary" id="run-test" type="button">Run self-test</button>
+          <div id="test-out"></div>
+        </div>
+        <div class="card">
+          <h3>This sheet</h3>
+          <dl class="kv" id="sheet-facts"></dl>
+          <button class="btn" id="open-other" type="button">Open another sheet</button>
+        </div>
+        <div class="card">
+          <h3>Messages from MPMB <span class="chip" id="msg-count">0</span></h3>
+          <p class="note">MPMB's pop-up questions don't show yet; this list shows what it asked and how the app answered.</p>
+          <div class="log" id="msgs"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabs" aria-label="Sections">
+    <ul>
+      <li><a href="#main" data-tab="main" aria-current="true">Main</a></li>
+      <li><a href="#combat" data-tab="combat">Combat</a></li>
+      <li><a href="#features" data-tab="features">Features</a></li>
+      <li><a href="#sheetinfo" data-tab="sheetinfo">Sheet</a></li>
+    </ul>
+  </nav>
+</div>
+
+<script src="app.js"></script>
