@@ -82,7 +82,11 @@ const ops = {
     if (bookmark) engine.runBookmark(bookmark); else engine.press(name, widget || 0, { modifier: !!modifier });
     const menu = engine.takeMenu();
     engine.clearQueues();
-    return { menu, alerts: engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ title: a.title, msg: a.msg })), ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
+    // what MPMB showed: alerts, and dialogs that only show text (both in the order they came)
+    const shown = engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ seq: a.seq, title: a.title, msg: a.msg }))
+      .concat(engine.log.dialogs.filter((d) => d.seq > seq && d.text).map((d) => ({ seq: d.seq, title: d.title, msg: d.text })))
+      .sort((a, b) => a.seq - b.seq).map((x) => ({ title: x.title, msg: x.msg }));
+    return { menu, alerts: shown, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
   },
   // Spells (spells.js)
   spellOptions() { return MPMBSpells.options(engine); },

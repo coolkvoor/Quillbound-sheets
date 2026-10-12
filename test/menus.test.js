@@ -60,6 +60,21 @@ function tapBookmark(path, answers) { e.clearQueues(); for (const a of answers |
 m = tapBookmark(['Functions', 'Spells Options']);
 check('Spells Options menu', !!find(m, /generate/i), m && m.map((i) => i.name).filter((n) => n !== '-').slice(0, 6).join(', '));
 
+// Skill options: MPMB's text dialog, and its modifier ("blue text") fields
+const d0 = e.logSeq;
+tap('SkillsClick', ['skills#dialog']);
+const textDlg = e.log.dialogs.filter((d) => d.seq > d0 && d.text)[0];
+check('skill options dialog: text for the app', !!textDlg && textDlg.text.length > 20, textDlg && (textDlg.title + ': ' + textDlg.text.replace(/\s+/g, ' ').slice(0, 90)));
+check('modifier fields hidden at first', e.snapshot('Arc Bonus').hidden);
+m = tap('SkillsClick');
+const showMods = find(m, /skills#bluetextfields/);
+tap('SkillsClick', [showMods.ret]);
+check('"Show fields to modify…" shows them', !e.snapshot('Arc Bonus').hidden && !e.snapshot('BlueText.Attack.1.To Hit Bonus').hidden, showMods.name);
+e.commit('Arc Bonus', '2');
+check('Arcana +2 modifier counts', val('Arc') === '5', 'Arcana ' + val('Arc'));
+m = tap('SkillsClick');
+check('the menu marks the option as on', find(m, /skills#bluetextfields/).marked, JSON.stringify(find(m, /skills#bluetextfields/)));
+
 check('no script errors', e.log.errors.length === 0, e.log.errors.map((x) => x.where + ': ' + x.msg + ' ' + x.at).join(' | '));
 console.log(failed ? failed + ' FAILED' : 'all passed');
 process.exitCode = failed ? 1 : 0;

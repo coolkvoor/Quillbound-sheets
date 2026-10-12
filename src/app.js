@@ -190,8 +190,22 @@
           el('span', {}, [el('span', { cls: 'muted', text: 'Range ' }), el('b', { 'data-out': p + 'Range', text: '–' })]),
         ]),
         el('div', { cls: 'desc', 'data-out': p + 'Description', text: '' }),
+        // MPMB's modifier ("blue text") fields for this attack, shown when MPMB shows them
+        el('div', { cls: 'row atk-mods', 'data-vis': 'BlueText.' + p + 'To Hit Bonus', hidden: '' }, [
+          modInput('BlueText.' + p + 'To Hit Bonus', 'To hit +'),
+          modInput('BlueText.' + p + 'Damage Bonus', 'Damage +'),
+        ]),
       ]));
     }
+  }
+  const modInput = (field, label) => el('label', { cls: 'f mod' }, [el('span', { text: label }), el('input', { cls: 'in num', 'data-f': field, id: 'f-mod-' + field.replace(/\W+/g, '-'), autocomplete: 'off', inputmode: 'text' })]);
+  function buildMods() {
+    const box = $('#mods');
+    box.textContent = '';
+    const group = (title, items) => box.append(el('div', { cls: 'mods-group' }, [el('span', { cls: 'lbl', text: title }), el('div', { cls: 'mods-grid' }, items.map(([f, l]) => modInput(f, l)))]));
+    group('General', [['Proficiency Bonus Modifier', 'Proficiency'], ['All Skills Bonus', 'All skills'], ['All ST Bonus', 'All saves'], ['Passive Perception Bonus', 'Passive Perc.'], ['Spell DC 1 Bonus', 'Spell DC']]);
+    group('Saving throws', ABILITIES.map(([k, long]) => [k + ' ST Bonus', long]));
+    group('Skills', SKILLS.map(([f, name]) => [f + ' Bonus', name]));
   }
   function buildLimited() {
     const box = $('#limited');
@@ -305,7 +319,8 @@
     return Array.from(s);
   }
   // the attributes that bind an element to an MPMB field (data-mpmb: one of MPMB's buttons, shown when MPMB shows it)
-  const BOUND = ['data-f', 'data-out', 'data-rich', 'data-toggle', 'data-items', 'data-mpmb'];
+  // data-vis: shown only while MPMB shows that field (its modifier fields, for example)
+  const BOUND = ['data-f', 'data-out', 'data-rich', 'data-toggle', 'data-items', 'data-mpmb', 'data-vis'];
   const shown = (snap) => { if (!snap || !snap.exists) return ''; const d = snap.display !== undefined ? snap.display : snap.value; return Array.isArray(d) ? d.join(', ') : String(d === null || d === undefined ? '' : d); };
   function renderRich(node, snap) {
     node.textContent = '';
@@ -345,6 +360,7 @@
     for (const n of sel('data-rich')) renderRich(n, snap);
     for (const n of sel('data-toggle')) n.setAttribute('aria-pressed', snap.checked ? 'true' : 'false');
     for (const n of sel('data-mpmb')) n.hidden = !snap.exists || !!snap.hidden;
+    for (const n of sel('data-vis')) n.hidden = !snap.exists || !!snap.hidden;
     for (const n of sel('data-items')) {
       n.textContent = '';
       for (const it of snap.items || []) if (it[0]) n.append(el('option', { value: it[0] }));
@@ -1003,7 +1019,7 @@
 
   // ---------------------------------------------------------------- go
   async function showSheet() {
-    buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildCoins(); buildMagicItems(); buildGear();
+    buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildCoins(); buildMagicItems(); buildGear(); buildMods();
     state.spellOpts = null; state.sheet = null;
     renderCasters(); renderSpellList();
     buildIndex();

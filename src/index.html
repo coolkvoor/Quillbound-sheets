@@ -251,6 +251,15 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .picker-show label { display: flex; gap: 10px; align-items: center; min-height: 40px; }
 .picker-show input { width: 20px; height: 20px; accent-color: var(--accent); }
 
+/* MPMB's modifier ("blue text") fields */
+.mods-group { display: grid; gap: 4px; margin-top: 6px; }
+.mods-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 6px 8px; }
+label.f.mod > span { text-transform: none; letter-spacing: 0; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+label.f.mod .in { min-height: 40px; color: #2a62c9; }
+:root[data-theme="dark"] label.f.mod .in { color: #8fb4ff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) label.f.mod .in { color: #8fb4ff; } }
+.atk-mods > * { flex: 1 1 6rem; }
+
 /* gear */
 .mi { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .mi:last-child { border-bottom: 0; }
@@ -356,6 +365,11 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <h3>Skills <button class="btn sm" type="button" data-mpmb="SkillsClick" data-title="Skill options">Options</button></h3>
           <p class="hint">Tap a dot for proficiency, again for expertise.</p>
           <div class="skills two" id="skills"></div>
+        </div>
+        <div class="card span-2" id="mods-card" data-vis="Acr Bonus" hidden>
+          <h3>Modifiers <button class="btn sm" type="button" data-mpmb="SkillsClick" data-title="Skill options">Options</button></h3>
+          <p class="hint">MPMB's modifier fields: extra bonuses (or penalties) it adds into its own calculations. Type a number, or an ability such as Int. To hide them again, choose "Show fields to modify skill calculations" once more (it has a tick while they show).</p>
+          <div id="mods"></div>
         </div>
       </div>
     </section>

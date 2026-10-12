@@ -532,7 +532,9 @@
         if (plan) entry.answered = 'app';
         // Acrobat's rules per element type: a text box loaded with a list ({name: -1, chosen: 1}) becomes a drop-down
         // whose store() gives the chosen name as text; list boxes give their list object back (a fresh copy each time)
-        const types = elementTypes(desc);
+        const els = elementTypes(desc);
+        const types = {};
+        for (const k of Object.keys(els)) types[k] = els[k].type;
         const values = {};
         const setValue = (k, v) => {
           if (types[k] === 'edit_text' && v && typeof v === 'object') { let chosen = ''; for (const n of Object.keys(v)) if (Number(v[n]) > 0) chosen = n; values[k] = chosen; }
@@ -553,6 +555,10 @@
         try {
           if (typeof d.initialize === 'function') d.initialize(el);
           if (plan && plan.capture) entry.data = dialogData(d);
+          // A dialog that only shows text (a read-only, multi-line box, like MPMB's ShowDialog): keep the text for the app
+          const shown = [];
+          for (const k of Object.keys(els)) if (els[k].type === 'edit_text' && els[k].readonly && els[k].multiline && typeof values[k] === 'string' && values[k].trim()) shown.push(values[k]);
+          if (shown.length) entry.text = shown.join('\n\n').slice(0, 20000);
           const steps = plan ? plan.steps || [] : [];
           for (let i = 0; i < steps.length && ended === null; i++) {
             const s = steps[i];
@@ -604,7 +610,7 @@
       while (stack.length) {
         const e = stack.pop();
         if (!e || typeof e !== 'object') continue;
-        if (e.item_id) out[e.item_id] = e.type;
+        if (e.item_id) out[e.item_id] = e;
         if (Array.isArray(e.elements)) for (let i = 0; i < e.elements.length; i++) stack.push(e.elements[i]);
       }
       return out;
