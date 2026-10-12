@@ -186,6 +186,77 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .src.off .n { color: var(--muted); }
 #content-hint { margin: 0; }
 
+/* MPMB buttons, menus and pop-up panels */
+.card h3 .btn.sm { font-family: var(--font-body); letter-spacing: 0; font-weight: 500; }
+.linkish { border: 0; background: none; padding: 4px 6px; margin: -4px 0; color: var(--accent); font-size: 0.82rem; text-transform: none; letter-spacing: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.f > .flabel { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.rests { gap: 8px; }
+.rests > .btn { flex: 1 1 0; }
+dialog.panel { border: 0; padding: 0; background: var(--surface); color: var(--ink); width: 100%; max-width: 40rem; max-height: 88vh; margin: auto auto 0; border-radius: 16px 16px 0 0; display: none; flex-direction: column; box-shadow: 0 -6px 30px rgb(0 0 0 / 0.25); }
+dialog.panel[open] { display: flex; }
+dialog.panel.full { height: 92vh; max-height: 92vh; }
+dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
+@media (min-width: 700px) { dialog.panel { margin: auto; border-radius: 16px; max-height: 80vh; } dialog.panel.full { height: 80vh; } }
+.panel-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); }
+.panel-head h3 { flex: 1; font-family: var(--font-display); font-size: 1.1rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.panel-body { padding: 12px 16px; overflow: auto; display: grid; gap: 10px; align-content: start; flex: 1; }
+.panel-foot { padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--line); display: flex; gap: 10px; }
+.panel-foot .btn { flex: 1; }
+.menu-list { list-style: none; margin: 0; padding: 4px 0 calc(8px + env(safe-area-inset-bottom, 0px)); overflow: auto; }
+.menu-list li.sep { border-top: 1px solid var(--line); margin: 4px 16px; }
+.menu-list button { width: 100%; display: grid; grid-template-columns: 1.4rem minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; text-align: left; min-height: 48px; padding: 8px 16px; border: 0; background: none; cursor: pointer; }
+.menu-list button:active { background: var(--accent-soft); }
+.menu-list button[disabled] { color: var(--muted); cursor: default; }
+.menu-list .mk { color: var(--accent); font-weight: 700; }
+.menu-list .sub { grid-column: 2; font-size: 0.82rem; color: var(--muted); }
+.menu-list .go { color: var(--muted); }
+.menu-list li.label { padding: 8px 16px 2px; font-size: 0.85rem; color: var(--muted); }
+.notice-msg { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tabbar-h) + 14px + env(safe-area-inset-bottom, 0px)); z-index: 8; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 10px 16px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgb(0 0 0 / 0.25); }
+
+/* spells */
+.caster { display: grid; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.caster:last-child { border-bottom: 0; }
+.caster .figs { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.95rem; }
+.slots { display: grid; gap: 4px; }
+.slot-row { display: flex; align-items: center; gap: 4px; min-height: 40px; }
+.slot-row .lv { width: 3.2rem; color: var(--muted); font-size: 0.9rem; }
+.slot-row .dot.sm::before { border-radius: 4px; }
+.spell-level { font-family: var(--font-display); font-weight: 700; color: var(--accent); margin: 12px 0 2px; font-size: 1rem; }
+.caster-head { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; margin-top: 6px; }
+.spells-ul { list-style: none; margin: 0; padding: 0; }
+.spell { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 0 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.spell .sp-name { border: 0; background: none; padding: 0; font-weight: 700; text-align: left; cursor: pointer; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
+.spell .meta { font-size: 0.85rem; color: var(--muted); }
+.spell .desc { font-size: 0.92rem; }
+.spell .tag { font-size: 0.75rem; color: var(--accent); border: 1px solid currentColor; border-radius: 6px; padding: 0 5px; margin-left: 6px; white-space: nowrap; }
+.picker-tabs { display: flex; gap: 6px; padding: 8px 12px 0; overflow-x: auto; border-bottom: 1px solid var(--line); }
+.picker-tabs button { border: 0; background: none; padding: 8px 10px 10px; font-weight: 700; color: var(--muted); border-bottom: 3px solid transparent; white-space: nowrap; cursor: pointer; }
+.picker-tabs button[aria-selected="true"] { color: var(--accent); border-color: var(--accent); }
+.picker-tools { display: flex; gap: 8px; align-items: center; }
+.picker-tools .in { flex: 1; }
+.pick-list { list-style: none; margin: 0; padding: 0; }
+.pick-list li.lv { font-family: var(--font-display); font-weight: 700; color: var(--accent); padding: 10px 0 2px; }
+.pick-list label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 12px; align-items: center; min-height: 48px; padding: 4px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.pick-list input { width: 22px; height: 22px; accent-color: var(--accent); margin: 0 0 0 2px; }
+.pick-list .meta { grid-column: 2; font-size: 0.82rem; color: var(--muted); }
+.pick-list label.off { opacity: 0.55; }
+.picker-show { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: grid; gap: 4px; }
+.picker-show label { display: flex; gap: 10px; align-items: center; min-height: 40px; }
+.picker-show input { width: 20px; height: 20px; accent-color: var(--accent); }
+
+/* proficiencies, coins */
+.profs { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center; }
+.lbl { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.toggles { display: flex; flex-wrap: wrap; gap: 0 10px; }
+.toggles .tg { display: inline-flex; align-items: center; gap: 0; font-size: 0.95rem; }
+.tags { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.tags li { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 0.9rem; }
+.tags li.none { border: 0; padding: 0; color: var(--muted); }
+.coins { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.coins label { display: grid; gap: 2px; justify-items: center; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; }
+.coins input { width: 100%; text-align: center; min-height: 42px; }
+
 /* sheet tab */
 .pass { color: var(--good); font-weight: 700; }
 .fail { color: var(--bad); font-weight: 700; }
@@ -198,8 +269,8 @@ dl.kv dd { margin: 0; overflow-wrap: anywhere; }
 
 /* tab bar */
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
-nav.tabs ul { list-style: none; margin: 0 auto; padding: 0 8px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); max-width: 40rem; }
-nav.tabs a { display: grid; place-items: center; min-height: var(--tabbar-h); text-decoration: none; color: var(--muted); font-family: var(--font-display); font-weight: 700; font-size: 1.02rem; letter-spacing: 0.03em; position: relative; }
+nav.tabs ul { list-style: none; margin: 0 auto; padding: 0 4px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); max-width: 44rem; }
+nav.tabs a { display: grid; place-items: center; min-height: var(--tabbar-h); text-decoration: none; color: var(--muted); font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; position: relative; }
 nav.tabs a[aria-current="true"] { color: var(--accent); }
 nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
 @media (max-height: 460px) { :root { --tabbar-h: 48px; --header-h: 48px; } header.top { min-height: 48px; padding-block: 4px; } }
@@ -266,7 +337,8 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <label class="f"><span>Saving throw notes</span><div class="rich" data-rich="Saving Throw advantages / disadvantages" data-empty="None yet"></div></label>
         </div>
         <div class="card span-2">
-          <h3>Skills <span class="chip">Tap a dot for proficiency</span></h3>
+          <h3>Skills <button class="btn sm" type="button" data-mpmb="SkillsClick" data-title="Skill options">Options</button></h3>
+          <p class="hint">Tap a dot for proficiency, again for expertise.</p>
           <div class="skills two" id="skills"></div>
         </div>
       </div>
@@ -293,7 +365,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
             <button class="btn" type="button" id="hp-plus" aria-label="Gain 1 hit point">+</button>
           </div>
           <div class="row">
-            <label class="f"><span>Max</span><input class="in num" data-f="HP Max" id="f-hpmax" inputmode="numeric" autocomplete="off"></label>
+            <div class="f"><span class="flabel">Max <button class="linkish" type="button" data-mpmb="Buttons.HP Max" data-title="Max HP">Set</button></span><input class="in num" data-f="HP Max" id="f-hpmax" inputmode="numeric" autocomplete="off" aria-label="Max hit points"></div>
             <label class="f"><span>Temporary</span><input class="in num" data-f="HP Temp" id="f-hptemp" inputmode="numeric" autocomplete="off"></label>
           </div>
           <div class="row" id="hitdice"></div>
@@ -321,24 +393,82 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
       </div>
     </section>
 
+    <section class="band" id="spells" aria-labelledby="t-spells">
+      <h2 class="band-title" id="t-spells">Spells</h2>
+      <div class="grid">
+        <div class="card" id="casters-card">
+          <h3>Spellcasting</h3>
+          <div id="casters"><p class="note">Choose a class that casts spells to fill this in.</p></div>
+        </div>
+        <div class="card" id="slots-card">
+          <h3>Spell slots <span class="chip">Tap a slot when you use it</span></h3>
+          <div id="slots"></div>
+        </div>
+        <div class="card span-2" id="spell-list-card">
+          <h3>Spell list <span class="chip" id="spell-count">None yet</span></h3>
+          <div id="spell-list"><p class="note">Choose spells, then make the spell list. MPMB fills in each spell's details.</p></div>
+          <div class="row" id="spell-actions" hidden>
+            <button class="btn" id="spells-update" type="button">Update spell list</button>
+            <button class="btn" id="spells-remove" type="button">Remove spell list</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="band" id="features" aria-labelledby="t-features">
       <h2 class="band-title" id="t-features">Features</h2>
       <div class="grid">
         <div class="card">
           <h3>Limited features</h3>
+          <div class="row rests">
+            <button class="btn sm" type="button" data-mpmb="SR" data-done="Short rest: uses reset.">Short rest</button>
+            <button class="btn sm" type="button" data-mpmb="LR" data-done="Long rest: uses reset.">Long rest</button>
+            <button class="btn sm" type="button" data-mpmb="Dawn" data-done="Dawn: uses reset.">Dawn</button>
+          </div>
           <ul class="list" id="limited"></ul>
         </div>
         <div class="card span-2">
-          <h3>Class features</h3>
+          <h3>Class features <button class="btn sm" type="button" data-mpmb="Class Features Menu" data-title="Choose feature" hidden>Choose feature</button></h3>
           <div class="rich" data-rich="Class Features" data-empty="Choose a class to fill this in."></div>
         </div>
         <div class="card">
-          <h3>Species traits</h3>
+          <h3>Species traits <button class="btn sm" type="button" data-mpmb="Race Features Menu" data-title="Species options" hidden>Options</button></h3>
           <div class="rich" data-rich="Racial Traits" data-empty="Nothing yet. Some species need a choice that comes in a later version."></div>
         </div>
         <div class="card">
           <h3>Feats</h3>
           <ul class="list" id="feats"></ul>
+        </div>
+        <div class="card">
+          <h3>Background <button class="btn sm" type="button" data-mpmb="Background Menu" data-title="Background traits">Add traits</button></h3>
+          <div><b data-out="Background Feature"></b><div class="hint rich" data-rich="Background Feature Description"></div></div>
+          <label class="f"><span>Personality traits</span><textarea class="in" rows="3" data-f="Personality Trait" id="f-trait"></textarea></label>
+          <label class="f"><span>Ideal</span><textarea class="in" rows="2" data-f="Ideal" id="f-ideal"></textarea></label>
+          <label class="f"><span>Bond</span><textarea class="in" rows="2" data-f="Bond" id="f-bond"></textarea></label>
+          <label class="f"><span>Flaw</span><textarea class="in" rows="2" data-f="Flaw" id="f-flaw"></textarea></label>
+        </div>
+        <div class="card">
+          <h3>Proficiencies</h3>
+          <div class="profs">
+            <span class="lbl">Armor</span><div class="toggles" id="prof-armor"></div>
+            <span class="lbl">Weapons</span><div class="toggles" id="prof-weapons"></div>
+          </div>
+          <div class="hint" data-out="Proficiency Weapon Other Description"></div>
+          <div class="stack"><span class="lbl">Tools</span><ul class="tags" id="tools"></ul></div>
+          <div class="stack"><span class="lbl">Languages</span><ul class="tags" id="languages"></ul></div>
+        </div>
+        <div class="card">
+          <h3>Coins and details</h3>
+          <div class="coins" id="coins"></div>
+          <div class="row">
+            <label class="f"><span>Alignment</span><input class="in" data-f="Alignment" id="f-align" list="dl-align" autocomplete="off"><datalist id="dl-align" data-items="Alignment"></datalist></label>
+            <label class="f"><span>Faith or deity</span><input class="in" data-f="Faith/Deity" id="f-faith" autocomplete="off"></label>
+          </div>
+          <div class="row">
+            <label class="f"><span>Age</span><input class="in" data-f="Age" id="f-age" autocomplete="off"></label>
+            <label class="f"><span>Height</span><input class="in" data-f="Height" id="f-height" autocomplete="off"></label>
+            <label class="f"><span>Weight</span><input class="in" data-f="Weight" id="f-weight" autocomplete="off"></label>
+          </div>
         </div>
       </div>
     </section>
@@ -393,10 +523,52 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
     <ul>
       <li><a href="#main" data-tab="main" aria-current="true">Main</a></li>
       <li><a href="#combat" data-tab="combat">Combat</a></li>
+      <li><a href="#spells" data-tab="spells">Spells</a></li>
       <li><a href="#features" data-tab="features">Features</a></li>
       <li><a href="#sheetinfo" data-tab="sheetinfo">Sheet</a></li>
     </ul>
   </nav>
 </div>
+
+<!-- MPMB's pop-up menus, shown as a sheet from the bottom -->
+<dialog class="panel" id="menu" aria-labelledby="menu-title">
+  <div class="panel-head">
+    <button class="btn sm" id="menu-back" type="button" hidden>Back</button>
+    <h3 id="menu-title">Options</h3>
+    <button class="btn sm" id="menu-close" type="button">Close</button>
+  </div>
+  <ul class="menu-list" id="menu-list"></ul>
+</dialog>
+
+<!-- MPMB's messages after a tap -->
+<dialog class="panel" id="notice" aria-labelledby="notice-title">
+  <div class="panel-head"><h3 id="notice-title">MPMB</h3><button class="btn sm" id="notice-close" type="button">OK</button></div>
+  <div class="panel-body" id="notice-body"></div>
+</dialog>
+
+<!-- Choosing spells: MPMB's spell selection, on the app's own screen -->
+<dialog class="panel full" id="picker" aria-labelledby="picker-title">
+  <div class="panel-head">
+    <h3 id="picker-title">Choose spells</h3>
+    <button class="btn sm" id="picker-close" type="button">Cancel</button>
+  </div>
+  <div class="picker-tabs" id="picker-tabs" role="tablist"></div>
+  <div class="panel-body">
+    <div class="picker-tools">
+      <input class="in" type="search" id="picker-search" placeholder="Search" autocomplete="off" aria-label="Search spells">
+      <span class="chip" id="picker-count"></span>
+    </div>
+    <p class="hint" id="picker-note"></p>
+    <ul class="pick-list" id="picker-list"></ul>
+    <fieldset class="picker-show" id="picker-show" hidden><legend>The spell list shows</legend><div id="picker-show-opts"></div></fieldset>
+  </div>
+  <div class="panel-foot"><button class="btn primary" id="picker-save" type="button">Make spell list</button></div>
+</dialog>
+
+<!-- One spell's full text -->
+<dialog class="panel" id="spell-info" aria-labelledby="si-title">
+  <div class="panel-head"><h3 id="si-title">Spell</h3><button class="btn sm" id="si-close" type="button">Close</button></div>
+  <div class="panel-body" id="si-body"></div>
+</dialog>
 
 <script src="app.js"></script>

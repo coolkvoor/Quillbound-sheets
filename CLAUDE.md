@@ -34,6 +34,8 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `src/worker.js`: one sheet per Web Worker. Its own code sits in an IIFE because the global scope belongs to MPMB.
 - `src/app.js`, `src/index.html`: the screens. Fields are bound with `data-f` (input), `data-out` (formatted value), `data-rich` (MPMB rich text spans), `data-toggle` (check box), `data-items` (datalist).
 - `src/selftest.js`: builds an Elf Wizard 3 and checks 19 results. Used by the app's Sheet tab and by `test/engine.test.js`.
+- `src/spells.js`: spells. `options()` runs MPMB's `AskUserSpellSheet` once with the dialogs' data captured (lists, counts, picks) and cancels at the last dialog; `choose()` writes the picks where those dialogs keep them (`CurrentSpells[caster].selectCa/selectSp/selectPrep/typeList`) and runs MPMB's `GenerateSpellSheet`; `sheet()` reads the spawned SSfront/SSmore pages back as rows; `tapRow()` presses a row's first-column button (prepared / used).
+- Menus: `app.popUpMenuEx` can't wait for a tap, so the worker's `tap` op runs a button with every menu answered "nothing" (the menu comes back to the app), then runs it again with the user's choice queued (`engine.queueMenu`). Every MPMB menu goes through `getMenu()`, which reads the menu first and does nothing on "nothing", so the first run has no effect. Buttons in the page use `data-mpmb="<field name>"` and show/hide as MPMB shows/hides the field.
 - `src/content.js`: add-on content (MPMB's "Add Extra Materials" and "Source Material" bookmarks). Runs MPMB's own dialogs with the buttons pressed for the user (`engine.queueDialog`), with the picked file queued for `util.readFileIntoStream()` (`engine.queueFile`). The app keeps the three fields that hold the content (`User_Imported_Files.Stringified`, `User Script`, `CurrentSources.Stringified`) in IndexedDB per sheet (file name + size), presets them before `start()`, and then runs `restore()` (Source Selection → Apply) to rebuild the dropdowns.
 
 ## Build and test
@@ -43,6 +45,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `node test/loader.test.js`: reads the sheet and writes `test/model.json`, which the other tests need.
 - `node test/engine.test.js`: runs MPMB in a Node `vm` realm and prints the self-test results.
 - `node test/content.test.js [file.js]`: adds an add-on content file, changes sources, pastes a script, restores into a fresh realm, removes it. Uses the first `.js` in `resources/` (gitignored, the owner's own files) and skips when there is none. Part of `npm test`.
+- `node test/spells.test.js`: Wizard 3 spell choices, spell sheet generation, prepared-only lists, row taps, regenerate, remove. `node test/menus.test.js`: Elf lineage menu, Set Max HP menu, long rest. Both part of `npm test`.
 - `node test/debug.js 'expr' ...`: runs the self-test steps, then evaluates expressions inside the sheet's realm.
 - `npx playwright install chromium` once on a new machine (the test falls back to Playwright's own Chromium).
 - `node test/ui.test.js [phone-portrait|phone-landscape|tablet-portrait|tablet-landscape]`: Playwright at the real device sizes, with screenshots in `test/shots/`. Env: `SCHEME=dark`, `NOCDN=1`, `DIST=dist-single`, `URL=file:///…`.
@@ -62,17 +65,20 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - Rich text fields: the Format event (`formatRichText`) turns MPMB's markup into `event.richValue` spans. The app renders these spans (bold, MPMB purple → accent colour).
 - JavaScript streams without a byte-order mark are UTF-8 (strict decode), falling back to PDFDocEncoding.
 - `/CO` contains 57 stale parent references; the loader keeps only fields that have a `C` script.
+- Dialog `store()` follows Acrobat per element type: an `edit_text` loaded with a list object is a drop-down whose `store()` gives the chosen name as **text** (MPMB's spell pickers rely on this); list boxes give a fresh copy of their object. `insertEntryInList`/`removeAllEntriesFromList` change the list (the spell sheet order dialog fills its list this way; without them every spell sheet came out empty).
+- MPMB hides all page-1 spell slot boxes when the sheet's slot area is off (`SpellSlotsRemember` = `[false,false]`); the app shows boxes by count, using MPMB's own mapping (1: mid; 2: top1+bottom1; 3: top2.1+top2.2+bottom1; 4: top2.1+top2.2+bottom2.1+bottom2.2).
+- A spell row's state lives in its `spells.check.N` text field (`checkbox`/`checkedbox`, `oncelr`/`oncelr_used`, `markedbox`, `atwill`…); `spells.checkbox.N` is a push button that toggles it, or opens the row menu.
 - A saved PDF also holds the dropdown items MPMB set; the app starts from the pristine PDF, so after restoring content MPMB must rebuild them (`resourceDecisionDialog(false, false, true)`).
 - MPMB bug: emptying the script in `AddUserScript` calls `InitiateLists()` without re-running the imported files, so their content vanishes until reopening and the next source update resets their default exclusions. `content.js` removes a pasted script with the file dialog's steps instead.
 
 ## Known gaps in 0.1
 
-- **Dialogs are auto-answered** with the values the dialog loads itself (initialize → commit → "ok"). Effects:
-  - Elf lineage isn't chosen, so Racial Traits stays empty.
+- **Dialogs are auto-answered** with the values the dialog loads itself (initialize → commit → "ok"), unless an app screen queues answers (content, sources, spells). Effects:
   - The Level box opens MPMB's class selection dialog, so levelling up currently means typing "Wizard 4" into the Class field.
-  - Subclass, feats and ASI choices are impossible for now.
+  - Subclass, feats and ASI choices are impossible for now (subclass may also come through a menu; not checked).
+- Menus work through probe-and-replay (species options, Choose Feature, Max HP, background traits, skill options, rests). Not wired yet: attack/action/limited-feature/feat line menus, spell row menus, the Functions bookmarks (pages layout, text options…).
 - Real dialogs need the engine to wait synchronously for the user. The plan is the worker + `Atomics.wait`, which needs cross-origin isolation (COOP/COEP headers). Claude artifacts can't send headers, so milestone 3 needs real hosting (GitHub Pages + coi-serviceworker, or Cloudflare Pages `_headers`).
-- Menus (`app.popUpMenuEx`) return null. The character isn't saved yet (add-on content and source choices are, per sheet, in IndexedDB). Template spawning is basic and untested.
+- The character isn't saved yet (add-on content and source choices are, per sheet, in IndexedDB). Template spawning is basic and untested.
 - Sources can be switched on/off per book; MPMB's per-category exclusions (single classes, spells, etc.) need the dialog renderer.
 
 ## Working safely on the owner's PC

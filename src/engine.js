@@ -433,7 +433,26 @@
     const timeouts = [];
     let timeoutId = 0;
     const fileQueue = [];       // texts for util.readFileIntoStream, picked by the user in the app
-    const dialogAnswers = [];   // { name, steps: [{ set: {item_id: value} } | { press: item_id }] }, used in order
+    const dialogAnswers = [];   // { name, steps: [{ set: {item_id: value} } | { pick } | { press: item_id } | { end }], capture }, used in order
+    const menuAnswers = [];     // cReturn values for the next app.popUpMenuEx calls, in order (null = nothing chosen)
+    let lastMenu = null;        // the last menu nobody answered: [{ name, ret, marked, enabled, items }]
+    function menuTree(arr) {
+      const out = [];
+      for (let i = 0; i < arr.length; i++) {
+        const m = arr[i];
+        if (!m || typeof m !== 'object') continue;
+        const name = String(m.cName === undefined ? '' : m.cName);
+        const node = { name, ret: m.cReturn !== undefined ? String(m.cReturn) : name, marked: !!m.bMarked, enabled: m.bEnabled !== false };
+        if (Array.isArray(m.oSubMenu)) node.items = menuTree(m.oSubMenu);
+        else if (m.oSubMenu && typeof m.oSubMenu === 'object') node.items = menuTree([m.oSubMenu]);
+        out.push(node);
+      }
+      return out;
+    }
+    function menuHas(items, ret) {
+      for (let i = 0; i < items.length; i++) { const n = items[i]; if (n.items ? menuHas(n.items, ret) : (n.ret === ret && n.enabled && n.name !== '-')) return true; }
+      return false;
+    }
     const appState = { calculate: true };
     const docState = { calculate: true, delay: false, dirty: false, pageNum: 0, disclosed: false };
     const pad = (n, w) => String(n).padStart(w || 2, '0');
@@ -508,14 +527,24 @@
         const desc = (d && d.description) || {};
         const entry = { name: String(desc.name || 'Dialog'), title: firstText(desc), answered: 'defaults', t: Date.now() };
         push(log.dialogs, entry);
-        const plan = dialogAnswers.length && dialogAnswers[0].name === entry.name ? dialogAnswers.shift() : null;
+        let plan = null;
+        for (let i = 0; i < dialogAnswers.length; i++) if (dialogAnswers[i].name === entry.name) { plan = dialogAnswers.splice(i, 1)[0]; break; }
         if (plan) entry.answered = 'app';
+        // Acrobat's rules per element type: a text box loaded with a list ({name: -1, chosen: 1}) becomes a drop-down
+        // whose store() gives the chosen name as text; list boxes give their list object back (a fresh copy each time)
+        const types = elementTypes(desc);
         const values = {};
+        const setValue = (k, v) => {
+          if (types[k] === 'edit_text' && v && typeof v === 'object') { let chosen = ''; for (const n of Object.keys(v)) if (Number(v[n]) > 0) chosen = n; values[k] = chosen; }
+          else values[k] = v;
+        };
         let ended = null;
         const el = new Proxy({}, {
           get(_, p) {
-            if (p === 'load') return (o) => { if (o) for (const k in o) values[k] = o[k]; };
-            if (p === 'store') return () => Object.assign({}, values);
+            if (p === 'load') return (o) => { if (o) for (const k of Object.keys(o)) setValue(k, o[k]); };
+            if (p === 'store') return () => { const out = {}; for (const k of Object.keys(values)) out[k] = copyPlain(values[k]); return out; };
+            if (p === 'insertEntryInList') return (o) => { if (o) for (const k of Object.keys(o)) values[k] = Object.assign(values[k] && typeof values[k] === 'object' ? values[k] : {}, o[k]); };
+            if (p === 'removeAllEntriesFromList') return (k) => { values[k] = {}; };
             if (p === 'end') return (r) => { ended = r === undefined ? 'ok' : r; };
             if (typeof p === 'symbol') return undefined;
             return function () { return undefined; };
@@ -523,10 +552,12 @@
         });
         try {
           if (typeof d.initialize === 'function') d.initialize(el);
+          if (plan && plan.capture) entry.data = dialogData(d);
           const steps = plan ? plan.steps || [] : [];
           for (let i = 0; i < steps.length && ended === null; i++) {
             const s = steps[i];
-            if (s.set) for (const k in s.set) values[k] = s.set[k];
+            if (s.set) for (const k in s.set) setValue(k, s.set[k]);
+            if (s.end) { ended = s.end; break; }
             if (s.pick && !pickItem(values[s.pick.id], s.pick.item)) { logError('dialog:' + entry.name, new Error('no item "' + s.pick.item + '" in ' + s.pick.id)); ended = 'cancel'; break; }
             if (s.press && typeof d[s.press] === 'function') d[s.press](el);
           }
@@ -540,7 +571,19 @@
         return ended === null ? 'ok' : ended;
       },
       response(q, title, dflt) { push(log.dialogs, { name: 'Question', title: String(q || ''), answered: 'cancel', t: Date.now() }); return null; },
-      popUpMenuEx() { const items = Array.prototype.slice.call(arguments).map((i) => (i && i.cName) || ''); push(log.menus, { items: items.slice(0, 12), t: Date.now() }); return null; },
+      // Menus can't wait for a tap, so the app runs an action twice: first every menu answers "nothing" and the
+      // menu is kept (lastMenu), then the action runs again with the user's choice queued (queueMenu)
+      popUpMenuEx() {
+        const items = menuTree(Array.prototype.slice.call(arguments));
+        if (menuAnswers.length) {
+          const want = menuAnswers.shift();
+          if (want !== null && menuHas(items, want)) return want;
+          return null;
+        }
+        lastMenu = items;
+        push(log.menus, { items: items.map((i) => i.name).slice(0, 12), t: Date.now() });
+        return null;
+      },
       popUpMenu() { return null; },
       setTimeOut(code, ms) { const t = { id: ++timeoutId, code, ms }; timeouts.push(t); return t; },
       clearTimeOut(t) { const i = timeouts.indexOf(t); if (i >= 0) timeouts.splice(i, 1); },
@@ -555,6 +598,33 @@
       trustedFunction(f) { return f; }, beginPriv() {}, endPriv() {},
       thermometer: { begin() {}, end() {}, value: 0, duration: 100, text: '', cancelled: false },
     };
+    function elementTypes(desc) {
+      const out = {};
+      const stack = [desc];
+      while (stack.length) {
+        const e = stack.pop();
+        if (!e || typeof e !== 'object') continue;
+        if (e.item_id) out[e.item_id] = e.type;
+        if (Array.isArray(e.elements)) for (let i = 0; i < e.elements.length; i++) stack.push(e.elements[i]);
+      }
+      return out;
+    }
+    function copyPlain(v) {
+      if (!v || typeof v !== 'object') return v;
+      if (Array.isArray(v)) return v.slice();
+      const o = {};
+      for (const k of Object.keys(v)) o[k] = copyPlain(v[k]);
+      return o;
+    }
+    // The dialog object's own data (lists, counts, selections) as JSON, for screens that show the choices themselves
+    function dialogData(d) {
+      const out = {};
+      for (const k of Object.keys(d)) {
+        if (k === 'description' || typeof d[k] === 'function') continue;
+        try { out[k] = JSON.parse(JSON.stringify(d[k]) || 'null'); } catch (e) { /* skip what can't be copied */ }
+      }
+      return out;
+    }
     // Select one item in a list box's value object ({ item: -1, group: { item: -2 } }): positive = selected
     function pickItem(obj, item) {
       if (!obj || typeof obj !== 'object') return false;
@@ -889,7 +959,9 @@
       start, commit, toggle, press, snapshot, drainChanges, evalExpr, getField, preset, action,
       queueFile(text) { fileQueue.push(String(text)); },
       queueDialog(answer) { dialogAnswers.push(answer); },
-      clearQueues() { fileQueue.length = 0; dialogAnswers.length = 0; },
+      queueMenu(ret) { menuAnswers.push(ret === undefined ? null : ret); },
+      takeMenu() { const m = lastMenu; lastMenu = null; return m; },
+      clearQueues() { fileQueue.length = 0; dialogAnswers.length = 0; menuAnswers.length = 0; lastMenu = null; },
       runBookmark(path) {
         let node = { children: g.bookmarkRoot.children };
         for (let i = 0; i < path.length; i++) { const kids = node.children || []; let next = null; for (let j = 0; j < kids.length; j++) if (kids[j].name === path[i]) { next = kids[j]; break; } if (!next) return false; node = next; }

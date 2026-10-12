@@ -4,7 +4,7 @@
 // In the single-file build everything is already bundled in front of this file
 if (!self.MPMBEngine) {
   try { importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'); } catch (e) { importScripts('vendor/pdf-lib.min.js'); }
-  importScripts('loader.js', 'engine.js', 'selftest.js', 'content.js');
+  importScripts('loader.js', 'engine.js', 'selftest.js', 'content.js', 'spells.js');
 }
 // Everything below stays out of the global scope, which belongs to MPMB's code
 (function () {
@@ -24,6 +24,11 @@ function contentOp(fn) {
   const t = now();
   const r = fn();
   return { alerts: r.alerts, errors: r.errors, content: r.content, saved: MPMBContent.state(engine), ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
+}
+function spellOp(fn) {
+  const t = now();
+  const r = fn();
+  return { alerts: r.alerts, errors: r.errors, sheet: r.sheet, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
 }
 function logSummary() {
   const l = engine.log;
@@ -66,6 +71,24 @@ const ops = {
   removeContent({ key }) { return contentOp(() => MPMBContent.removeFile(engine, key)); },
   setUserScript({ text }) { return contentOp(() => MPMBContent.setUserScript(engine, text)); },
   setSources({ excluded }) { return contentOp(() => MPMBContent.setSources(engine, excluded)); },
+  // A tap on one of MPMB's buttons (or a bookmark) that may open menus. answers: the menu choices so far, in order.
+  // If the action opens a menu nobody answered yet, it comes back as `menu` and the app asks the user, then taps again.
+  tap({ name, widget, bookmark, answers }) {
+    const t = now(), seq = engine.logSeq;
+    engine.clearQueues();
+    for (const a of answers || []) engine.queueMenu(a);
+    if (bookmark) engine.runBookmark(bookmark); else engine.press(name, widget || 0);
+    const menu = engine.takeMenu();
+    engine.clearQueues();
+    return { menu, alerts: engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ title: a.title, msg: a.msg })), ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
+  },
+  // Spells (spells.js)
+  spellOptions() { return MPMBSpells.options(engine); },
+  spellSheet() { return MPMBSpells.sheet(engine); },
+  spellDetails({ key }) { return MPMBSpells.details(engine, key); },
+  chooseSpells({ picks }) { return spellOp(() => MPMBSpells.choose(engine, picks)); },
+  removeSpells() { return spellOp(() => MPMBSpells.remove(engine)); },
+  tapSpellRow({ button }) { return spellOp(() => MPMBSpells.tapRow(engine, button)); },
   names({ pattern }) { const re = new RegExp(pattern); return engine.fieldNames().filter((n) => re.test(n)); },
   selftest() {
     const timings = [];

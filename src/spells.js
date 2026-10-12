@@ -1,0 +1,166 @@
+/* Spells: MPMB's spell selection and spell sheet, with the choosing done on the app's own screen.
+ * options(): runs MPMB's spell dialogs (AskUserSpellSheet) once to learn each caster's lists and counts, then cancels.
+ * choose(): writes the user's picks where MPMB's dialogs keep them (CurrentSpells[caster].selectCa / selectSp /
+ *   selectPrep / typeList), then runs MPMB's own GenerateSpellSheet with its dialogs confirmed as loaded.
+ * sheet(): reads the generated spell sheet pages (SSfront / SSmore templates) back as rows.
+ * Shared by the worker and the Node tests. */
+(function (root) {
+  'use strict';
+  const SELECT = 'SPELL SELECTION DIALOG', PREPARED = 'PREPARED SPELLS DIALOG', ORDER = 'SPELL LIST GENERATION DIALOG', BOOK = 'EXTRA SPELLBOOK SPELLS DIALOG';
+  const ZW = /[​-‍﻿]/g;
+
+  function json(engine, code) { return JSON.parse(engine.evalExpr('JSON.stringify(' + code + ')') || 'null'); }
+  function since(engine, seq, list) { return engine.log[list].filter((x) => x.seq > seq); }
+
+  // A list from MPMB's dialog ([display → -n], [display → key], ...) as [{ key, name }] in MPMB's order
+  function listOf(obj) {
+    if (!obj || !obj[0]) return [];
+    const out = [];
+    for (const disp of Object.keys(obj[0])) { const key = obj[1] && obj[1][disp]; if (key) out.push({ key, name: disp.replace(ZW, '') }); }
+    return out;
+  }
+
+  // Run MPMB's spell dialogs once without changing anything; returns what each dialog offered
+  function probe(engine, forcePrepared) {
+    const seq = engine.logSeq;
+    const saved = forcePrepared ? json(engine, 'Object.keys(CurrentSpells).map(function (k) { return [k, CurrentSpells[k].typeList]; })') : null;
+    if (forcePrepared) engine.evalExpr('for (var k in CurrentSpells) if (CurrentSpells[k].known && CurrentSpells[k].known.prepared) CurrentSpells[k].typeList = 3;');
+    engine.clearQueues();
+    for (let i = 0; i < 12; i++) { engine.queueDialog({ name: SELECT, steps: [], capture: true }); engine.queueDialog({ name: PREPARED, steps: [], capture: true }); engine.queueDialog({ name: BOOK, steps: [{ end: 'ok' }] }); }
+    engine.queueDialog({ name: ORDER, steps: [{ end: 'cancel' }], capture: true });
+    engine.evalExpr('AskUserSpellSheet(); SetStringifieds("spells");');
+    engine.clearQueues();
+    if (saved) engine.evalExpr('(function (s) { for (var i = 0; i < s.length; i++) if (CurrentSpells[s[i][0]]) { if (s[i][1] === null || s[i][1] === undefined) delete CurrentSpells[s[i][0]].typeList; else CurrentSpells[s[i][0]].typeList = s[i][1]; } SetStringifieds("spells"); })(' + JSON.stringify(saved) + ')');
+    return since(engine, seq, 'dialogs').filter((d) => d.data);
+  }
+
+  const RADIO = { 1: 'Spells up to the highest level I can cast', 2: 'All chosen spells, any level', 3: 'Prepared spells only', 4: 'The full class spell list' };
+
+  function options(engine) {
+    const casters = [];
+    const byKey = {};
+    for (const d of probe(engine, false)) {
+      if (d.name !== SELECT) continue;
+      const x = d.data;
+      const c = {
+        key: x.curCast, name: x.header, fullname: x.fullname, typeSp: x.typeSp, maxLevel: x.levelSp || 0,
+        cantrips: x.showCa ? { count: (x.nmbrCa || 0) + (x.offsetCa || 0), list: listOf(x.listCa), chosen: (x.selectCa || []).filter(Boolean) } : null,
+        spells: x.showSp ? { count: x.typeSp === 'book' ? 0 : (x.nmbrSp || 0) + (x.offsetSp || 0), book: x.typeSp === 'book', list: listOf(x.listSp), chosen: (x.selectSp || []).filter(Boolean) } : null,
+        show: x.showSpRadio ? { value: x.selectSpRadio || 1, choices: [] } : null,
+        prepared: null,
+      };
+      casters.push(c); byKey[c.key] = c;
+    }
+    // the prepared spells dialog only opens for "Prepared spells only", so ask for it once more with that set
+    const prepCasters = json(engine, 'Object.keys(CurrentSpells).filter(function (k) { return CurrentSpells[k].known && CurrentSpells[k].known.prepared; })') || [];
+    if (prepCasters.length) {
+      for (const d of probe(engine, true)) {
+        if (d.name !== PREPARED || !byKey[d.data.curCast]) continue;
+        const x = d.data;
+        // the dialog's initialize works out the number to prepare (level table or level + modifier, plus bonuses)
+        const c = byKey[x.curCast];
+        c.prepared = { count: (x.nmbrSp || 0) + (x.offsetSp || 0), list: listOf(x.listSp), chosen: (x.selectSp || []).filter(Boolean),
+          fromBook: !!(c.spells && c.spells.book) };   // a spellbook caster prepares from the spellbook, so the app offers the chosen book spells
+      }
+      for (const c of casters) if (!c.prepared && prepCasters.indexOf(c.key) !== -1 && c.spells && c.spells.book) {
+        c.prepared = { count: 0, list: [], chosen: [], fromBook: true };
+      }
+    }
+    for (const c of casters) if (c.show) c.show.choices = [1, 2, c.prepared ? 3 : 0, 4].filter(Boolean).map((v) => ({ value: v, name: RADIO[v] }));
+    // details for the picker, from MPMB's spell list
+    const keys = new Set();
+    for (const c of casters) for (const part of [c.cantrips, c.spells, c.prepared]) if (part) for (const s of part.list) keys.add(s.key);
+    const info = json(engine, '(function (ks) { var o = {}; for (var i = 0; i < ks.length; i++) { var s = SpellsList[ks[i]]; if (!s) continue; o[ks[i]] = { name: s.name, level: s.level, school: s.school || "", time: s.time || "", range: s.range || "", components: s.components || "", duration: s.duration || "", ritual: !!s.ritual, description: s.description || "", source: stringSource(s, "first,abbr", "", "") }; } return o; })(' + JSON.stringify(Array.from(keys)) + ')');
+    return { casters, spells: info || {} };
+  }
+
+  // picks: { caster: { cantrips: [keys], spells: [keys], prepared: [keys], show: 1-4 } }
+  function choose(engine, picks) {
+    const seq = engine.logSeq;
+    engine.evalExpr('(function (p) { for (var k in p) { var c = CurrentSpells[k]; if (!c) continue; var q = p[k];' +
+      ' if (q.cantrips) c.selectCa = q.cantrips.slice(0, 20); if (q.spells) { c.selectSp = OrderSpells(q.spells, "single").slice(0, 20); if (q.spells.length > 20) c.selectSpSB = OrderSpells(q.spells, "single").slice(20); else delete c.selectSpSB; }' +
+      ' if (q.prepared) c.selectPrep = OrderSpells(q.prepared, "single"); if (q.show) c.typeList = q.show; } SetStringifieds("spells"); })(' + JSON.stringify(picks || {}) + ')');
+    engine.clearQueues();
+    // the spellbook dialogs would page through spells beyond the first 20; confirm them as loaded
+    for (let i = 0; i < 12; i++) engine.queueDialog({ name: BOOK, steps: [{ end: 'ok' }] });
+    engine.action('GenerateSpellSheet();', 'spells:generate');
+    engine.clearQueues();
+    return report(engine, seq);
+  }
+  function remove(engine) {
+    const seq = engine.logSeq;
+    engine.action('RemoveSpellSheets();', 'spells:remove');
+    return report(engine, seq);
+  }
+  function report(engine, seq) {
+    return {
+      alerts: since(engine, seq, 'alerts').map((a) => ({ title: a.title, msg: a.msg })),
+      errors: since(engine, seq, 'errors').map((e) => e.where + ': ' + e.msg),
+      sheet: sheet(engine),
+    };
+  }
+
+  // The generated spell sheet pages, read back as caster headers and spell rows in page order
+  function sheet(engine) {
+    const names = engine.fieldNames();
+    const pages = [];
+    for (const n of names) { const m = /^(P(\d+)\.SS(?:front|more)\.)spells\.remember\.0$/.exec(n); if (m) pages.push({ prefix: m[1], page: Number(m[2]) }); }
+    pages.sort((a, b) => a.page - b.page);
+    const val = (n) => { const s = engine.snapshot(n); return s.exists ? s : null; };
+    const text = (n) => { const s = val(n); return s ? String(s.display !== undefined ? s.display : s.value).trim() : ''; };
+    const casters = [], rows = [];
+    for (const p of pages) {
+      for (let h = 0; h < 4; h++) {
+        const cls = text(p.prefix + 'spellshead.class.' + h);
+        if (!cls) continue;
+        const head = val(p.prefix + 'spellshead.Text.header.' + h);
+        if (head && head.hidden) continue;
+        casters.push({ key: cls, title: text(p.prefix + 'spellshead.Text.header.' + h), ability: text(p.prefix + 'spellshead.ability.' + h), dc: text(p.prefix + 'spellshead.dc.' + h), attack: text(p.prefix + 'spellshead.attack.' + h), prepare: text(p.prefix + 'spellshead.prepare.' + h) });
+      }
+      for (let i = 0; ; i++) {
+        const rem = val(p.prefix + 'spells.remember.' + i);
+        if (!rem) break;
+        const name = val(p.prefix + 'spells.name.' + i);
+        if (!name || name.hidden || !String(rem.value)) continue;
+        const parts = String(rem.value).split('##');
+        if (parts[0] === 'setcaptions' || !text(p.prefix + 'spells.name.' + i)) continue;
+        // the first column: MPMB's button toggles its "check" field (checkbox ↔ checkedbox, oncelr ↔ oncelr_used)
+        const box = val(p.prefix + 'spells.checkbox.' + i);
+        const first = (text(p.prefix + 'spells.check.' + i) || parts[1] || '').toLowerCase();
+        const toggles = /^check(ed)?box$/.test(first) ? 'prepared' : /^once(sr|lr|day)/.test(first) ? 'used' : '';
+        rows.push({
+          key: parts[0], first: first.replace(/_used$/, '').replace(/^checkedbox$/, 'checkbox'), caster: parts[2] || '',
+          button: box && !box.hidden ? box.name : null, toggles, on: first === 'checkedbox' || /_used$/.test(first),
+          name: text(p.prefix + 'spells.name.' + i), description: text(p.prefix + 'spells.description.' + i),
+          save: text(p.prefix + 'spells.save.' + i), school: text(p.prefix + 'spells.school.' + i), time: text(p.prefix + 'spells.time.' + i),
+          range: text(p.prefix + 'spells.range.' + i), components: text(p.prefix + 'spells.components.' + i), duration: text(p.prefix + 'spells.duration.' + i),
+          book: text(p.prefix + 'spells.book.' + i), pageRef: text(p.prefix + 'spells.page.' + i),
+        });
+      }
+    }
+    const levels = rows.length ? json(engine, '(function (ks) { var o = {}; for (var i = 0; i < ks.length; i++) if (SpellsList[ks[i]]) o[ks[i]] = SpellsList[ks[i]].level; return o; })(' + JSON.stringify(rows.map((r) => r.key)) + ')') : {};
+    for (const r of rows) r.level = levels[r.key] !== undefined ? levels[r.key] : null;
+    return { pages: pages.length, casters, rows };
+  }
+
+  // Full text of one spell, for the details view
+  function details(engine, key) {
+    return json(engine, '(function (k) { var s = SpellsList[k]; if (!s) return null; return { name: s.name, level: s.level, school: s.school || "", time: s.time || "", range: s.range || "", components: s.components || "", compMaterial: s.compMaterial || "", duration: s.duration || "", ritual: !!s.ritual, save: s.save || "", text: s.descriptionFull ? (isArray(s.descriptionFull) ? s.descriptionFull.join("\\n") : String(s.descriptionFull)) : (s.description || ""), source: stringSource(s, "full,page", "", "") }; })(' + JSON.stringify(key) + ')');
+  }
+
+  // A tap on a row's first column (MPMB's button): marks a spell prepared, or a once-per-rest spell used
+  function tapRow(engine, button) {
+    const seq = engine.logSeq;
+    engine.clearQueues();
+    engine.press(button, 0);
+    const menu = engine.takeMenu();   // not a box that toggles: MPMB opened its row menu instead (not handled yet)
+    engine.clearQueues();
+    const r = report(engine, seq);
+    r.menu = !!menu;
+    return r;
+  }
+
+  const api = { options, choose, remove, sheet, details, tapRow };
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+  else root.MPMBSpells = api;
+})(typeof self !== 'undefined' ? self : this);
