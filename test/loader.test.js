@@ -5,7 +5,9 @@ const { load } = require('../src/loader.js');
   const bytes = fs.readFileSync(path.join(__dirname, 'sheet.pdf'));
   const m = await load(new Uint8Array(bytes), PDFLib, (s) => console.log('..', s));
   console.log('stats', m.stats, 'pages', m.pageCount, 'templates', m.templates.length, 'docScripts', m.docScripts.length, 'fields', Object.keys(m.fields).length, 'calcOrder', m.calcOrder.length, 'bookmarks', m.bookmarks.length);
-  // compare with the pikepdf extraction
+  fs.writeFileSync(path.join(__dirname, 'model.json'), JSON.stringify(m));
+  if (!process.argv[2]) { console.log('wrote test/model.json'); return; }
+  // optional: compare with an earlier pikepdf extraction
   const ref = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
   let diffs = 0;
   for (const [n, f] of Object.entries(ref.fields)) {
