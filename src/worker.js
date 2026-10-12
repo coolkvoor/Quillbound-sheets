@@ -37,16 +37,18 @@ function logSummary() {
 
 const ops = {
   // saved: field values kept with this sheet in the app (add-on content and source choices), restored before MPMB starts
-  async open({ bytes, fileName, saved }) {
+  // state: a saved character (engine.exportState), put back before MPMB starts; it includes the add-on content
+  async open({ bytes, fileName, saved, state }) {
     try { evalGlobal('1+1'); } catch (e) { throw new Error('EVAL_BLOCKED'); }
     const t0 = now();
     const model = await MPMBLoader.load(new Uint8Array(bytes), self.PDFLib, progress);
     const loadMs = Math.round(now() - t0);
     const names = model.docScripts.map((s) => s.name);
     if (names.indexOf('Startup') === -1 || !model.info.SheetVersion) throw new Error('NOT_MPMB');
-    progress(saved ? 'Starting MPMB’s scripts and your add-on content' : 'Starting MPMB’s scripts');
+    progress(state ? 'Starting MPMB’s scripts with your character' : saved ? 'Starting MPMB’s scripts and your add-on content' : 'Starting MPMB’s scripts');
     engine = MPMBEngine.createEngine(model, { global: self, evalGlobal }, { fileName });
-    if (saved) engine.preset(saved);
+    const restoredChar = state ? engine.importState(state) : false;
+    if (!restoredChar && saved) engine.preset(saved);
     const startMs = engine.start();
     // A saved PDF keeps the dropdowns MPMB filled; the app starts from the PDF as distributed (some lists empty, such as
     // magic items), so MPMB rebuilds them: Source Material → Apply. With saved content this also restores it.
@@ -56,6 +58,7 @@ const ops = {
       info: { title: model.info.Title || '', version: model.info.SheetVersion || '', type: model.info.SheetType || '', author: model.info.Author || '' },
       stats: { bytes: model.stats.bytes, loadMs, startMs, fields: model.fieldOrder.length, scripts: model.docScripts.length, pages: model.pageCount, templates: model.templates.length },
       content: restored.content,
+      restoredChar,
       saved: MPMBContent.state(engine),
       log: logSummary(),
     };
@@ -68,6 +71,7 @@ const ops = {
   toggle({ name, widget }) { const t = now(); const r = engine.toggle(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   press({ name, widget }) { const t = now(); const r = engine.press(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   log() { return logSummary(); },
+  exportState() { return engine.exportState(); },
   // add-on content and sources: MPMB's own dialogs, answered for the user (content.js)
   addContent({ text }) { return contentOp(() => MPMBContent.addFile(engine, text)); },
   removeContent({ key }) { return contentOp(() => MPMBContent.removeFile(engine, key)); },

@@ -13,7 +13,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 | Look | The app's own layout, phone first (PDF pages are unreadable on phones) |
 | Navigation | One scrolling page per screen size + bottom tab bar that jumps to sections and follows the scroll |
 | Layout | 1 column phone portrait, 2 columns phone landscape / tablet portrait, 3 columns tablet landscape |
-| Save file | The MPMB PDF itself (+ autosave inside the app). Not built yet |
+| Save file | The MPMB PDF itself (+ autosave inside the app). Autosave built; PDF writing not yet |
 | Platform | Web app installed from Chrome; app stores later, if ever |
 | Scope | Play **and** build characters |
 | Rules | 2024 sheets first; 2014 sheets later (assumption) |
@@ -47,6 +47,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `node test/content.test.js [file.js]`: adds an add-on content file, changes sources, pastes a script, restores into a fresh realm, removes it. Uses the first `.js` in `resources/` (gitignored, the owner's own files) and skips when there is none. Part of `npm test`.
 - `node test/spells.test.js`: Wizard 3 spell choices, spell sheet generation, prepared-only lists, row taps, regenerate, remove. `node test/menus.test.js`: Elf lineage menu, Set Max HP menu, long rest. Both part of `npm test`.
 - `node test/gear.test.js`: gear weights (On Blur), the Equipment menu (packs), magic items with attunement, line menus. Part of `npm test`.
+- `node test/save.test.js`: builds a character (species option, spells, gear, feat), exports the engine state, restores it into a fresh sheet before MPMB starts, levels up, saves and restores again. Part of `npm test`.
 - `node test/debug.js 'expr' ...`: runs the self-test steps, then evaluates expressions inside the sheet's realm.
 - `npx playwright install chromium` once on a new machine (the test falls back to Playwright's own Chromium).
 - `node test/ui.test.js [phone-portrait|phone-landscape|tablet-portrait|tablet-landscape]`: Playwright at the real device sizes, with screenshots in `test/shots/`. Env: `SCHEME=dark`, `NOCDN=1`, `DIST=dist-single`, `URL=file:///…`.
@@ -73,6 +74,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - MPMB's modifier ("blue text") fields are hidden until MPMB shows them (Skills → Options → Show fields to modify skill calculations); the app's `data-vis` binding follows that.
 - `engine.commit` runs the widget's On Focus and On Blur scripts around Keystroke/Validate/Calculate, as Acrobat does when you enter and leave a field (gear lines set their weight in On Blur).
 - The distributed PDF has some dropdowns empty (magic items: 1 entry); the worker runs MPMB's Source Material → Apply (`content.restore`) at every open so MPMB fills them.
+- Autosave: `engine.exportState()` gives what a saved PDF would hold as differences from the PDF as distributed (values, field and widget props, list items, scripts added with setAction, rects, calcOrder, doc info, added doc scripts) plus the page changes in order (spawn/delete/remove), which `importState()` replays before `start()` so spawned fields get the same names. The app keeps it in IndexedDB as `char:<file name>|<size>`, saving 0.7 s after each change and when the page is hidden.
 - A saved PDF also holds the dropdown items MPMB set; the app starts from the pristine PDF, so after restoring content MPMB must rebuild them (`resourceDecisionDialog(false, false, true)`).
 - MPMB bug: emptying the script in `AddUserScript` calls `InitiateLists()` without re-running the imported files, so their content vanishes until reopening and the next source update resets their default exclusions. `content.js` removes a pasted script with the file dialog's steps instead.
 
@@ -83,7 +85,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
   - Subclass, feats and ASI choices are impossible for now (subclass may also come through a menu; not checked).
 - Menus work through probe-and-replay (species options, Choose Feature, Max HP, background traits, skill options, rests). Line menus (attacks, actions, limited features, feats, magic items, gear, spell rows via Ctrl-click), Spells Options and the Equipment menu are wired too. Not wired: the other Functions bookmarks (pages layout, text options, colours, Adventurers League).
 - Real dialogs need the engine to wait synchronously for the user. The plan is the worker + `Atomics.wait`, which needs cross-origin isolation (COOP/COEP headers). Claude artifacts can't send headers, so milestone 3 needs real hosting (GitHub Pages + coi-serviceworker, or Cloudflare Pages `_headers`).
-- The character isn't saved yet (add-on content and source choices are, per sheet, in IndexedDB). Template spawning is basic and untested.
+- The character is autosaved in IndexedDB per sheet file, not yet written into the PDF (milestone 4). Template spawning is basic and untested.
 - Sources can be switched on/off per book; MPMB's per-category exclusions (single classes, spells, etc.) need the dialog renderer.
 
 ## Working safely on the owner's PC

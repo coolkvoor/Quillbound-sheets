@@ -66,6 +66,7 @@
     });
   }
   async function idbGet(key) { try { const db = await idb(); return await new Promise((res, rej) => { const q = db.transaction(STORE).objectStore(STORE).get(key); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); } catch (e) { return null; } }
+  async function idbDel(key) { try { const db = await idb(); await new Promise((res, rej) => { const t = db.transaction(STORE, 'readwrite'); t.objectStore(STORE).delete(key); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) { /* storage may be unavailable */ } }
   async function idbPut(key, val) { try { const db = await idb(); await new Promise((res, rej) => { const t = db.transaction(STORE, 'readwrite'); t.objectStore(STORE).put(val, key); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) { /* storage may be unavailable */ } }
 
   // ---------------------------------------------------------------- start screen
@@ -110,14 +111,17 @@
     state.bytes = buf.slice(0);
     state.fileName = name;
     state.sheetKey = 'content:' + name + '|' + buf.byteLength;   // add-on content belongs to this sheet file
+    state.charKey = 'char:' + name + '|' + buf.byteLength;       // and so does the autosaved character
     const stored = await idbGet(state.sheetKey);
+    const char = await idbGet(state.charKey);
+    state.savedAt = char && char.date ? char.date : 0;
     let w = null;
     const t0 = performance.now();
     try {
       w = connect();
       state.worker = w;
       w.onProgress = (t) => { $('#loading-text').textContent = t; };
-      const res = await w.call('open', { bytes: buf, fileName: name, saved: stored && stored.saved ? stored.saved : null }, [buf]);
+      const res = await w.call('open', { bytes: buf, fileName: name, saved: stored && stored.saved ? stored.saved : null, state: char && char.state ? char.state : null }, [buf]);
       state.info = res.info; state.stats = res.stats; state.stats.openMs = Math.round(performance.now() - t0); state.log = res.log;
       state.content = res.content; state.saved = res.saved;
       // MPMB drops an add-on that fails at startup; keep what it kept
@@ -461,6 +465,32 @@
     renderLog();
   }
 
+  // ---------------------------------------------------------------- autosave: the character stays on this device
+  let saveTimer = 0, saving = false, saveAgain = false;
+  function saveSoon() { clearTimeout(saveTimer); setSaved('pending'); saveTimer = setTimeout(saveNow, 700); }
+  async function saveNow() {
+    saveTimer = 0;
+    if (!state.worker || !state.charKey) return;
+    if (saving) { saveAgain = true; return; }
+    saving = true;
+    try {
+      const st = await state.worker.call('exportState', {});
+      const name = shown(state.snap.get('PC Name')).trim();
+      await idbPut(state.charKey, { state: st, date: Date.now(), name });
+      state.savedAt = Date.now();
+      setSaved('saved');
+    } catch (e) { setSaved('error'); }
+    finally { saving = false; if (saveAgain) { saveAgain = false; saveSoon(); } }
+  }
+  function setSaved(how) {
+    const chip = $('#save-chip');
+    chip.classList.toggle('warn', how === 'error');
+    chip.textContent = how === 'pending' ? 'Saving…' : how === 'error' ? 'Not saved' : 'Saved';
+    chip.title = how === 'error' ? 'This browser didn’t let the app save the character' : state.savedAt ? 'Saved on this device at ' + new Date(state.savedAt).toLocaleTimeString() : 'Saved on this device';
+    const info = $('#char-saved');
+    if (info) info.textContent = how === 'error' ? 'The character couldn’t be saved in this browser.' : state.savedAt ? 'Saved on this device, last at ' + new Date(state.savedAt).toLocaleString() + '.' : 'Changes are saved on this device as you make them.';
+  }
+
   // ---------------------------------------------------------------- talking to MPMB
   function setBusy(d) { state.busy += d; $('#busy').classList.toggle('on', state.busy > 0); }
   async function send(op, args) {
@@ -471,6 +501,7 @@
       if (res.log) state.log = res.log;
       refreshDerived();
       if (op !== 'chooseSpells' && op !== 'removeSpells') spellsSoon();   // class, level, feats and so on change the spell choices
+      saveSoon();
       return res;
     } catch (e) {
       state.log = state.log || { errors: [] };
@@ -510,6 +541,23 @@
     $('#hp-minus').addEventListener('click', () => hpStep(-1));
     $('#hp-plus').addEventListener('click', () => hpStep(1));
     $('#run-test').addEventListener('click', runSelfTest);
+    // phones close apps in the background without warning: save right away when the page is hidden
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && saveTimer) { clearTimeout(saveTimer); saveTimer = 0; saveNow(); } });
+    // a new character: forget the saved one (add-on content stays) and open the sheet fresh; tap twice to confirm
+    let armedNew = 0;
+    $('#new-char').addEventListener('click', async (e) => {
+      const b = e.currentTarget;
+      if (Date.now() > armedNew) {
+        armedNew = Date.now() + 4000; b.textContent = 'Tap again: this clears the current character'; b.classList.add('danger');
+        setTimeout(() => { b.textContent = 'Start a new character'; b.classList.remove('danger'); }, 4000);
+        return;
+      }
+      armedNew = 0; clearTimeout(saveTimer);
+      await idbDel(state.charKey);
+      state.savedAt = 0;
+      $('#sheet').hidden = true; $('#start').hidden = false;
+      openSheet(state.bytes.slice(0), state.fileName, false);
+    });
     $('#open-other').addEventListener('click', () => { $('#sheet').hidden = true; $('#start').hidden = false; $('#loading').hidden = true; $('#start-actions').hidden = false; initStart(); });
   }
 
@@ -904,7 +952,7 @@
     for (const s of res.changes || []) apply(s);
     state.log = res.log; state.content = res.content; state.saved = res.saved;
     idbPut(state.sheetKey, { saved: res.saved, date: Date.now() });
-    renderContent(); refreshDerived(); spellsSoon();
+    renderContent(); refreshDerived(); spellsSoon(); saveSoon();
     setBusy(-1); contentBusy(false);
     // MPMB's own alerts: "Success!" only says it worked; anything else (errors, version warnings) is worth showing
     const worked = res.alerts.some((a) => /success/i.test(a.title));
@@ -1028,6 +1076,7 @@
     refreshDerived();
     renderFacts();
     renderContent();
+    setSaved('saved');
     $('#content-result').hidden = true;
     $('#paste-box').hidden = true;
     $('#start').hidden = true;

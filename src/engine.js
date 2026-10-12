@@ -75,8 +75,17 @@
         })),
         obj: null, widgetObjs: [],
       };
+      return markBaseline(rec);
+    }
+    // What a field looked like when it was created, so a saved state only holds what changed since
+    function markBaseline(rec) {
+      rec.init = Array.isArray(rec.value) ? rec.value.slice() : rec.value;
+      rec.initScripts = Object.assign({}, rec.scripts);
+      for (let i = 0; i < rec.widgets.length; i++) rec.widgets[i].initScripts = Object.assign({}, rec.widgets[i].scripts);
       return rec;
     }
+    // Page changes in order (spawn, delete, remove field); a saved state replays them to get the same field names back
+    const pageOps = [];
     for (let i = 0; i < model.fieldOrder.length; i++) {
       const n = model.fieldOrder[i];
       recs.set(n, makeRec(n, model.fields[n]));
@@ -386,6 +395,7 @@
 
     // ---- templates and pages ----------------------------------------------------------------
     function spawnTemplate(tName, nPage, bRename, bOverlay) {
+      pageOps.push(['spawn', tName, nPage === undefined ? null : nPage, bRename === undefined ? null : bRename, !!bOverlay]);
       const at = nPage === undefined || nPage === null || nPage > pages.length ? pages.length : Math.max(0, nPage);
       let page;
       if (bOverlay && pages[at]) page = pages[at];
@@ -400,11 +410,12 @@
           const def = Object.assign({}, rec.def, { widgets: tw.map((w) => ({ page: null, template: null, rect: w.rect, flags: w.flags, scripts: w.scripts, caption: w.caption, states: w.states, bg: w.bg })), value: rec.def.defaultValue !== null && rec.def.defaultValue !== undefined ? rec.def.defaultValue : rec.def.value });
           const nr = makeRec(nn, def, page);
           nr.scripts = Object.assign({}, rec.scripts);
+          markBaseline(nr);
           recs.set(nn, nr);
           if (rec.scripts.C && calcOrder.indexOf(nn) === -1) calcOrder.push(nn);
           dirty.add(nn);
         } else {
-          for (let i = 0; i < tw.length; i++) rec.widgets.push(Object.assign({}, tw[i], { page, template: null, props: {}, scripts: Object.assign({}, tw[i].scripts) }));
+          for (let i = 0; i < tw.length; i++) rec.widgets.push(Object.assign({}, tw[i], { page, template: null, props: {}, scripts: Object.assign({}, tw[i].scripts), initScripts: Object.assign({}, tw[i].scripts) }));
           dirty.add(n);
         }
       }
@@ -414,6 +425,7 @@
     }
     function deletePages(nStart, nEnd) {
       const s = nStart === undefined ? 0 : nStart, e = nEnd === undefined ? s : nEnd;
+      pageOps.push(['delete', s, e]);
       const removed = pages.splice(s, e - s + 1);
       for (const [n, rec] of Array.from(recs.entries())) {
         const keep = rec.widgets.filter((w) => !(w.page && removed.indexOf(w.page) !== -1));
@@ -424,6 +436,7 @@
       groupCache.clear();
     }
     function removeField(name) {
+      pageOps.push(['remove', String(name)]);
       const pre = name + '.';
       for (const n of Array.from(recs.keys())) if (n === name || n.lastIndexOf(pre, 0) === 0) { recs.delete(n); const i = calcOrder.indexOf(n); if (i >= 0) calcOrder.splice(i, 1); dirty.add(n); }
       groupCache.clear();
@@ -863,6 +876,8 @@
         catch (e) { logError('doc:' + s.name, e); }
         stats.docScriptMs[s.name] = Math.round(now() - t);
       }
+      // document scripts a saved state brings along (added with doc.addScript)
+      for (const n of Object.keys(docScriptsAdded)) runGlobal(docScriptsAdded[n], 'doc:' + n);
       finishAction();
       runCalcs(null);
       stats.startupMs = Math.round(now() - t0);
@@ -968,11 +983,63 @@
     function preset(values) {
       for (const n in values) { const rec = recs.get(n); if (rec) rec.value = normalize(rec, values[n]); }
     }
+    // ---- saving: the state a saved PDF would hold, as differences from the PDF as distributed -----------------------
+    // Field values, what scripts changed about fields (props: hidden, tooltips, submitName…; list items; scripts
+    // attached with setAction; widget looks), the calculation order, the document info and the page changes.
+    const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    const plain = (o) => JSON.parse(JSON.stringify(o === undefined ? null : o));
+    function exportState() {
+      const fields = {};
+      for (const [n, rec] of recs) {
+        const f = {};
+        if (!same(rec.value, rec.init)) f.v = plain(rec.value);
+        if (Object.keys(rec.props).length) f.p = plain(rec.props);
+        if (rec.items) f.i = plain(rec.items);
+        if (!same(rec.scripts, rec.initScripts)) f.s = plain(rec.scripts);
+        const ws = rec.widgets.map((w) => {
+          const o = {};
+          if (Object.keys(w.props).length) o.p = plain(w.props);
+          if (!same(w.scripts, w.initScripts)) o.s = plain(w.scripts);
+          return o;
+        });
+        if (ws.some((o) => Object.keys(o).length)) f.w = ws;
+        // widget positions only change when scripts move fields; keep them when they do
+        const rects = rec.widgets.map((w) => w.rect);
+        if (rec.def.widgets.some((dw, i) => rec.widgets[i] && !same(dw.rect, rects[i]))) f.r = plain(rects);
+        if (Object.keys(f).length) fields[n] = f;
+      }
+      return { v: 1, sheet: { title: model.info.Title || '', version: model.info.SheetVersion || '' }, pageOps: plain(pageOps), calcOrder: calcOrder.slice(), info: plain(info), docScripts: plain(docScriptsAdded), fields, date: Date.now() };
+    }
+    // Put a saved state back before start(), so MPMB's startup finds the sheet as Acrobat would find a saved PDF
+    function importState(st) {
+      if (!st || st.v !== 1) return false;
+      for (const op of st.pageOps || []) {
+        if (op[0] === 'spawn') spawnTemplate(op[1], op[2] === null ? undefined : op[2], op[3] === null ? undefined : op[3], op[4]);
+        else if (op[0] === 'delete') deletePages(op[1], op[2]);
+        else if (op[0] === 'remove') removeField(op[1]);
+      }
+      for (const n of Object.keys(st.fields || {})) {
+        const rec = recs.get(n), f = st.fields[n];
+        if (!rec) continue;
+        if (f.v !== undefined) rec.value = Array.isArray(f.v) ? f.v.map(String) : String(f.v);
+        if (f.p) rec.props = f.p;
+        if (f.i) rec.items = f.i;
+        if (f.s) rec.scripts = f.s;
+        if (f.w) for (let i = 0; i < f.w.length && i < rec.widgets.length; i++) { if (f.w[i].p) rec.widgets[i].props = f.w[i].p; if (f.w[i].s) rec.widgets[i].scripts = f.w[i].s; }
+        if (f.r) for (let i = 0; i < f.r.length && i < rec.widgets.length; i++) rec.widgets[i].rect = f.r[i];
+      }
+      if (Array.isArray(st.calcOrder)) calcOrder = st.calcOrder.filter((n) => recs.has(n));
+      if (st.info) Object.assign(info, st.info);
+      if (st.docScripts) Object.assign(docScriptsAdded, st.docScripts);
+      groupCache.clear();
+      dirty.clear();
+      return true;
+    }
     // Run MPMB code the way a menu item or button would (pending timeouts run afterwards)
     function action(code, label) { const r = runGlobal(code, label || 'action'); finishAction(); return r; }
 
     return {
-      start, commit, toggle, press, snapshot, drainChanges, evalExpr, getField, preset, action,
+      start, commit, toggle, press, snapshot, drainChanges, evalExpr, getField, preset, action, exportState, importState,
       queueFile(text) { fileQueue.push(String(text)); },
       queueDialog(answer) { dialogAnswers.push(answer); },
       queueMenu(ret) { menuAnswers.push(ret === undefined ? null : ret); },

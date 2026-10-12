@@ -318,7 +318,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
     </div>
     <p class="alert" id="start-error" hidden></p>
     <p class="note">Works with MPMB's 2024 (5.5e) character sheets, including books you imported in Acrobat. Your file stays on this device.</p>
-    <p class="note">Version 0.1 test build. Your character isn't saved yet, but add-on content you add is. MPMB's pop-up questions are answered with their default choices.</p>
+    <p class="note">Version 0.1 test build. Your character and add-on content are saved on this device as you go (not into the PDF yet). Some of MPMB's pop-up questions are still answered with their default choices.</p>
   </div>
 </div>
 
@@ -328,7 +328,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
       <div class="name" id="hdr-name">Unnamed character</div>
       <div class="line" id="hdr-line">Choose a species and class to begin</div>
     </div>
-    <span class="chip warn" title="Version 0.1 does not save changes yet">Not saved</span>
+    <span class="chip" id="save-chip" title="Saved on this device">Saved</span>
     <span class="busy" id="busy" aria-hidden="true"></span>
   </header>
 
@@ -560,6 +560,12 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <p class="note">Builds a level 3 Elf Wizard on a fresh copy of your sheet and checks MPMB's results. Your own character isn't touched.</p>
           <button class="btn primary" id="run-test" type="button">Run self-test</button>
           <div id="test-out"></div>
+        </div>
+        <div class="card">
+          <h3>Character</h3>
+          <p class="note" id="char-saved">Changes are saved on this device as you make them.</p>
+          <p class="note">The character is kept with this sheet file in this browser. Saving into the PDF itself comes in a later version.</p>
+          <button class="btn" id="new-char" type="button">Start a new character</button>
         </div>
         <div class="card">
           <h3>This sheet</h3>
