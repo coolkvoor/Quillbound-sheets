@@ -564,7 +564,9 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
         <div class="card">
           <h3>Character</h3>
           <p class="note" id="char-saved">Changes are saved on this device as you make them.</p>
-          <p class="note">The character is kept with this sheet file in this browser. Saving into the PDF itself comes in a later version.</p>
+          <p class="note">The character is kept with this sheet file in this browser. To keep it anywhere else, or open it in Acrobat, download the sheet with the character written into it.</p>
+          <button class="btn primary" id="save-pdf" type="button">Download PDF</button>
+          <p class="note" id="save-pdf-status" role="status" aria-live="polite" hidden></p>
           <button class="btn" id="new-char" type="button">Start a new character</button>
         </div>
         <div class="card">

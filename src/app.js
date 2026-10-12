@@ -491,6 +491,37 @@
     if (info) info.textContent = how === 'error' ? 'The character couldn’t be saved in this browser.' : state.savedAt ? 'Saved on this device, last at ' + new Date(state.savedAt).toLocaleString() + '.' : 'Changes are saved on this device as you make them.';
   }
 
+  // ---------------------------------------------------------------- the character written into the PDF
+  async function downloadPdf() {
+    const btn = $('#save-pdf'), status = $('#save-pdf-status');
+    if (!state.worker) return;
+    btn.disabled = true; status.hidden = false; status.textContent = 'Writing the character into the PDF…';
+    const prev = state.worker.onProgress;
+    state.worker.onProgress = (t) => { status.textContent = t + '…'; };
+    setBusy(1);
+    try {
+      const res = await state.worker.call('savePdf', {});
+      const who = shown(state.snap.get('PC Name')).trim();
+      const base = state.fileName.replace(/\.pdf$/i, '');
+      const filename = ((who ? who + ' - ' : '') + base).replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 180) + '.pdf';
+      const blob = new Blob([res.bytes], { type: 'application/pdf' });
+      // in a Claude artifact the viewer confirms the save; elsewhere a normal download
+      const dl = window.claude && window.claude.use ? await window.claude.use('downloads').catch(() => null) : null;
+      if (dl) {
+        try { await dl.save({ filename, data: blob }); status.textContent = 'Saved ' + filename + ' (' + kb(blob.size) + ').'; }
+        catch (e) { status.textContent = e && e.code === 'declined' ? 'Download cancelled.' : 'The download didn’t work here (' + ((e && e.code) || e) + ').'; }
+      } else {
+        const a = el('a', { href: URL.createObjectURL(blob), download: filename });
+        document.body.append(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+        status.textContent = 'Downloaded ' + filename + ' (' + kb(blob.size) + ', written in ' + fmtS(res.ms) + ').';
+      }
+      if (res.report.skipped.length) status.textContent += ' Some parts couldn’t be written: ' + res.report.skipped.slice(0, 3).join('; ') + '.';
+    } catch (e) {
+      status.textContent = 'Writing the PDF failed: ' + (e.message || e);
+    } finally { setBusy(-1); btn.disabled = false; state.worker.onProgress = prev; }
+  }
+
   // ---------------------------------------------------------------- talking to MPMB
   function setBusy(d) { state.busy += d; $('#busy').classList.toggle('on', state.busy > 0); }
   async function send(op, args) {
@@ -541,6 +572,7 @@
     $('#hp-minus').addEventListener('click', () => hpStep(-1));
     $('#hp-plus').addEventListener('click', () => hpStep(1));
     $('#run-test').addEventListener('click', runSelfTest);
+    $('#save-pdf').addEventListener('click', downloadPdf);
     // phones close apps in the background without warning: save right away when the page is hidden
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && saveTimer) { clearTimeout(saveTimer); saveTimer = 0; saveNow(); } });
     // a new character: forget the saved one (add-on content stays) and open the sheet fresh; tap twice to confirm

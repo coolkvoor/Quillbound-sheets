@@ -13,7 +13,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 | Look | The app's own layout, phone first (PDF pages are unreadable on phones) |
 | Navigation | One scrolling page per screen size + bottom tab bar that jumps to sections and follows the scroll |
 | Layout | 1 column phone portrait, 2 columns phone landscape / tablet portrait, 3 columns tablet landscape |
-| Save file | The MPMB PDF itself (+ autosave inside the app). Autosave built; PDF writing not yet |
+| Save file | The MPMB PDF itself (+ autosave inside the app). Autosave built; PDF writing built (src/writer.js), awaiting a check in real Acrobat |
 | Platform | Web app installed from Chrome; app stores later, if ever |
 | Scope | Play **and** build characters |
 | Rules | 2024 sheets first; 2014 sheets later (assumption) |
@@ -36,6 +36,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `src/selftest.js`: builds an Elf Wizard 3 and checks 19 results. Used by the app's Sheet tab and by `test/engine.test.js`.
 - `src/spells.js`: spells. `options()` runs MPMB's `AskUserSpellSheet` once with the dialogs' data captured (lists, counts, picks) and cancels at the last dialog; `choose()` writes the picks where those dialogs keep them (`CurrentSpells[caster].selectCa/selectSp/selectPrep/typeList`) and runs MPMB's `GenerateSpellSheet`; `sheet()` reads the spawned SSfront/SSmore pages back as rows; `tapRow()` presses a row's first-column button (prepared / used).
 - Menus: `app.popUpMenuEx` can't wait for a tap, so the worker's `tap` op runs a button with every menu answered "nothing" (the menu comes back to the app), then runs it again with the user's choice queued (`engine.queueMenu`). Every MPMB menu goes through `getMenu()`, which reads the menu first and does nothing on "nothing", so the first run has no effect. Buttons in the page use `data-mpmb="<field name>"` and show/hide as MPMB shows/hides the field.
+- `src/writer.js`: writes `engine.exportState()` into the sheet's own PDF with pdf-lib: replays page changes (a spawned template page is a copy of the template page, `/Type` set to `/Page`, its fields renamed `P<page>.<template>.<name>` under new parent nodes), then values, field/widget changes (flags, TU/TM, Opt, DA, MK colours/caption/icon, BS, Rect, scripts as JavaScript actions), /CO, info, added doc scripts, and sets NeedAppearances. In the artifact the download goes through the `downloads` capability.
 - `src/content.js`: add-on content (MPMB's "Add Extra Materials" and "Source Material" bookmarks). Runs MPMB's own dialogs with the buttons pressed for the user (`engine.queueDialog`), with the picked file queued for `util.readFileIntoStream()` (`engine.queueFile`). The app keeps the three fields that hold the content (`User_Imported_Files.Stringified`, `User Script`, `CurrentSources.Stringified`) in IndexedDB per sheet (file name + size), presets them before `start()`, and then runs `restore()` (Source Selection → Apply) to rebuild the dropdowns.
 
 ## Build and test
@@ -48,6 +49,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `node test/spells.test.js`: Wizard 3 spell choices, spell sheet generation, prepared-only lists, row taps, regenerate, remove. `node test/menus.test.js`: Elf lineage menu, Set Max HP menu, long rest. Both part of `npm test`.
 - `node test/gear.test.js`: gear weights (On Blur), the Equipment menu (packs), magic items with attunement, line menus. Part of `npm test`.
 - `node test/save.test.js`: builds a character (species option, spells, gear, feat), exports the engine state, restores it into a fresh sheet before MPMB starts, levels up, saves and restores again. Part of `npm test`.
+- `node test/writer.test.js`: writes a built character into the PDF, reads that PDF back with the loader as a new sheet (no saved state) and checks the character, MPMB's hidden state and the spell sheet page are in the file. Writes `test/saved-character.pdf` (gitignored) to open in Acrobat. Part of `npm test`.
 - `node test/debug.js 'expr' ...`: runs the self-test steps, then evaluates expressions inside the sheet's realm.
 - `npx playwright install chromium` once on a new machine (the test falls back to Playwright's own Chromium).
 - `node test/ui.test.js [phone-portrait|phone-landscape|tablet-portrait|tablet-landscape]`: Playwright at the real device sizes, with screenshots in `test/shots/`. Env: `SCHEME=dark`, `NOCDN=1`, `DIST=dist-single`, `URL=file:///…`.
@@ -85,7 +87,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
   - Subclass, feats and ASI choices are impossible for now (subclass may also come through a menu; not checked).
 - Menus work through probe-and-replay (species options, Choose Feature, Max HP, background traits, skill options, rests). Line menus (attacks, actions, limited features, feats, magic items, gear, spell rows via Ctrl-click), Spells Options and the Equipment menu are wired too. Not wired: the other Functions bookmarks (pages layout, text options, colours, Adventurers League).
 - Real dialogs need the engine to wait synchronously for the user. The plan is the worker + `Atomics.wait`, which needs cross-origin isolation (COOP/COEP headers). Claude artifacts can't send headers, so milestone 3 needs real hosting (GitHub Pages + coi-serviceworker, or Cloudflare Pages `_headers`).
-- The character is autosaved in IndexedDB per sheet file, not yet written into the PDF (milestone 4). Template spawning is basic and untested.
+- The character is autosaved in IndexedDB per sheet file and can be downloaded written into the PDF; not yet checked in real Acrobat. Overlay spawns are skipped (reported). Template spawning is basic and untested.
 - Sources can be switched on/off per book; MPMB's per-category exclusions (single classes, spells, etc.) need the dialog renderer.
 
 ## Working safely on the owner's PC

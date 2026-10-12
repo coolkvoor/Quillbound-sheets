@@ -4,12 +4,13 @@
 // In the single-file build everything is already bundled in front of this file
 if (!self.MPMBEngine) {
   try { importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'); } catch (e) { importScripts('vendor/pdf-lib.min.js'); }
-  importScripts('loader.js', 'engine.js', 'selftest.js', 'content.js', 'spells.js');
+  importScripts('loader.js', 'engine.js', 'selftest.js', 'content.js', 'spells.js', 'writer.js');
 }
 // Everything below stays out of the global scope, which belongs to MPMB's code
 (function () {
 
 let engine = null;
+let sheetBytes = null;   // the PDF as opened: the base the character is written into (writer.js)
 let watched = new Set();
 const evalGlobal = (code) => (0, eval)(code);
 const now = () => performance.now();
@@ -41,7 +42,8 @@ const ops = {
   async open({ bytes, fileName, saved, state }) {
     try { evalGlobal('1+1'); } catch (e) { throw new Error('EVAL_BLOCKED'); }
     const t0 = now();
-    const model = await MPMBLoader.load(new Uint8Array(bytes), self.PDFLib, progress);
+    sheetBytes = new Uint8Array(bytes);
+    const model = await MPMBLoader.load(sheetBytes, self.PDFLib, progress);
     const loadMs = Math.round(now() - t0);
     const names = model.docScripts.map((s) => s.name);
     if (names.indexOf('Startup') === -1 || !model.info.SheetVersion) throw new Error('NOT_MPMB');
@@ -72,6 +74,12 @@ const ops = {
   press({ name, widget }) { const t = now(); const r = engine.press(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   log() { return logSummary(); },
   exportState() { return engine.exportState(); },
+  // The character written into the sheet's own PDF (writer.js); the bytes go back to the app to offer as a download
+  async savePdf() {
+    const t = now();
+    const r = await MPMBWriter.write(sheetBytes, engine.exportState(), self.PDFLib, progress);
+    return { bytes: r.bytes, report: r.report, ms: Math.round(now() - t) };
+  },
   // add-on content and sources: MPMB's own dialogs, answered for the user (content.js)
   addContent({ text }) { return contentOp(() => MPMBContent.addFile(engine, text)); },
   removeContent({ key }) { return contentOp(() => MPMBContent.removeFile(engine, key)); },
