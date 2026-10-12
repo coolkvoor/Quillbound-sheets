@@ -131,6 +131,9 @@
       if (v === null || v === undefined) return isToggle(rec) ? 'Off' : '';
       if (Array.isArray(v)) return v.map(String);
       if (typeof v === 'number') return isFinite(v) ? String(v) : String(v);
+      // Acrobat stores line breaks in text fields as \r, whatever the script wrote. MPMB depends on it: it finds a
+      // class feature's section by its \r lines, and with \n left in, new features went in under the wrong heading.
+      if (kind(rec) === 'text') return String(v).replace(/\r\n|\n/g, '\r');
       return String(v);
     }
     function setRaw(rec, v) {

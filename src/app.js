@@ -367,6 +367,53 @@
       node.append(n);
     }
   }
+  // MPMB's feature texts (Class Features, Racial Traits) as a list: one entry per feature, its description folded.
+  // MPMB's markup: "**Wizard, level 3:**" heads a class; "#◆ Name# (Wizard 1, SRD'24 77) #[usage]#" starts a class
+  // feature (its description on the next lines); "##◆ Name##. text" is a species trait with its text on the same line.
+  const openFeatures = new Set();   // which ones the user unfolded, kept while the app is open
+  function inlineMarkup(text, into) {
+    // *italic* and **bold**; stray # (MPMB's colour marker) dropped
+    const parts = String(text).replace(/#/g, '').split(/(\*\*[^*]+\*\*|\*[^*]+\*)/);
+    for (const p of parts) {
+      if (!p) continue;
+      if (/^\*\*.+\*\*$/.test(p)) into.append(el('strong', { text: p.slice(2, -2) }));
+      else if (/^\*.+\*$/.test(p)) into.append(el('em', { text: p.slice(1, -1) }));
+      else into.append(document.createTextNode(p));
+    }
+  }
+  function renderFeatures(node, snap) {
+    const raw = snap && snap.exists ? String(snap.value || '') : '';
+    node.textContent = '';
+    if (!raw.trim()) return;
+    const lines = raw.replace(/\r\n?|\n/g, '\n').split('\n');
+    let cur = null;
+    const flush = () => {
+      if (!cur) return;
+      const key = node.dataset.features + '|' + cur.name;
+      const d = el('details', { cls: 'feat' });
+      d.open = openFeatures.has(key);
+      d.addEventListener('toggle', () => { if (d.open) openFeatures.add(key); else openFeatures.delete(key); });
+      const sum = el('summary', {}, [el('span', { cls: 'fname', text: cur.name })]);
+      if (cur.usage) sum.append(el('span', { cls: 'chip use', text: cur.usage }));
+      if (cur.src) sum.append(el('span', { cls: 'fsrc', text: cur.src }));
+      d.append(sum);
+      const body = el('div', { cls: 'fbody' });
+      for (const t of cur.text) { const p = el('p'); inlineMarkup(t, p); body.append(p); }
+      if (!cur.text.length) body.append(el('p', { cls: 'muted', text: 'No description.' }));
+      d.append(body);
+      node.append(d);
+      cur = null;
+    };
+    for (const line of lines) {
+      let m;
+      if (!line.trim()) continue;
+      if ((m = /^\*\*(.+?):?\*\*\s*$/.exec(line))) { flush(); node.append(el('div', { cls: 'fgroup', text: m[1] })); continue; }
+      if ((m = /^#\s*◆\s*(.+?)#\s*(?:\(([^)]*)\))?\s*(?:#\[(.*)\]#)?\s*$/.exec(line))) { flush(); cur = { name: m[1].trim(), src: (m[2] || '').trim(), usage: (m[3] || '').trim(), text: [] }; continue; }
+      if ((m = /^##\s*◆\s*(.+?)##\.?\s*(.*)$/.exec(line))) { flush(); cur = { name: m[1].trim(), src: '', usage: '', text: m[2] ? [m[2]] : [] }; continue; }
+      if (cur) cur.text.push(line); else { const p = el('p', { cls: 'fpara' }); inlineMarkup(line, p); node.append(p); }
+    }
+    flush();
+  }
   // name -> elements bound to it, per binding kind (rebuilt after the screens are built)
   let index = null;
   function buildIndex() {
@@ -386,7 +433,7 @@
     const sel = (attr) => ix[attr] || [];
     for (const n of sel('data-f')) { if (document.activeElement !== n) n.value = snap.exists ? (Array.isArray(snap.value) ? snap.value.join(', ') : snap.value) : ''; n.readOnly = !!snap.readonly; }
     for (const n of sel('data-out')) { const t = shown(snap); n.textContent = t === '' && n.classList.contains('v') ? '–' : t; }
-    for (const n of sel('data-rich')) renderRich(n, snap);
+    for (const n of sel('data-rich')) { if (n.dataset.features) renderFeatures(n, snap); else renderRich(n, snap); }
     for (const n of sel('data-toggle')) n.setAttribute('aria-pressed', snap.checked ? 'true' : 'false');
     for (const n of sel('data-mpmb')) n.hidden = !snap.exists || !!snap.hidden;
     for (const n of sel('data-vis')) n.hidden = !snap.exists || !!snap.hidden;

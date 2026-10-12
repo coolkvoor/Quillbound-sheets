@@ -269,6 +269,23 @@ label.f.mod .in { min-height: 40px; color: #2a62c9; }
 .gear-row .in { min-height: 42px; }
 .gear-head { display: grid; grid-template-columns: minmax(0, 1fr) 4rem 4.4rem 44px; gap: 6px; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
+/* class features and species traits as a list */
+.features:empty::before { content: attr(data-empty); color: var(--muted); }
+.fgroup { font-family: var(--font-display); font-weight: 700; color: var(--accent); margin: 10px 0 2px; }
+.fgroup:first-child { margin-top: 0; }
+details.feat { border-bottom: 1px solid var(--line); }
+details.feat:last-child { border-bottom: 0; }
+details.feat summary { list-style: none; cursor: pointer; display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; padding: 10px 26px 10px 0; position: relative; min-height: 44px; }
+details.feat summary::-webkit-details-marker { display: none; }
+details.feat summary::after { content: "›"; position: absolute; right: 4px; top: 8px; color: var(--muted); font-size: 1.3rem; transition: transform .15s; }
+details.feat[open] summary::after { transform: rotate(90deg); }
+details.feat .fname { font-weight: 700; }
+details.feat .chip.use { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); white-space: normal; }
+details.feat .fsrc { flex-basis: 100%; font-size: 0.8rem; color: var(--muted); }
+details.feat .fbody { padding: 0 0 12px; display: grid; gap: 6px; font-size: 0.97rem; line-height: 1.5; }
+details.feat .fbody p, .fpara { margin: 0; }
+@media (prefers-reduced-motion: reduce) { details.feat summary::after { transition: none; } }
+
 /* XP, conditions, ammunition */
 .xp > .f:first-child { flex: 1 1 7rem; }
 .xp > .f:last-child { flex: 1.4 1 11rem; }
@@ -504,11 +521,11 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
         </div>
         <div class="card span-2">
           <h3>Class features <button class="btn sm" type="button" data-mpmb="Class Features Menu" data-title="Choose feature" hidden>Choose feature</button></h3>
-          <div class="rich" data-rich="Class Features" data-empty="Choose a class to fill this in."></div>
+          <div class="features" data-rich="Class Features" data-features="class" data-empty="Choose a class to fill this in."></div>
         </div>
         <div class="card">
           <h3>Species traits <button class="btn sm" type="button" data-mpmb="Race Features Menu" data-title="Species options" hidden>Options</button></h3>
-          <div class="rich" data-rich="Racial Traits" data-empty="Nothing yet. Some species need a choice that comes in a later version."></div>
+          <div class="features" data-rich="Racial Traits" data-features="species" data-empty="Choose a species to fill this in. Some species have options: tap Options above."></div>
         </div>
         <div class="card">
           <h3>Feats</h3>

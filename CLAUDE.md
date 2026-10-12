@@ -66,6 +66,10 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - **A script setting `field.value` fires that field's Validate event before storing**, then recalculates. MPMB relies on this (for example `Value("Character Level", …)` → `levelFieldVal`).
 - `isBoxChecked()` returns **1/0 numbers**: MPMB compares `=== 1` (saving-throw proficiency broke with booleans).
 - Text and combo box `.value` returns a Number when the text is numeric.
+- **Line breaks in text fields are stored as ``** (Acrobat converts `
+` and `
+`). MPMB finds a class feature's section by its `` lines; with `
+` left in, every new feature went in under the previous heading and the descriptions piled up at the end in reverse order.
 - MPMB needs SpiderMonkey's `toSource()` (54 uses) to store state in fields. It's polyfilled in engine.js.
 - MPMB keeps state in hidden fields and in `submitName`/`userName` (for example HP Max's submitName is `"0,0,0,nothing"`, which means not automatic).
 - Field objects are cached per name; MPMB sets expando properties on them (`remVal`, `setVal`, `mpmbRtFormat`).
