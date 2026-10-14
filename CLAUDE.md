@@ -44,6 +44,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 ## Build and test
 
 - `npm install`, then put an MPMB 2024 sheet PDF at `test/sheet.pdf` (gitignored; never commit it).
+- `npm start`: builds `dist-single` and serves it at http://localhost:8123 (no caching), so the PC always runs the current code. The App line under Sheet > This sheet shows the version and build time.
 - `npm test` runs the loader test (writes `test/model.json`) and the engine test. Individually:
 - `node test/loader.test.js`: reads the sheet and writes `test/model.json`, which the other tests need.
 - `node test/engine.test.js`: runs MPMB in a Node `vm` realm and prints the self-test results.

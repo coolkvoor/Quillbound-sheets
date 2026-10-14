@@ -4,7 +4,7 @@
 const fs = require('fs'), path = require('path');
 const R = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(R, p), 'utf8');
-const VERSION = process.argv[2] || '0.1';
+const VERSION = process.argv[2] || '0.2';
 const PDFLIB_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
 const own = [read('src/loader.js'), read('src/engine.js'), read('src/selftest.js'), read('src/content.js'), read('src/spells.js'), read('src/writer.js'), read('src/classes.js'), read('src/abilities.js'), read('src/worker.js')];
 const workerCdn = ['importScripts(' + JSON.stringify(PDFLIB_CDN) + ');'].concat(own).join('\n;\n');
