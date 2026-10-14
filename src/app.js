@@ -1011,7 +1011,11 @@
   // cast), with a switch per spell: Known for cantrips; Book and Prepared for a spellbook caster; Prepared for a caster
   // that prepares from the whole list; Known for a known-spells caster. Saving makes the spell list right away, with
   // MPMB's "Prepared spells only" for casters that prepare, so the Spells tab shows what can be cast today.
-  const picker = { caster: null, picks: null, mine: false, open: new Set() };
+  const picker = { caster: null, picks: null, mine: false, level: 'all', sort: 'level', search: '', open: new Set() };
+  // the search, All/Mine, level and sort choices are remembered on this device (browser storage may be unavailable)
+  const PREFS = 'mpmb-app:spell-picker';
+  try { const p = JSON.parse(localStorage.getItem(PREFS) || '{}'); for (const k of ['mine', 'level', 'sort', 'search']) if (p[k] !== undefined) picker[k] = p[k]; } catch (e) { /* defaults */ }
+  function savePickerPrefs() { try { localStorage.setItem(PREFS, JSON.stringify({ mine: picker.mine, level: picker.level, sort: picker.sort, search: picker.search })); } catch (e) { /* not kept */ } }
   const spellText = new Map();   // key -> full text from MPMB, fetched when a spell is unfolded
   function casterKind(c) { return c.spells && c.spells.book ? 'book' : c.prepared ? 'list' : c.spells ? 'known' : 'none'; }
   function openPicker(key) {
@@ -1019,11 +1023,12 @@
     picker.picks = {};
     for (const c of o.casters) picker.picks[c.key] = { cantrips: new Set(c.cantrips ? c.cantrips.chosen : []), spells: new Set(c.spells ? c.spells.chosen : []), prepared: new Set(c.prepared ? c.prepared.chosen : []) };
     picker.caster = o.casters.filter((c) => c.key === key)[0];
-    picker.mine = false; picker.open.clear();
+    picker.open.clear();
     $('#picker-title').textContent = (picker.caster.name || picker.caster.key) + ': spells';
-    $('#picker-search').value = '';
+    $('#picker-search').value = picker.search;
     renderPicker();
     $('#picker').showModal();
+    $('#picker-body').scrollTop = 0;
   }
   // the spells offered for each level: a spellbook or known-spells caster picks from MPMB's class list; a caster that
   // prepares from the whole list picks from MPMB's prepare list. Both stop at the highest level it can cast.
@@ -1061,21 +1066,39 @@
     counts.hidden = !limits.length;
     $('#picker-all').setAttribute('aria-pressed', picker.mine ? 'false' : 'true');
     $('#picker-mine').setAttribute('aria-pressed', picker.mine ? 'true' : 'false');
+    $('#picker-bylevel').setAttribute('aria-pressed', picker.sort === 'level' ? 'true' : 'false');
+    $('#picker-az').setAttribute('aria-pressed', picker.sort === 'name' ? 'true' : 'false');
+    // level chips: only the levels this caster has on its list
+    const allRows = pickerRows(c);
+    const levels = [];
+    for (const r of allRows) if (levels.indexOf(r.level) === -1) levels.push(r.level);
+    if (picker.level !== 'all' && levels.indexOf(picker.level) === -1) picker.level = 'all';
+    const chips = $('#picker-levels');
+    chips.textContent = '';
+    for (const lv of ['all'].concat(levels)) {
+      const label = lv === 'all' ? 'Any level' : lv === 0 ? 'Cantrips' : LEVEL_NAMES[lv].replace(' level', '');
+      chips.append(el('button', { type: 'button', 'data-level': String(lv), 'aria-pressed': picker.level === lv ? 'true' : 'false', text: label }));
+    }
     const notes = { book: 'Add spells to your spellbook, then prepare the ones you want today.', list: 'Prepare the spells you want today from your class list.', known: 'Choose the spells you know.', none: 'There is nothing to choose here: MPMB adds these spells itself.' };
     $('#picker-note').textContent = notes[kind] + (c.maxLevel ? ' You can cast spells up to ' + LEVEL_NAMES[c.maxLevel].toLowerCase() + '.' : '');
-    const q = $('#picker-search').value.trim().toLowerCase();
+    const q = picker.search.trim().toLowerCase();
     const info = state.spellOpts.spells;
     const ul = $('#picker-list');
-    const keep = ul.scrollTop;
+    const body = $('#picker-body');
+    const keep = body.scrollTop;
     ul.textContent = '';
     let level = null;
     const full = (id) => lim[id] && lim[id].max && lim[id].n >= lim[id].max;
-    for (const r of pickerRows(c)) {
+    const rows = allRows.slice();
+    if (picker.sort === 'name') rows.sort((a, b) => a.name.localeCompare(b.name));
+    for (const r of rows) {
       const isCantrip = r.level === 0;
       const mine = isCantrip ? p.cantrips.has(r.key) : p.spells.has(r.key) || p.prepared.has(r.key);
       if (picker.mine && !mine) continue;
+      if (picker.level !== 'all' && r.level !== picker.level) continue;
       if (q && r.name.toLowerCase().indexOf(q) === -1) continue;
-      if (r.level !== level) { level = r.level; ul.append(el('li', { cls: 'lv', text: LEVEL_NAMES[level] })); }
+      // by level: a heading per level; A–Z: the level goes in the grey line instead
+      if (picker.sort === 'level' && r.level !== level) { level = r.level; ul.append(el('li', { cls: 'lv', text: LEVEL_NAMES[level] })); }
       // the switches for this caster
       const pills = [];
       const pill = (part, label, on, disabled) => { const b = el('button', { cls: 'pill', type: 'button', 'aria-pressed': on ? 'true' : 'false', 'data-part': part, 'data-key': r.key, text: label, 'aria-label': label + ': ' + r.name }); b.disabled = !!disabled; pills.push(b); };
@@ -1088,7 +1111,7 @@
       const li = el('li', { cls: 'pk' + (open ? ' open' : '') }, [
         el('div', { cls: 'pk-main' }, [
           el('button', { cls: 'pk-name', type: 'button', 'data-open': r.key, 'aria-expanded': open ? 'true' : 'false', text: r.name }),
-          el('div', { cls: 'meta', text: [d.school, d.time, d.range, d.ritual ? 'ritual' : '', d.source].filter(Boolean).join(' · ') }),
+          el('div', { cls: 'meta', text: [picker.sort === 'name' ? (r.level === 0 ? 'Cantrip' : LEVEL_NAMES[r.level]) : '', d.school, d.time, d.range, d.ritual ? 'ritual' : '', d.source].filter(Boolean).join(' · ') }),
         ]),
         el('div', { cls: 'pk-toggles' }, pills),
       ]);
@@ -1101,9 +1124,9 @@
       }
       ul.append(li);
     }
-    if (!ul.children.length && kind !== 'none') ul.append(el('li', { cls: 'note', text: q ? 'No spells match “' + q + '”.' : picker.mine ? 'Nothing chosen yet. Switch to All to pick spells.' : 'Nothing to choose here.' }));
-    $('#picker-search').parentElement.hidden = kind === 'none';
-    ul.scrollTop = keep;
+    if (!ul.children.length && kind !== 'none') ul.append(el('li', { cls: 'note', text: q ? 'No spells match “' + q + '”.' : picker.mine ? 'Nothing chosen here yet. Switch to All to pick spells.' : 'Nothing to choose here.' }));
+    $('#picker-bar').hidden = kind === 'none';
+    body.scrollTop = keep;
   }
   async function unfoldSpell(key) {
     if (picker.open.has(key)) picker.open.delete(key); else picker.open.add(key);
@@ -1124,9 +1147,19 @@
       else set.add(key);
       renderPicker();
     });
-    $('#picker-search').addEventListener('input', () => renderPicker());
-    $('#picker-all').addEventListener('click', () => { picker.mine = false; renderPicker(); });
-    $('#picker-mine').addEventListener('click', () => { picker.mine = true; renderPicker(); });
+    // changing what is shown starts the list from the top; the choices are remembered
+    const refilter = () => { savePickerPrefs(); renderPicker(); $('#picker-body').scrollTop = 0; };
+    $('#picker-search').addEventListener('input', (e) => { picker.search = e.target.value; refilter(); });
+    $('#picker-all').addEventListener('click', () => { picker.mine = false; refilter(); });
+    $('#picker-mine').addEventListener('click', () => { picker.mine = true; refilter(); });
+    $('#picker-bylevel').addEventListener('click', () => { picker.sort = 'level'; refilter(); });
+    $('#picker-az').addEventListener('click', () => { picker.sort = 'name'; refilter(); });
+    $('#picker-levels').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-level]');
+      if (!b) return;
+      picker.level = b.dataset.level === 'all' ? 'all' : Number(b.dataset.level);
+      refilter();
+    });
     $('#picker-close').addEventListener('click', () => $('#picker').close());
     $('#picker-save').addEventListener('click', async () => {
       $('#picker').close();

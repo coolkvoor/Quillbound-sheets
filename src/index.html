@@ -242,6 +242,14 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .picker-tabs button[aria-selected="true"] { color: var(--accent); border-color: var(--accent); }
 .picker-tools { display: flex; gap: 8px; align-items: center; }
 .picker-tools .in { flex: 1; }
+.picker-bar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.picker-bar .picker-tools .in { min-width: 0; width: 100%; }
+.picker-levels { display: flex; gap: 8px; align-items: center; }
+.lv-chips { display: flex; gap: 6px; overflow-x: auto; flex: 1; min-width: 0; scrollbar-width: none; }
+.lv-chips::-webkit-scrollbar { display: none; }
+.lv-chips button { flex: none; min-height: 36px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--muted); cursor: pointer; white-space: nowrap; font-size: 0.9rem; }
+.lv-chips button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 700; }
+.picker-levels .seg button { min-height: 36px; padding: 0 10px; font-size: 0.88rem; }
 .picker-counts { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
 .picker-counts .chip.full { color: var(--good); border-color: currentColor; }
 .picker-counts .chip.over { color: var(--bad); border-color: currentColor; }
@@ -721,7 +729,8 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
     <button class="btn sm" id="picker-close" type="button">Cancel</button>
   </div>
   <div class="picker-counts" id="picker-counts"></div>
-  <div class="panel-body">
+  <!-- search, show and level filters: outside the scrolling list, so they stay in view -->
+  <div class="picker-bar" id="picker-bar">
     <div class="picker-tools">
       <input class="in" type="search" id="picker-search" placeholder="Search spells" autocomplete="off" aria-label="Search spells">
       <div class="seg" role="group" aria-label="Show">
@@ -729,6 +738,15 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
         <button type="button" id="picker-mine" aria-pressed="false">Mine</button>
       </div>
     </div>
+    <div class="picker-levels">
+      <div class="lv-chips" id="picker-levels" role="group" aria-label="Spell level"></div>
+      <div class="seg" role="group" aria-label="Sort">
+        <button type="button" id="picker-bylevel" aria-pressed="true">By level</button>
+        <button type="button" id="picker-az" aria-pressed="false">A–Z</button>
+      </div>
+    </div>
+  </div>
+  <div class="panel-body" id="picker-body">
     <p class="hint" id="picker-note"></p>
     <ul class="pick-list" id="picker-list"></ul>
   </div>
