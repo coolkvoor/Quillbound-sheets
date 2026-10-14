@@ -408,18 +408,24 @@
     };
     // Text saved before the line-break fix: every description piled under the last feature of a class, the others
     // empty. Spot it (2+ empty features, and the last one holding more lines than there are empty ones) and offer a rebuild.
+    // Also after levelling up such a character: MPMB rewrites features whose text changes, but leaves others (Ritual
+    // Adept) without their text. So: a normal feature heading with no description at all means old text. A choice line
+    // such as "#◆ Scholar: Arcana# (Wizard 2, SRD'24 78) [Expertise in Arcana]" has no description by design.
     if (node.dataset.features === 'class') {
-      const counts = [];
-      for (const line of lines) { if (/^#\s*◆/.test(line)) counts.push(0); else if (counts.length && line.trim() && !/^\*\*/.test(line)) counts[counts.length - 1]++; }
-      const emptyN = counts.filter((n) => n === 0).length;
-      const stale = emptyN >= 2 && counts.length && counts[counts.length - 1] > emptyN;
+      const NORMAL = /^#\s*◆\s*[^#]+#\s*(?:\([^)]*\))?\s*(?:#\[.*\]#)?\s*$/;
+      let stale = false, open = null;
+      for (const line of lines.concat(['#◆ end#'])) {
+        if (/^#\s*◆/.test(line) || /^\*\*/.test(line)) { if (open && open.normal && !open.text) stale = true; open = /^#\s*◆/.test(line) ? { normal: NORMAL.test(line), text: 0 } : null; }
+        else if (open && line.trim()) open.text++;
+      }
       const note = $('#cf-stale'); if (note) note.hidden = !stale;
     }
     for (const line of lines) {
       let m;
       if (!line.trim()) continue;
       if ((m = /^\*\*(.+?):?\*\*\s*$/.exec(line))) { flush(); node.append(el('div', { cls: 'fgroup', text: m[1] })); continue; }
-      if ((m = /^#\s*◆\s*(.+?)#\s*(?:\(([^)]*)\))?\s*(?:#\[(.*)\]#)?\s*$/.exec(line))) { flush(); cur = { name: m[1].trim(), src: (m[2] || '').trim(), usage: (m[3] || '').trim(), text: [] }; continue; }
+      // the usage in brackets comes as #[…]# normally, and as plain […] after a feature choice ("Scholar: Arcana")
+      if ((m = /^#\s*◆\s*(.+?)#\s*(?:\(([^)]*)\))?\s*(?:#?\[(.*)\]#?)?\s*$/.exec(line))) { flush(); cur = { name: m[1].trim(), src: (m[2] || '').trim(), usage: (m[3] || '').trim(), text: [] }; continue; }
       if ((m = /^##\s*◆\s*(.+?)##\.?\s*(.*)$/.exec(line))) { flush(); cur = { name: m[1].trim(), src: '', usage: '', text: m[2] ? [m[2]] : [] }; continue; }
       if (cur) cur.text.push(line); else { const p = el('p', { cls: 'fpara' }); inlineMarkup(line, p); node.append(p); }
     }
