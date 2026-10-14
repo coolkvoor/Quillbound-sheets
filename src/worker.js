@@ -140,6 +140,9 @@ const ops = {
       const rows = o.rows.filter((r) => r.cls).map((r) => ({ cls: r.cls, sub: r.sub, level: r.level }));
       if (!rows.length) return { alerts: [], errors: [] };
       const a = MPMBClasses.apply(engine, []);
+      // whatever MPMB didn't recognise as a class feature while removing (old scraps) would stay in the field and
+      // throw off where it inserts the features again, so start from an empty field
+      engine.evalExpr('Value("Class Features", "")');
       const b = MPMBClasses.apply(engine, rows);
       return { alerts: a.alerts.concat(b.alerts), errors: a.errors.concat(b.errors) };
     });
