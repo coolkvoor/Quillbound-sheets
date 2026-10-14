@@ -857,7 +857,8 @@
   // ---------------------------------------------------------------- MPMB's menus, buttons and messages
   // A menu item's name can carry its source after a tab: "High Elf\t   [SRD'24 85]"
   const splitName = (n) => { const p = String(n).split(/\t+/); return [p[0].trim(), p.slice(1).join(' ').trim()]; };
-  function pickFromMenu(items, title) {
+  // features: a Choose feature menu (class or species), where greyed-out choices get an explanation
+  function pickFromMenu(items, title, features) {
     const dlg = $('#menu');
     return new Promise((resolve) => {
       const stack = [{ items, title }];
@@ -880,14 +881,20 @@
           b.addEventListener('click', () => { if (leaf) finish(it.ret); else { stack.push({ items: it.items, title: main }); render(); $('#menu-list').scrollTop = 0; } });
           ul.append(el('li', {}, [b]));
         }
-        // MPMB greys out choices whose requirement isn't met, as in Acrobat; say why, since it looks broken otherwise
-        const greyed = top.items.filter((it) => !it.items && !it.enabled && !it.marked && it.ret && it.ret !== it.name).map((it) => splitName(it.name)[0]);
+        // MPMB greys out feature choices whose requirement isn't met, as in Acrobat; say why, since it looks broken otherwise.
+        // (Line menus grey out things that explain themselves, such as Move up on the first line.)
+        const greyed = !features ? [] : top.items.filter((it) => !it.items && !it.enabled && !it.marked && it.ret && it.ret !== it.name).map((it) => splitName(it.name)[0]);
         if (greyed.length) {
           const skillNames = SKILLS.map((s) => s[1]);
-          const skillish = greyed.some((n) => /expertise/i.test(n) || skillNames.indexOf(n) !== -1);
-          ul.prepend(el('li', { cls: 'note', text: skillish
-            ? 'Greyed-out choices need proficiency in that skill first (or you already have expertise in it). Tick the skill’s proficiency dot under Skills on the Main tab, then choose again.'
-            : 'Greyed-out choices don’t meet their requirement yet (MPMB checks things like level, proficiencies or earlier choices).' }));
+          const why = new Set();
+          for (const n of greyed) {
+            if (skillNames.indexOf(n.replace(/ Expertise$/i, '')) !== -1) why.add('Expertise needs proficiency in that skill first: tick the skill’s dot under Skills on the Main tab, then choose again.');
+            else if (/^(Agonizing Blast|Eldritch Spear|Repelling Blast): /.test(n)) why.add('A cantrip upgrade needs that cantrip among your Warlock spells first (Choose spells on the Spells tab).');
+            else if (/\(req: /.test(n)) why.add('The requirement is in brackets after the name (a level, a pact or another invocation).');
+            else if (/level\s+\d+\+/i.test(top.title)) why.add('These need a higher level in the class.');
+            else why.add('Greyed-out choices don’t meet a requirement yet, as on the PDF (a level, a proficiency, a spell or an earlier choice).');
+          }
+          ul.prepend(el('li', { cls: 'note', text: [...why].join(' ') }));
         }
       };
       $('#menu-back').onclick = () => { stack.pop(); render(); };
@@ -925,7 +932,7 @@
       const res = await send('tap', Object.assign({ answers }, where));
       if (!res) return;
       if (res.menu) {
-        const ret = await pickFromMenu(res.menu, title);
+        const ret = await pickFromMenu(res.menu, title, name === 'Class Features Menu' || name === 'Race Features Menu');
         if (ret === null) return;
         answers.push(ret);
         continue;
