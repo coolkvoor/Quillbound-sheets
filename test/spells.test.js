@@ -57,6 +57,27 @@ const d = spells.details(e, 'magic missile');
 check('details: full description', d && d.text.length > 80, d && d.text.slice(0, 90));
 [r] = time(() => spells.remove(e));
 check('remove: spell sheet gone', r.sheet.pages === 0 && r.sheet.rows.length === 0, r.alerts.map((a) => a.title).join(', '));
+// a spellbook of more than 20 spells: MPMB keeps the rest in its extra spellbook (selectSpSB). Saving again with
+// the picks read back must keep all of them, and the prepared spells among them (before the fix: 16 prepared → 10)
+{
+  const ctx3 = vm.createContext({ __modelJSON: fs.readFileSync(path.join(__dirname, 'model.json'), 'utf8') });
+  const ev3 = (code, name) => vm.runInContext(code, ctx3, { filename: name || 'eval' });
+  ev3(fs.readFileSync(path.join(SRC, 'engine.js'), 'utf8'), 'engine.js');
+  ctx3.__host = { global: ctx3, evalGlobal: ev3 };
+  const w = ev3('MPMBEngine.createEngine(JSON.parse(__modelJSON), __host, { fileName: "sheet.pdf" })');
+  w.start();
+  w.commit('Int', '18'); w.commit('Class and Levels', 'Wizard (Evoker) 12');
+  let o3 = spells.options(w); let wz = o3.casters.filter((x) => x.key === 'wizard')[0];
+  const bk = wz.spells.list.filter((s) => o3.spells[s.key] && o3.spells[s.key].level >= 1 && o3.spells[s.key].level <= wz.maxLevel).map((s) => s.key).slice(0, 30);
+  let pk = { cantrips: wz.cantrips.list.slice(0, wz.cantrips.count).map((s) => s.key), spells: bk, prepared: bk.slice(14, 30), show: 3 };
+  for (let round = 1; round <= 2; round++) {
+    spells.choose(w, { wizard: pk });
+    o3 = spells.options(w); wz = o3.casters.filter((x) => x.key === 'wizard')[0];
+    pk = { cantrips: wz.cantrips.chosen, spells: wz.spells.chosen, prepared: wz.prepared.chosen, show: 3 };
+  }
+  check('30-spell spellbook kept over two saves', wz.spells.chosen.length === 30, wz.spells.chosen.length + ' in the book');
+  check('16 prepared kept over two saves', wz.prepared.chosen.length === 16, wz.prepared.chosen.length + ' prepared');
+}
 // a caster that prepares from its whole class list (Cleric): the prepared picks make a prepared-only list,
 // even when the app sends an empty spellbook along
 {

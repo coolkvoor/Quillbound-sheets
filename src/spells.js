@@ -69,6 +69,13 @@
       }
     }
     for (const c of casters) if (c.show) c.show.choices = [1, 2, c.prepared ? 3 : 0, 4].filter(Boolean).map((v) => ({ value: v, name: RADIO[v] }));
+    // MPMB keeps a spellbook in two parts: the first 20 spells in its spell dialog (selectSp), the rest in its extra
+    // spellbook dialog (selectSpSB). Leaving the second part out made the next save drop it, and every prepared spell in it.
+    for (const c of casters) {
+      if (!c.spells || !c.spells.book) continue;
+      const extra = json(engine, 'CurrentSpells[' + JSON.stringify(c.key) + '] && CurrentSpells[' + JSON.stringify(c.key) + '].selectSpSB || []') || [];
+      for (const k of extra) if (k && c.spells.chosen.indexOf(k) === -1) c.spells.chosen.push(k);
+    }
     // details for the picker, from MPMB's spell list
     const keys = new Set();
     for (const c of casters) for (const part of [c.cantrips, c.spells, c.prepared]) if (part) for (const s of part.list) keys.add(s.key);
