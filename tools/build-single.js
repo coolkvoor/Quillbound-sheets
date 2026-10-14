@@ -10,7 +10,10 @@ const own = [read('src/loader.js'), read('src/engine.js'), read('src/selftest.js
 const workerCdn = ['importScripts(' + JSON.stringify(PDFLIB_CDN) + ');'].concat(own).join('\n;\n');
 // the publisher rejects raw U+FFFD characters; they only occur inside pdf-lib's string literals
 const workerBundled = [read('node_modules/pdf-lib/dist/pdf-lib.min.js').replace(/\uFFFD/g, '\\ufffd')].concat(own).join('\n;\n');
-const app = read('src/app.js');
+// the version and build time show under Sheet > This sheet, to tell which build a device is running
+const BUILT = new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+const app = read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Version ' + VERSION + ', built ' + BUILT) + ';');
+if (app.indexOf('built ' + BUILT) === -1) throw new Error('APP_BUILD marker not found in src/app.js');
 function page(worker) {
   for (const bad of ['</script', '<!--']) if (worker.includes(bad) || app.includes(bad)) throw new Error('bundle contains ' + bad);
   let p = read('src/index.html').replace('<script src="app.js"></script>', '');

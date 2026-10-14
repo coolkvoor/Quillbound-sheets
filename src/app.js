@@ -14,6 +14,7 @@
   const ABILITIES = [['Str', 'Strength'], ['Dex', 'Dexterity'], ['Con', 'Constitution'], ['Int', 'Intelligence'], ['Wis', 'Wisdom'], ['Cha', 'Charisma']];
   const SKILLS = [['Acr', 'Acrobatics', 'Dex'], ['Ani', 'Animal Handling', 'Wis'], ['Arc', 'Arcana', 'Int'], ['Ath', 'Athletics', 'Str'], ['Dec', 'Deception', 'Cha'], ['His', 'History', 'Int'], ['Ins', 'Insight', 'Wis'], ['Inti', 'Intimidation', 'Cha'], ['Inv', 'Investigation', 'Int'], ['Med', 'Medicine', 'Wis'], ['Nat', 'Nature', 'Int'], ['Perc', 'Perception', 'Wis'], ['Perf', 'Performance', 'Cha'], ['Pers', 'Persuasion', 'Cha'], ['Rel', 'Religion', 'Int'], ['Sle', 'Sleight of Hand', 'Dex'], ['Ste', 'Stealth', 'Dex'], ['Sur', 'Survival', 'Wis']];
   const ATTACKS = 6, LIMITED = 8, FEATS = 5, HITDICE = 3;
+  const APP_BUILD = 'development build';   // tools/build-single.js puts the version and build time here
   const ACTIONS = [['Action', 16, 'Action'], ['Bonus Action', 6, 'Bonus action'], ['Reaction', 6, 'Reaction']];
 
   // content: what MPMB has loaded (files, pasted script, sources); saved: the fields that hold it, kept per sheet
@@ -404,6 +405,15 @@
       node.append(d);
       cur = null;
     };
+    // Text saved before the line-break fix: every description piled under the last feature of a class, the others
+    // empty. Spot it (2+ empty features, and the last one holding more lines than there are empty ones) and offer a rebuild.
+    if (node.dataset.features === 'class') {
+      const counts = [];
+      for (const line of lines) { if (/^#\s*◆/.test(line)) counts.push(0); else if (counts.length && line.trim() && !/^\*\*/.test(line)) counts[counts.length - 1]++; }
+      const emptyN = counts.filter((n) => n === 0).length;
+      const stale = emptyN >= 2 && counts.length && counts[counts.length - 1] > emptyN;
+      const note = $('#cf-stale'); if (note) note.hidden = !stale;
+    }
     for (const line of lines) {
       let m;
       if (!line.trim()) continue;
@@ -697,6 +707,11 @@
   }
   function wireClassAbility() {
     $('#class-open').addEventListener('click', () => openClasses());
+    $('#cf-rebuild').addEventListener('click', async () => {
+      const res = await send('rebuildClassText', {});
+      if (res && res.errors.length) await showNotice(res.errors.map((m) => ({ title: 'Script error', msg: m })), 'MPMB reported a problem');
+      else if (res) toast('Feature texts rebuilt.');
+    });
     $('#xp-levelup-btn').addEventListener('click', () => { const m = /level (\d+)/.exec($('#xp-levelup-text').textContent); openClasses(m ? Number(m[1]) : undefined); });
     $('#cp-close').addEventListener('click', () => $('#class-panel').close());
     $('#cp-add').addEventListener('click', () => { cls.rows.push({ cls: '', sub: '', level: 1 }); renderClasses(); });
@@ -1262,6 +1277,7 @@
     const dl = $('#sheet-facts');
     dl.textContent = '';
     const add = (k, v) => { dl.append(el('dt', { text: k }), el('dd', { text: v })); };
+    add('App', APP_BUILD);
     add('File', state.fileName + ' (' + (s.bytes / 1048576).toFixed(1) + ' MB)');
     add('Sheet', 'MPMB v' + i.version + ', ' + i.type);
     add('Contents', s.pages + ' pages, ' + s.templates + ' extra page templates, ' + s.fields.toLocaleString('en') + ' fields, ' + s.scripts + ' scripts');

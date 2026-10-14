@@ -132,6 +132,18 @@ const ops = {
   // Classes and ability scores: MPMB's dialogs, edited on the app's screens (classes.js, abilities.js)
   classOptions() { return MPMBClasses.options(engine); },
   applyClasses({ rows }) { return actionOp(() => MPMBClasses.apply(engine, rows)); },
+  // Feature texts saved by a version before the line-break fix are out of order; MPMB rewrites them when the classes
+  // are removed and added back (applying the same classes again changes nothing)
+  rebuildClassText() {
+    return actionOp(() => {
+      const o = MPMBClasses.options(engine);
+      const rows = o.rows.filter((r) => r.cls).map((r) => ({ cls: r.cls, sub: r.sub, level: r.level }));
+      if (!rows.length) return { alerts: [], errors: [] };
+      const a = MPMBClasses.apply(engine, []);
+      const b = MPMBClasses.apply(engine, rows);
+      return { alerts: a.alerts.concat(b.alerts), errors: a.errors.concat(b.errors) };
+    });
+  },
   abilityOptions() { return MPMBAbilities.options(engine); },
   abilityPreview({ scores }) { return MPMBAbilities.preview(engine, scores); },
   applyAbilities({ scores }) { return actionOp(() => MPMBAbilities.apply(engine, scores)); },

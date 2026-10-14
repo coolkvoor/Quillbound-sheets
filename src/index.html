@@ -522,6 +522,11 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
         </div>
         <div class="card span-2">
           <h3>Class features <button class="btn sm" type="button" data-mpmb="Class Features Menu" data-title="Choose feature" hidden>Choose feature</button></h3>
+          <div class="result err" id="cf-stale" hidden>
+            <div>These feature texts were saved by an older version of the app and are out of order: the descriptions are all under the last feature.</div>
+            <div class="hint">Rebuilding removes your classes and adds them back, so MPMB writes the texts again. Choices made with "Choose feature" may need picking again.</div>
+            <div><button class="btn sm" id="cf-rebuild" type="button">Rebuild feature texts</button></div>
+          </div>
           <div class="features" data-rich="Class Features" data-features="class" data-empty="Choose a class to fill this in."></div>
         </div>
         <div class="card">
