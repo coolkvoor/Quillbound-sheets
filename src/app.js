@@ -373,11 +373,12 @@
   // feature (its description on the next lines); "##◆ Name##. text" is a species trait with its text on the same line.
   const openFeatures = new Set();   // which ones the user unfolded, kept while the app is open
   function inlineMarkup(text, into) {
-    // *italic* and **bold**; stray # (MPMB's colour marker) dropped
-    const parts = String(text).replace(/#/g, '').split(/(\*\*[^*]+\*\*|\*[^*]+\*)/);
+    // *italic*, **bold** and ***bold italic***; stray # (MPMB's colour marker) dropped
+    const parts = String(text).replace(/#/g, '').split(/(\*\*\*[^*]+\*\*\*|\*\*[^*]+\*\*|\*[^*]+\*)/);
     for (const p of parts) {
       if (!p) continue;
-      if (/^\*\*.+\*\*$/.test(p)) into.append(el('strong', { text: p.slice(2, -2) }));
+      if (/^\*\*\*.+\*\*\*$/.test(p)) into.append(el('strong', {}, [el('em', { text: p.slice(3, -3) })]));
+      else if (/^\*\*.+\*\*$/.test(p)) into.append(el('strong', { text: p.slice(2, -2) }));
       else if (/^\*.+\*$/.test(p)) into.append(el('em', { text: p.slice(1, -1) }));
       else into.append(document.createTextNode(p));
     }
@@ -960,7 +961,7 @@
     const rows = (s && s.rows) || [];
     $('#spell-actions').hidden = !(s && s.pages);
     $('#spell-count').textContent = rows.length ? rows.length + (rows.length === 1 ? ' spell' : ' spells') : 'None yet';
-    if (!rows.length) { box.append(el('p', { cls: 'note', text: s && s.pages ? 'The spell list is empty.' : 'Choose spells, then make the spell list. MPMB fills in each spell’s details.' })); return; }
+    if (!rows.length) { box.append(el('p', { cls: 'note', text: s && s.pages ? 'The spell list is empty.' : 'Tap Choose spells: the spells you prepare (and your cantrips) show here, with MPMB’s details.' })); return; }
     const heads = s.casters;
     const casterOrder = [];
     for (const r of rows) if (casterOrder.indexOf(r.caster) === -1) casterOrder.push(r.caster);
@@ -1003,119 +1004,155 @@
     const dl = el('dl', { cls: 'kv' });
     for (const [k, v] of [['Casting time', d.time], ['Range', d.range], ['Components', d.components + (d.compMaterial ? ' (' + d.compMaterial + ')' : '')], ['Duration', d.duration], ['Save', d.save], ['Source', d.source]]) if (v) dl.append(el('dt', { text: k }), el('dd', { text: v }));
     body.append(dl);
-    for (const p of String(d.text).replace(/\r\n?/g, '\n').split(/\n+/)) if (p.trim()) body.append(el('p', { cls: 'notice-msg', text: p.trim() }));
+    for (const p of String(d.text).replace(/\r\n?/g, '\n').split(/\n+/)) if (p.trim()) { const pe = el('p', { cls: 'notice-msg' }); inlineMarkup(p.trim(), pe); body.append(pe); }
   }
 
-  // the spell picker: one caster at a time, a tab per part (cantrips, spellbook or spells known, prepared)
-  const picker = { caster: null, part: null, picks: null };
+  // Choosing spells: the class spell list in one place (cantrips, then each level up to the highest the character can
+  // cast), with a switch per spell: Known for cantrips; Book and Prepared for a spellbook caster; Prepared for a caster
+  // that prepares from the whole list; Known for a known-spells caster. Saving makes the spell list right away, with
+  // MPMB's "Prepared spells only" for casters that prepare, so the Spells tab shows what can be cast today.
+  const picker = { caster: null, picks: null, mine: false, open: new Set() };
+  const spellText = new Map();   // key -> full text from MPMB, fetched when a spell is unfolded
+  function casterKind(c) { return c.spells && c.spells.book ? 'book' : c.prepared ? 'list' : c.spells ? 'known' : 'none'; }
   function openPicker(key) {
     const o = state.spellOpts;
     picker.picks = {};
-    for (const c of o.casters) picker.picks[c.key] = { cantrips: new Set(c.cantrips ? c.cantrips.chosen : []), spells: new Set(c.spells ? c.spells.chosen : []), prepared: new Set(c.prepared ? c.prepared.chosen : []), show: c.show ? c.show.value : undefined };
+    for (const c of o.casters) picker.picks[c.key] = { cantrips: new Set(c.cantrips ? c.cantrips.chosen : []), spells: new Set(c.spells ? c.spells.chosen : []), prepared: new Set(c.prepared ? c.prepared.chosen : []) };
     picker.caster = o.casters.filter((c) => c.key === key)[0];
-    const c = picker.caster;
-    picker.part = c.cantrips ? 'cantrips' : c.spells ? 'spells' : 'prepared';
-    if (!pickerParts(c).length) picker.part = 'none';
-    $('#picker-title').textContent = (c.name || c.key) + ': choose spells';
+    picker.mine = false; picker.open.clear();
+    $('#picker-title').textContent = (picker.caster.name || picker.caster.key) + ': spells';
     $('#picker-search').value = '';
     renderPicker();
     $('#picker').showModal();
   }
-  function pickerParts(c) {
-    const parts = [];
-    if (c.cantrips) parts.push(['cantrips', 'Cantrips']);
-    if (c.spells) parts.push(['spells', c.spells.book ? 'Spellbook' : 'Spells known']);
-    // MPMB only uses these picks for "Prepared spells only"; the other lists get a prepared box per spell
-    if (c.prepared && (c.prepared.count || c.prepared.fromBook) && Number(picker.picks[c.key].show) === 3) parts.push(['prepared', 'Prepared']);
-    return parts;
-  }
-  function pickerItems(c, part) {
+  // the spells offered for each level: a spellbook or known-spells caster picks from MPMB's class list; a caster that
+  // prepares from the whole list picks from MPMB's prepare list. Both stop at the highest level it can cast.
+  function pickerRows(c) {
     const info = state.spellOpts.spells;
     const lvl = (k) => (info[k] ? info[k].level : 0);
-    if (part === 'none') return { list: [], limit: 0 };
-    if (part === 'cantrips') return { list: c.cantrips.list, limit: c.cantrips.count };
-    if (part === 'spells') return { list: c.spells.list, limit: c.spells.book ? 0 : c.spells.count };
-    // prepared: a spellbook caster prepares from the spellbook (up to the highest level it can cast)
-    const p = picker.picks[c.key];
-    const list = c.prepared.fromBook
-      ? Array.from(p.spells).filter((k) => lvl(k) >= 1 && (!c.maxLevel || lvl(k) <= c.maxLevel)).sort((a, b) => lvl(a) - lvl(b) || a.localeCompare(b)).map((k) => ({ key: k, name: info[k] ? info[k].name : k }))
-      : c.prepared.list;
-    return { list, limit: c.prepared.count };
+    const max = c.maxLevel || 9;
+    const rows = [];
+    // MPMB marks rituals with " (R)" in its lists; the grey line under the name already says "ritual"
+    const clean = (n) => String(n).replace(/\s*\(R\)\s*$/, '');
+    if (c.cantrips) for (const s of c.cantrips.list) rows.push({ key: s.key, name: clean(s.name), level: 0 });
+    const src = c.spells ? c.spells.list : c.prepared && !c.prepared.fromBook ? c.prepared.list : [];
+    const seen = new Set();
+    for (const s of src) if (lvl(s.key) >= 1 && lvl(s.key) <= max && !seen.has(s.key)) { seen.add(s.key); rows.push({ key: s.key, name: clean(s.name), level: lvl(s.key) }); }
+    rows.sort((a, b) => a.level - b.level || a.name.localeCompare(b.name));
+    return rows;
+  }
+  function pickerLimits(c) {
+    const p = picker.picks[c.key], kind = casterKind(c);
+    const out = [];
+    if (c.cantrips) out.push({ id: 'cantrips', label: 'Cantrips', n: p.cantrips.size, max: c.cantrips.count });
+    if (kind === 'book') out.push({ id: 'spells', label: 'Spellbook', n: p.spells.size, max: 0 });
+    if (kind === 'known') out.push({ id: 'spells', label: 'Spells known', n: p.spells.size, max: c.spells.count });
+    if (c.prepared && (c.prepared.count || kind === 'book')) out.push({ id: 'prepared', label: 'Prepared', n: p.prepared.size, max: c.prepared.count });
+    return out;
   }
   function renderPicker() {
-    const c = picker.caster, p = picker.picks[c.key];
-    const parts = pickerParts(c);
-    if (parts.length && !parts.some((x) => x[0] === picker.part)) picker.part = parts[0][0];
-    if (!parts.length) picker.part = 'none';
-    const tabs = $('#picker-tabs');
-    tabs.textContent = '';
-    tabs.hidden = !parts.length;
-    for (const [id, label] of parts) {
-      const set = p[id];
-      const t = el('button', { type: 'button', role: 'tab', 'aria-selected': id === picker.part ? 'true' : 'false', text: label + ' (' + set.size + ')' });
-      t.addEventListener('click', () => { picker.part = id; renderPicker(); });
-      tabs.append(t);
-    }
-    const { list, limit } = pickerItems(c, picker.part);
-    const set = p[picker.part] || new Set();
+    const c = picker.caster, p = picker.picks[c.key], kind = casterKind(c);
+    const limits = pickerLimits(c);
+    const lim = {};
+    for (const l of limits) lim[l.id] = l;
+    const counts = $('#picker-counts');
+    counts.textContent = '';
+    for (const l of limits) counts.append(el('span', { cls: 'chip' + (l.max && l.n === l.max ? ' full' : l.max && l.n > l.max ? ' over' : ''), text: l.label + ' ' + l.n + (l.max ? '/' + l.max : '') }));
+    counts.hidden = !limits.length;
+    $('#picker-all').setAttribute('aria-pressed', picker.mine ? 'false' : 'true');
+    $('#picker-mine').setAttribute('aria-pressed', picker.mine ? 'true' : 'false');
+    const notes = { book: 'Add spells to your spellbook, then prepare the ones you want today.', list: 'Prepare the spells you want today from your class list.', known: 'Choose the spells you know.', none: 'There is nothing to choose here: MPMB adds these spells itself.' };
+    $('#picker-note').textContent = notes[kind] + (c.maxLevel ? ' You can cast spells up to ' + LEVEL_NAMES[c.maxLevel].toLowerCase() + '.' : '');
     const q = $('#picker-search').value.trim().toLowerCase();
     const info = state.spellOpts.spells;
-    $('#picker-count').textContent = limit ? set.size + ' of ' + limit : set.size + ' chosen';
-    $('#picker-note').textContent = picker.part === 'none' ? 'There is nothing to choose here: MPMB adds these spells itself.' : picker.part === 'prepared' && c.prepared.fromBook && !list.length ? 'Add spells to the spellbook first; you prepare spells from it.'
-      : limit ? 'Choose up to ' + limit + '.' : picker.part === 'spells' && c.spells.book ? 'Add every spell in your spellbook.' : '';
     const ul = $('#picker-list');
+    const keep = ul.scrollTop;
     ul.textContent = '';
     let level = null;
-    const full = limit && set.size >= limit;
-    for (const s of list) {
-      const d = info[s.key] || {};
-      if (q && s.name.toLowerCase().indexOf(q) === -1) continue;
-      if (picker.part !== 'cantrips' && d.level !== level) { level = d.level; ul.append(el('li', { cls: 'lv', text: LEVEL_NAMES[level] || 'Other' })); }
-      const cb = el('input', { type: 'checkbox', 'data-key': s.key });
-      cb.checked = set.has(s.key);
-      cb.disabled = !cb.checked && full;
-      const label = el('label', { cls: cb.disabled ? 'off' : '' }, [cb, el('span', { text: s.name }), el('span', { cls: 'meta', text: [d.school, d.time, d.range, d.source].filter(Boolean).join(' · ') })]);
-      ul.append(el('li', {}, [label]));
-    }
-    if (!ul.children.length && picker.part !== 'none') ul.append(el('li', { cls: 'note', text: q ? 'No spells match “' + q + '”.' : 'Nothing to choose here.' }));
-    $('#picker-search').parentElement.hidden = picker.part === 'none';
-    // what the spell list shows (MPMB's radio buttons)
-    const show = $('#picker-show');
-    show.hidden = !c.show || picker.part === 'cantrips';
-    if (c.show) {
-      const box = $('#picker-show-opts');
-      box.textContent = '';
-      for (const ch of c.show.choices) {
-        const r = el('input', { type: 'radio', name: 'picker-show', value: String(ch.value) });
-        r.checked = Number(p.show) === ch.value;
-        r.addEventListener('change', () => { p.show = ch.value; if (picker.part === 'prepared' && ch.value !== 3) picker.part = 'spells'; renderPicker(); });
-        box.append(el('label', {}, [r, el('span', { text: ch.name })]));
+    const full = (id) => lim[id] && lim[id].max && lim[id].n >= lim[id].max;
+    for (const r of pickerRows(c)) {
+      const isCantrip = r.level === 0;
+      const mine = isCantrip ? p.cantrips.has(r.key) : p.spells.has(r.key) || p.prepared.has(r.key);
+      if (picker.mine && !mine) continue;
+      if (q && r.name.toLowerCase().indexOf(q) === -1) continue;
+      if (r.level !== level) { level = r.level; ul.append(el('li', { cls: 'lv', text: LEVEL_NAMES[level] })); }
+      // the switches for this caster
+      const pills = [];
+      const pill = (part, label, on, disabled) => { const b = el('button', { cls: 'pill', type: 'button', 'aria-pressed': on ? 'true' : 'false', 'data-part': part, 'data-key': r.key, text: label, 'aria-label': label + ': ' + r.name }); b.disabled = !!disabled; pills.push(b); };
+      if (isCantrip) pill('cantrips', 'Known', p.cantrips.has(r.key), !p.cantrips.has(r.key) && full('cantrips'));
+      else if (kind === 'book') { pill('spells', 'Book', p.spells.has(r.key), false); pill('prepared', 'Prepared', p.prepared.has(r.key), !p.spells.has(r.key) || (!p.prepared.has(r.key) && full('prepared'))); }
+      else if (kind === 'list') pill('prepared', 'Prepared', p.prepared.has(r.key), !p.prepared.has(r.key) && full('prepared'));
+      else if (kind === 'known') pill('spells', 'Known', p.spells.has(r.key), !p.spells.has(r.key) && full('spells'));
+      const d = info[r.key] || {};
+      const open = picker.open.has(r.key);
+      const li = el('li', { cls: 'pk' + (open ? ' open' : '') }, [
+        el('div', { cls: 'pk-main' }, [
+          el('button', { cls: 'pk-name', type: 'button', 'data-open': r.key, 'aria-expanded': open ? 'true' : 'false', text: r.name }),
+          el('div', { cls: 'meta', text: [d.school, d.time, d.range, d.ritual ? 'ritual' : '', d.source].filter(Boolean).join(' · ') }),
+        ]),
+        el('div', { cls: 'pk-toggles' }, pills),
+      ]);
+      if (open) {
+        const box = el('div', { cls: 'pk-text' });
+        const t = spellText.get(r.key);
+        if (t) { const dl = [t.components, t.duration].filter(Boolean).join(' · '); if (dl) box.append(el('div', { cls: 'hint', text: dl })); for (const para of String(t.text).replace(/\r\n?/g, '\n').split(/\n+/)) if (para.trim()) { const pe = el('p'); inlineMarkup(para.trim(), pe); box.append(pe); } }
+        else box.append(el('p', { cls: 'muted', text: d.description || 'Loading…' }));
+        li.append(box);
       }
+      ul.append(li);
+    }
+    if (!ul.children.length && kind !== 'none') ul.append(el('li', { cls: 'note', text: q ? 'No spells match “' + q + '”.' : picker.mine ? 'Nothing chosen yet. Switch to All to pick spells.' : 'Nothing to choose here.' }));
+    $('#picker-search').parentElement.hidden = kind === 'none';
+    ul.scrollTop = keep;
+  }
+  async function unfoldSpell(key) {
+    if (picker.open.has(key)) picker.open.delete(key); else picker.open.add(key);
+    renderPicker();
+    if (picker.open.has(key) && !spellText.has(key)) {
+      try { const t = await state.worker.call('spellDetails', { key }); if (t) spellText.set(key, t); } catch (e) { /* the short description stays */ }
+      renderPicker();
     }
   }
   function wireSpells() {
-    $('#picker-list').addEventListener('change', (e) => {
-      const cb = e.target.closest('[data-key]');
-      if (!cb) return;
-      const p = picker.picks[picker.caster.key], set = p[picker.part];
-      if (cb.checked) set.add(cb.dataset.key); else { set.delete(cb.dataset.key); if (picker.part === 'spells') p.prepared.delete(cb.dataset.key); }
-      const keep = $('#picker-list').scrollTop;
+    $('#picker-list').addEventListener('click', (e) => {
+      const o = e.target.closest('[data-open]');
+      if (o) { unfoldSpell(o.dataset.open); return; }
+      const b = e.target.closest('[data-part]');
+      if (!b || b.disabled) return;
+      const p = picker.picks[picker.caster.key], set = p[b.dataset.part], key = b.dataset.key;
+      if (set.has(key)) { set.delete(key); if (b.dataset.part === 'spells') p.prepared.delete(key); }   // out of the book: not prepared either
+      else set.add(key);
       renderPicker();
-      $('#picker-list').scrollTop = keep;
     });
     $('#picker-search').addEventListener('input', () => renderPicker());
+    $('#picker-all').addEventListener('click', () => { picker.mine = false; renderPicker(); });
+    $('#picker-mine').addEventListener('click', () => { picker.mine = true; renderPicker(); });
     $('#picker-close').addEventListener('click', () => $('#picker').close());
     $('#picker-save').addEventListener('click', async () => {
-      const picks = {};
-      for (const k in picker.picks) { const p = picker.picks[k]; picks[k] = { cantrips: Array.from(p.cantrips), spells: Array.from(p.spells), prepared: Array.from(p.prepared), show: p.show }; }
       $('#picker').close();
-      await makeSpellList(picks);
+      await makeSpellList(currentPicks());
     });
-    $('#spells-update').addEventListener('click', () => makeSpellList(null));
+    $('#spells-update').addEventListener('click', () => makeSpellList(showPrepared({})));
     $('#spells-remove').addEventListener('click', async () => {
       const res = await send('removeSpells', {});
       if (res) { state.sheet = res.sheet; renderSpellList(); toast('Spell list removed.'); }
     });
+  }
+  // the picks for every caster as MPMB's spell dialogs keep them
+  function currentPicks() {
+    const picks = {};
+    for (const k in picker.picks) { const p = picker.picks[k]; picks[k] = { cantrips: Array.from(p.cantrips), spells: Array.from(p.spells), prepared: Array.from(p.prepared) }; }
+    return showPrepared(picks);
+  }
+  // casters that prepare get MPMB's "Prepared spells only" (3), so the list shows what can be cast today;
+  // known-spells casters show all their spells (2)
+  function showPrepared(picks) {
+    for (const c of (state.spellOpts && state.spellOpts.casters) || []) {
+      if (!c.show) continue;
+      picks[c.key] = picks[c.key] || {};
+      picks[c.key].show = c.prepared && c.show.choices.some((x) => x.value === 3) ? 3 : 2;
+    }
+    return picks;
   }
   async function makeSpellList(picks) {
     const res = await send('chooseSpells', { picks: picks || {} });

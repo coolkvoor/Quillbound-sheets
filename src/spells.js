@@ -23,6 +23,8 @@
   // Run MPMB's spell dialogs once without changing anything; returns what each dialog offered
   function probe(engine, forcePrepared) {
     const seq = engine.logSeq;
+    // a whole-list caster never has a spellbook; an empty one left by an earlier app version empties its prepare list
+    engine.evalExpr('for (var k in CurrentSpells) if (CurrentSpells[k].typeSp === "list") { delete CurrentSpells[k].selectSp; delete CurrentSpells[k].selectSpSB; }');
     const saved = forcePrepared ? json(engine, 'Object.keys(CurrentSpells).map(function (k) { return [k, CurrentSpells[k].typeList]; })') : null;
     if (forcePrepared) engine.evalExpr('for (var k in CurrentSpells) if (CurrentSpells[k].known && CurrentSpells[k].known.prepared) CurrentSpells[k].typeList = 3;');
     engine.clearQueues();
@@ -77,7 +79,10 @@
   // picks: { caster: { cantrips: [keys], spells: [keys], prepared: [keys], show: 1-4 } }
   function choose(engine, picks) {
     const seq = engine.logSeq;
+    // A caster that prepares from its whole class list (typeSp "list") has no spellbook or spells known: MPMB takes any
+    // selectSp, even an empty one, as a spellbook to prepare from, and the prepared list comes out empty.
     engine.evalExpr('(function (p) { for (var k in p) { var c = CurrentSpells[k]; if (!c) continue; var q = p[k];' +
+      ' if (c.typeSp === "list") { delete q.spells; delete c.selectSp; delete c.selectSpSB; }' +
       ' if (q.cantrips) c.selectCa = q.cantrips.slice(0, 20); if (q.spells) { c.selectSp = OrderSpells(q.spells, "single").slice(0, 20); if (q.spells.length > 20) c.selectSpSB = OrderSpells(q.spells, "single").slice(20); else delete c.selectSpSB; }' +
       ' if (q.prepared) c.selectPrep = OrderSpells(q.prepared, "single"); if (q.show) c.typeList = q.show; } SetStringifieds("spells"); })(' + JSON.stringify(picks || {}) + ')');
     engine.clearQueues();

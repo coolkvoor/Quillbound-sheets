@@ -242,6 +242,25 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .picker-tabs button[aria-selected="true"] { color: var(--accent); border-color: var(--accent); }
 .picker-tools { display: flex; gap: 8px; align-items: center; }
 .picker-tools .in { flex: 1; }
+.picker-counts { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px; border-bottom: 1px solid var(--line); }
+.picker-counts .chip.full { color: var(--good); border-color: currentColor; }
+.picker-counts .chip.over { color: var(--bad); border-color: currentColor; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; flex: none; }
+.seg button { border: 0; background: none; padding: 0 14px; min-height: 44px; cursor: pointer; color: var(--muted); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.pk { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.pk .pk-name { border: 0; background: none; padding: 4px 0; text-align: left; font-weight: 700; cursor: pointer; color: var(--ink); min-height: 36px; }
+.pk .pk-name::after { content: " ›"; color: var(--muted); font-weight: 400; }
+.pk.open .pk-name::after { content: " ⌄"; }
+.pk .pk-main { min-width: 0; display: grid; }
+.pk .pk-name { justify-self: start; }
+.pk .pk-main .meta { grid-column: auto; font-size: 0.82rem; color: var(--muted); }
+.pk .pk-toggles { display: flex; gap: 6px; }
+.pk .pill { min-height: 40px; min-width: 4.6rem; padding: 0 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-size: 0.88rem; color: var(--muted); }
+.pk .pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; }
+.pk .pill[disabled] { opacity: 0.4; cursor: default; }
+.pk .pk-text { grid-column: 1 / -1; font-size: 0.92rem; display: grid; gap: 6px; padding: 4px 0 8px; }
+.pk .pk-text p { margin: 0; }
 .pick-list { list-style: none; margin: 0; padding: 0; }
 .pick-list li.lv { font-family: var(--font-display); font-weight: 700; color: var(--accent); padding: 10px 0 2px; }
 .pick-list label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 12px; align-items: center; min-height: 48px; padding: 4px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
@@ -498,8 +517,8 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <div id="slots"></div>
         </div>
         <div class="card span-2" id="spell-list-card">
-          <h3>Spell list <span class="chip" id="spell-count">None yet</span></h3>
-          <div id="spell-list"><p class="note">Choose spells, then make the spell list. MPMB fills in each spell's details.</p></div>
+          <h3>Your spells <span class="chip" id="spell-count">None yet</span></h3>
+          <div id="spell-list"><p class="note">Tap Choose spells: the spells you prepare (and your cantrips) show here, with MPMB's details.</p></div>
           <div class="row" id="spell-actions" hidden>
             <button class="btn" id="spells-update" type="button">Update spell list</button>
             <button class="btn" id="spells-remove" type="button">Remove spell list</button>
@@ -701,17 +720,19 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
     <h3 id="picker-title">Choose spells</h3>
     <button class="btn sm" id="picker-close" type="button">Cancel</button>
   </div>
-  <div class="picker-tabs" id="picker-tabs" role="tablist"></div>
+  <div class="picker-counts" id="picker-counts"></div>
   <div class="panel-body">
     <div class="picker-tools">
-      <input class="in" type="search" id="picker-search" placeholder="Search" autocomplete="off" aria-label="Search spells">
-      <span class="chip" id="picker-count"></span>
+      <input class="in" type="search" id="picker-search" placeholder="Search spells" autocomplete="off" aria-label="Search spells">
+      <div class="seg" role="group" aria-label="Show">
+        <button type="button" id="picker-all" aria-pressed="true">All</button>
+        <button type="button" id="picker-mine" aria-pressed="false">Mine</button>
+      </div>
     </div>
     <p class="hint" id="picker-note"></p>
     <ul class="pick-list" id="picker-list"></ul>
-    <fieldset class="picker-show" id="picker-show" hidden><legend>The spell list shows</legend><div id="picker-show-opts"></div></fieldset>
   </div>
-  <div class="panel-foot"><button class="btn primary" id="picker-save" type="button">Make spell list</button></div>
+  <div class="panel-foot"><button class="btn primary" id="picker-save" type="button">Save</button></div>
 </dialog>
 
 <!-- MPMB's Class Selection dialog, on the app's own screen -->

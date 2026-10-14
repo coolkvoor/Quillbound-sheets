@@ -57,6 +57,24 @@ const d = spells.details(e, 'magic missile');
 check('details: full description', d && d.text.length > 80, d && d.text.slice(0, 90));
 [r] = time(() => spells.remove(e));
 check('remove: spell sheet gone', r.sheet.pages === 0 && r.sheet.rows.length === 0, r.alerts.map((a) => a.title).join(', '));
+// a caster that prepares from its whole class list (Cleric): the prepared picks make a prepared-only list,
+// even when the app sends an empty spellbook along
+{
+  const ctx2 = vm.createContext({ __modelJSON: fs.readFileSync(path.join(__dirname, 'model.json'), 'utf8') });
+  const ev2 = (code, name) => vm.runInContext(code, ctx2, { filename: name || 'eval' });
+  ev2(fs.readFileSync(path.join(SRC, 'engine.js'), 'utf8'), 'engine.js');
+  ctx2.__host = { global: ctx2, evalGlobal: ev2 };
+  const c = ev2('MPMBEngine.createEngine(JSON.parse(__modelJSON), __host, { fileName: "sheet.pdf" })');
+  c.start();
+  c.commit('Wis', '16'); c.commit('Class and Levels', 'Cleric 3');
+  const co = spells.options(c).casters.filter((x) => x.key === 'cleric')[0];
+  check('Cleric: prepares from the class list', co && !co.spells && co.prepared && co.prepared.count === 6 && co.prepared.list.length > 10, co && JSON.stringify({ spells: co.spells, prepared: co.prepared && co.prepared.count }));
+  const prep = ['bless', 'cure wounds', 'healing word', 'shield of faith', 'aid', 'spiritual weapon'];
+  const cr = spells.choose(c, { cleric: { cantrips: ['guidance', 'sacred flame', 'spare the dying'], spells: [], prepared: prep, show: 3 } });
+  const ck = cr.sheet.rows.map((x) => x.key);
+  check('Cleric: prepared spells on the list', prep.every((k) => ck.indexOf(k) !== -1) && ck.length === 9, ck.join(', '));
+  check('Cleric: no script errors', c.log.errors.length === 0, c.log.errors.map((x) => x.where + ': ' + x.msg).join(' | '));
+}
 check('no script errors', e.log.errors.length === 0, e.log.errors.map((x) => x.where + ': ' + x.msg + ' ' + x.at).join(' | '));
 console.log(failed ? failed + ' FAILED' : 'all passed');
 process.exitCode = failed ? 1 : 0;
