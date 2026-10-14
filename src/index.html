@@ -213,11 +213,12 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .menu-list li.sep { border-top: 1px solid var(--line); margin: 4px 16px; }
 .menu-list button { width: 100%; display: grid; grid-template-columns: 1.4rem minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; text-align: left; min-height: 48px; padding: 8px 16px; border: 0; background: none; cursor: pointer; }
 .menu-list button:active { background: var(--accent-soft); }
-.menu-list button[disabled] { color: var(--muted); cursor: default; }
+.menu-list button[disabled] { color: var(--muted); opacity: 0.5; cursor: default; }
 .menu-list .mk { color: var(--accent); font-weight: 700; }
 .menu-list .sub { grid-column: 2; font-size: 0.82rem; color: var(--muted); }
 .menu-list .go { color: var(--muted); }
 .menu-list li.label { padding: 8px 16px 2px; font-size: 0.85rem; color: var(--muted); }
+.menu-list li.note { margin: 4px 16px 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); }
 .notice-msg { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tabbar-h) + 14px + env(safe-area-inset-bottom, 0px)); z-index: 8; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 10px 16px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgb(0 0 0 / 0.25); }
 

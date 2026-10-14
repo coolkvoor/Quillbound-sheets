@@ -880,6 +880,15 @@
           b.addEventListener('click', () => { if (leaf) finish(it.ret); else { stack.push({ items: it.items, title: main }); render(); $('#menu-list').scrollTop = 0; } });
           ul.append(el('li', {}, [b]));
         }
+        // MPMB greys out choices whose requirement isn't met, as in Acrobat; say why, since it looks broken otherwise
+        const greyed = top.items.filter((it) => !it.items && !it.enabled && !it.marked && it.ret && it.ret !== it.name).map((it) => splitName(it.name)[0]);
+        if (greyed.length) {
+          const skillNames = SKILLS.map((s) => s[1]);
+          const skillish = greyed.some((n) => /expertise/i.test(n) || skillNames.indexOf(n) !== -1);
+          ul.prepend(el('li', { cls: 'note', text: skillish
+            ? 'Greyed-out choices need proficiency in that skill first (or you already have expertise in it). Tick the skill’s proficiency dot under Skills on the Main tab, then choose again.'
+            : 'Greyed-out choices don’t meet their requirement yet (MPMB checks things like level, proficiencies or earlier choices).' }));
+        }
       };
       $('#menu-back').onclick = () => { stack.pop(); render(); };
       $('#menu-close').onclick = () => finish(null);
