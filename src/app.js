@@ -14,6 +14,9 @@
   const ABILITIES = [['Str', 'Strength'], ['Dex', 'Dexterity'], ['Con', 'Constitution'], ['Int', 'Intelligence'], ['Wis', 'Wisdom'], ['Cha', 'Charisma']];
   const SKILLS = [['Acr', 'Acrobatics', 'Dex'], ['Ani', 'Animal Handling', 'Wis'], ['Arc', 'Arcana', 'Int'], ['Ath', 'Athletics', 'Str'], ['Dec', 'Deception', 'Cha'], ['His', 'History', 'Int'], ['Ins', 'Insight', 'Wis'], ['Inti', 'Intimidation', 'Cha'], ['Inv', 'Investigation', 'Int'], ['Med', 'Medicine', 'Wis'], ['Nat', 'Nature', 'Int'], ['Perc', 'Perception', 'Wis'], ['Perf', 'Performance', 'Cha'], ['Pers', 'Persuasion', 'Cha'], ['Rel', 'Religion', 'Int'], ['Sle', 'Sleight of Hand', 'Dex'], ['Ste', 'Stealth', 'Dex'], ['Sur', 'Survival', 'Wis']];
   const ATTACKS = 6, LIMITED = 8, FEATS = 5, HITDICE = 3;
+  // suggestions for the language lines (the 2024 standard and rare languages); MPMB has no list of them
+  const LANGUAGES = ['Common', 'Common Sign Language', 'Draconic', 'Dwarvish', 'Elvish', 'Giant', 'Gnomish', 'Goblin', 'Halfling', 'Orc',
+    'Abyssal', 'Celestial', 'Deep Speech', 'Druidic', 'Infernal', 'Primordial', 'Sylvan', 'Thieves’ Cant', 'Undercommon'];
   const APP_BUILD = 'development build';   // tools/build-single.js puts the version and build time here
   const ACTIONS = [['Action', 16, 'Action'], ['Bonus Action', 6, 'Bonus action'], ['Reaction', 6, 'Reaction']];
 
@@ -268,6 +271,15 @@
     a.textContent = ''; w.textContent = '';
     a.append(tg('Proficiency Armor Light', 'Light'), tg('Proficiency Armor Medium', 'Medium'), tg('Proficiency Armor Heavy', 'Heavy'), tg('Proficiency Shields', 'Shields'));
     w.append(tg('Proficiency Weapon Simple', 'Simple'), tg('Proficiency Weapon Martial', 'Martial'));
+    // tools and languages: MPMB's 8 lines each; the filled ones show, plus one empty line to add to (refreshDerived)
+    for (const [id, pre, list, label] of [['#tools', 'Tool ', 'dl-tools', 'Tool'], ['#languages', 'Language ', 'dl-languages', 'Language']]) {
+      const box = $(id);
+      box.textContent = '';
+      box.append(el('datalist', { id: list }));
+      for (let i = 1; i <= 8; i++) box.append(el('input', { cls: 'in', 'data-f': pre + i, id: 'f-' + list.slice(3) + i, list, autocomplete: 'off', 'aria-label': label + ' ' + i, placeholder: 'Add ' + label.toLowerCase() }));
+    }
+    const dl = $('#dl-languages');
+    for (const n of LANGUAGES) dl.append(el('option', { value: n }));
   }
   function buildCoins() {
     const box = $('#coins');
@@ -550,12 +562,14 @@
       let extra = row.querySelector('.of'); if (n > 4) { if (!extra) { extra = el('span', { cls: 'hint of' }); row.append(extra); } extra.textContent = 'of ' + n; } else if (extra) extra.remove();
     }
     const none = $('#slots-none'); if (none) none.hidden = anySlots;
-    // tools and languages
-    for (const [id, pre, empty] of [['#tools', 'Tool ', 'None yet'], ['#languages', 'Language ', 'None yet']]) {
-      const ul = $(id); if (!ul) continue;
-      ul.textContent = '';
-      for (let i = 1; i <= 8; i++) { const t = v(pre + i); if (t) ul.append(el('li', { text: t })); }
-      if (!ul.children.length) ul.append(el('li', { cls: 'none', text: empty }));
+    // tools and languages: show the filled lines and the first empty one (and whichever is being typed in)
+    for (const id of ['#tools', '#languages']) {
+      let shownEmpty = false;
+      for (const n of document.querySelectorAll(id + ' input')) {
+        const empty = !v(n.dataset.f) && !n.value;
+        n.hidden = empty && shownEmpty && document.activeElement !== n;
+        if (empty && !n.hidden) shownEmpty = true;
+      }
     }
     renderLog();
   }
@@ -1468,6 +1482,7 @@
     setTab('main');
     refreshSpells();
     state.worker.call('xpInfo', {}).then((x) => { state.xpTable = x.table; refreshDerived(); }).catch(() => {});
+    state.worker.call('toolNames', {}).then((names) => { const dl = $('#dl-tools'); dl.textContent = ''; for (const n of names) dl.append(el('option', { value: n })); }).catch(() => {});
   }
   wireEvents();
   wireContent();

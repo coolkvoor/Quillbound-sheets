@@ -342,6 +342,7 @@ select.in { appearance: auto; }
 .ap-explain summary { cursor: pointer; color: var(--accent); min-height: 40px; display: flex; align-items: center; }
 
 /* proficiencies, coins */
+.plines { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 6px 8px; margin-top: 4px; }
 .profs { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center; }
 .lbl { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 .toggles { display: flex; flex-wrap: wrap; gap: 0 10px; }
@@ -596,8 +597,9 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
             <span class="lbl">Weapons</span><div class="toggles" id="prof-weapons"></div>
           </div>
           <div class="hint" data-out="Proficiency Weapon Other Description"></div>
-          <div class="stack"><span class="lbl">Tools</span><ul class="tags" id="tools"></ul></div>
-          <div class="stack"><span class="lbl">Languages</span><ul class="tags" id="languages"></ul></div>
+          <div class="stack"><span class="lbl">Tools</span><div class="plines" id="tools"></div></div>
+          <div class="stack"><span class="lbl">Languages</span><div class="plines" id="languages"></div></div>
+          <p class="hint">MPMB fills these in from your species, class, background and feats. Type in the empty box to add one; clear a box to remove it.</p>
         </div>
         <div class="card">
           <h3>Details</h3>

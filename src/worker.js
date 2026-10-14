@@ -97,6 +97,8 @@ const ops = {
   },
   // level by experience points, by MPMB's own table
   xpInfo() { return JSON.parse(engine.evalExpr('JSON.stringify((function () { var lv = Number(What("Character Level")) || 0; var r = getCurrentLevelByXP(lv, What("Total Experience")); return { level: lv, xpLevel: r[0], table: ExperiencePointsList }; })())')); },
+  // suggestions for the tool lines: MPMB's tools (with add-on content)
+  toolNames() { return JSON.parse(engine.evalExpr('JSON.stringify((function () { var r = []; for (var k in ToolsList) { var n = ToolsList[k].name || k; if (r.indexOf(n) === -1) r.push(n); } return r.sort(); })())')); },
   // The character written into the sheet's own PDF (writer.js); the bytes go back to the app to offer as a download
   async savePdf() {
     const t = now();
