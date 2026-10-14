@@ -1315,6 +1315,31 @@
   }
 
   // ---------------------------------------------------------------- go
+  // Cards go into fixed columns, each into the shortest column so far, in reading order. They only move when the
+  // number of columns changes (rotating, resizing), never because a card's content grows or folds.
+  let gridCols = 0;
+  const colCount = () => (window.innerWidth >= 1000 ? 3 : window.innerWidth >= 600 ? 2 : 1);
+  function layoutGrids(force) {
+    const n = colCount();
+    if (n === gridCols && !force) return;
+    gridCols = n;
+    for (const grid of $$('.grid')) {
+      if (!grid._cards) grid._cards = Array.from(grid.children).filter((c) => c.classList.contains('card'));
+      const cols = [];
+      for (let i = 0; i < n; i++) cols.push(el('div', { cls: 'gcol' }));
+      grid.textContent = '';
+      for (const c of cols) grid.append(c);
+      for (const card of grid._cards) {
+        let best = cols[0];
+        for (const c of cols) if (c.offsetHeight < best.offsetHeight) best = c;
+        best.append(card);
+      }
+    }
+  }
+  window.addEventListener('resize', () => layoutGrids(false));
+  for (const q of ['(min-width: 600px)', '(min-width: 1000px)']) { const mq = window.matchMedia && window.matchMedia(q); if (mq && mq.addEventListener) mq.addEventListener('change', () => layoutGrids(false)); }
+  if (window.ResizeObserver) new ResizeObserver(() => layoutGrids(false)).observe(document.documentElement);
+
   async function showSheet() {
     buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildCoins(); buildMagicItems(); buildGear(); buildMods(); buildConditions(); buildAmmo();
     state.spellOpts = null; state.sheet = null;
@@ -1330,6 +1355,7 @@
     $('#paste-box').hidden = true;
     $('#start').hidden = true;
     $('#sheet').hidden = false;
+    layoutGrids(true);   // after the sheet is visible, so the cards have their heights
     window.scrollTo(0, 0);
     setTab('main');
     refreshSpells();
