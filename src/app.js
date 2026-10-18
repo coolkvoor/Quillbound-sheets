@@ -449,6 +449,193 @@
     list('#xgear-list', 'Extra.Gear ', 'Extra.Gear Button ', XGEAR, 'xgear', 'xgear');
   }
 
+  // ---------------------------------------------------------------- companion pages
+  // One set of cards per companion page in the PDF. A page's fields carry its prefix ("P4.AScomp."), from the worker's
+  // pageList. The first page is in the PDF as distributed; MPMB's Companion Options menu adds and removes pages.
+  const COMP_ATTACKS = 3, COMP_GEAR = 24;
+  let compPrefixes = [];
+  const fid = (name) => 'f-' + name.replace(/\W+/g, '-');
+  const cInput = (field, label, attrs) => el('label', { cls: 'f' }, [el('span', { text: label }), el('input', Object.assign({ cls: 'in', 'data-f': field, id: fid(field), autocomplete: 'off' }, attrs || {}))]);
+  // a drop-down whose options are the combo box's own items (value: export value, text: what the sheet shows)
+  const cSelect = (field, label) => el('select', { cls: 'in', 'data-f': field, 'data-opts': field, id: fid(field), 'aria-label': label });
+  const cText = (field, label, rows) => el('label', { cls: 'f', 'data-vis': field, hidden: '' }, [el('span', { text: label }), el('textarea', { cls: 'in', rows: String(rows || 4), 'data-f': field, id: fid(field) })]);
+  function buildCompanion(P, n, total) {
+    const U = P + 'Comp.Use.';
+    const grid = el('div', { cls: 'grid' });
+    const card = (title, kids, attrs) => el('div', Object.assign({ cls: 'card' }, attrs || {}), [typeof title === 'string' ? el('h3', { text: title }) : title].concat(kids));
+    const opts = el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Companion.Options', 'data-title': 'Companion options', 'data-pages': '1' }, [document.createTextNode('Options')]);
+    // the creature: MPMB fills in the whole page from its list
+    grid.append(card(el('h3', {}, [el('span', { 'data-compname': P, text: 'Companion' }), opts]), [
+      cInput(P + 'Comp.Desc.Name', 'Name'),
+      el('label', { cls: 'f' }, [el('span', { text: 'Creature' }), el('input', { cls: 'in', 'data-f': P + 'Comp.Race', id: fid(P + 'Comp.Race'), list: 'dl-' + fid(P + 'race'), autocomplete: 'off', placeholder: 'Pick or type a creature' }), el('datalist', { id: 'dl-' + fid(P + 'race'), 'data-items': P + 'Comp.Race' })]),
+      el('p', { cls: 'hint', text: 'MPMB fills in the page from the creature you pick. Options has familiars (Find Familiar, Pact of the Chain), the sections shown, and adding or removing companion pages.' }),
+      el('div', { cls: 'row' }, [
+        el('label', { cls: 'f' }, [el('span', { text: 'Kind' }), cSelect(P + 'Comp.Type', 'Kind of companion')]),
+        el('label', { cls: 'f' }, [el('span', { text: 'Size' }), cSelect(P + 'Comp.Desc.Size', 'Size')]),
+      ]),
+      el('div', { cls: 'row' }, [
+        el('label', { cls: 'f' }, [el('span', { text: 'Type' }), cSelect(P + 'Comp.Desc.MonsterType', 'Creature type')]),
+        el('label', { cls: 'f' }, [el('span', { text: 'Alignment' }), cSelect(P + 'Comp.Desc.Alignment', 'Alignment')]),
+      ]),
+      el('details', { cls: 'more' }, [el('summary', { text: 'Description' }), el('div', { cls: 'row' }, [
+        cInput(P + 'Comp.Desc.Sex', 'Sex'), cInput(P + 'Comp.Desc.Age', 'Age'), cInput(P + 'Comp.Desc.Height', 'Height'), cInput(P + 'Comp.Desc.Weight', 'Weight'),
+      ])]),
+    ]));
+    // abilities, saves, defense
+    const abis = el('div', { cls: 'abilities' });
+    for (const [k, long] of ABILITIES) {
+      const A = U + 'Ability.' + k + '.';
+      abis.append(el('div', { cls: 'abi' }, [
+        el('span', { cls: 'k', text: k.toUpperCase(), title: long }),
+        el('span', { cls: 'mod num', 'data-out': A + 'Mod', text: '–' }),
+        el('input', { 'data-f': A + 'Score', id: fid(A + 'Score'), inputmode: 'numeric', autocomplete: 'off', 'aria-label': long + ' score', cls: 'num' }),
+        el('div', { cls: 'save' }, [
+          el('button', { cls: 'dot sm', type: 'button', 'data-toggle': A + 'ST.Prof', 'aria-pressed': 'false', 'aria-label': long + ' saving throw proficiency' }),
+          el('span', { text: 'Save ' }), el('b', { cls: 'num', 'data-out': A + 'ST.Mod', text: '–' }),
+        ]),
+      ]));
+    }
+    grid.append(card('Stats', [
+      el('div', { cls: 'stats' }, [
+        el('div', { cls: 'stat big' }, [el('span', { cls: 'k', text: 'Armor Class' }), el('span', { cls: 'v num', 'data-out': U + 'AC', text: '–' })]),
+        el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Initiative' }), el('span', { cls: 'v num', 'data-out': U + 'Combat.Init.Mod', text: '–' })]),
+        el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Proficiency' }), el('span', { cls: 'v num', 'data-out': U + 'Proficiency Bonus', text: '–' })]),
+        el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Passive Perc.' }), el('span', { cls: 'v num', 'data-out': U + 'Skills.Perc.Pass.Mod', text: '–' })]),
+      ]),
+      el('div', { cls: 'row-ad' }, [el('span', { cls: 'muted', text: 'Initiative rolls' }), el('span', { cls: 'ad' }, [
+        el('button', { type: 'button', 'data-toggle': U + 'Initiative.Adv', 'aria-pressed': 'false', 'aria-label': 'Initiative: advantage', title: 'Advantage', text: 'A' }),
+        el('button', { type: 'button', 'data-toggle': U + 'Initiative.Dis', 'aria-pressed': 'false', 'aria-label': 'Initiative: disadvantage', title: 'Disadvantage', text: 'D' }),
+      ])]),
+      el('div', { cls: 'row' }, [cInput(U + 'AC', 'Armor Class'), cInput(U + 'Speed', 'Speed')]),
+      cInput(U + 'Senses', 'Senses'),
+      abis,
+    ]));
+    // hit points: current, max (MPMB's Set menu), temporary, hit dice, death saves; Long rest is MPMB's heal button
+    const dots = (kind, label) => el('div', { cls: 'grp' }, [el('span', { cls: 'lbl', text: label })].concat([1, 2, 3].map((i) =>
+      el('button', { cls: 'dot sm', type: 'button', 'data-toggle': U + 'DeathSave.' + kind + '.' + i, 'aria-pressed': 'false', 'aria-label': 'Death save ' + label.toLowerCase().replace(/s$/, '') + ' ' + i }))));
+    grid.append(card(el('h3', {}, [el('span', { text: 'Hit points' }), el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Comp.Heal', 'data-title': 'Long rest', 'data-done': 'Long rest: hit points and death saves reset, half the hit dice back.' }, [document.createTextNode('Long rest')])]), [
+      el('div', { cls: 'hp' }, [
+        el('button', { cls: 'btn', type: 'button', 'data-step': U + 'HP.Current', 'data-by': '-1', 'aria-label': 'Lose 1 hit point', text: '−' }),
+        el('input', { cls: 'in num', 'data-f': U + 'HP.Current', id: fid(U + 'HP.Current'), inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Current hit points' }),
+        el('button', { cls: 'btn', type: 'button', 'data-step': U + 'HP.Current', 'data-by': '1', 'aria-label': 'Gain 1 hit point', text: '+' }),
+      ]),
+      el('div', { cls: 'row' }, [
+        el('div', { cls: 'f' }, [el('span', { cls: 'flabel' }, [document.createTextNode('Max '), el('button', { cls: 'linkish', type: 'button', 'data-mpmb': P + 'Buttons.Comp.Use.HP.Max', 'data-title': 'Max HP', text: 'Set' })]),
+          el('input', { cls: 'in num', 'data-f': U + 'HP.Max', id: fid(U + 'HP.Max'), inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Max hit points' })]),
+        cInput(U + 'HP.Temp', 'Temporary', { inputmode: 'numeric', cls: 'in num' }),
+      ]),
+      el('div', { cls: 'row three' }, [
+        cInput(U + 'HD.Level', 'Hit dice', { inputmode: 'numeric', cls: 'in num' }),
+        cInput(U + 'HD.Die', 'Die', { inputmode: 'numeric', cls: 'in num' }),
+        cInput(U + 'HD.Used', 'Used', { inputmode: 'numeric', cls: 'in num' }),
+      ]),
+      el('p', { cls: 'hint' }, [document.createTextNode('Constitution adds '), el('b', { cls: 'num', 'data-out': U + 'HD.Con' }), document.createTextNode(' per hit die.')]),
+      el('div', { cls: 'deaths' }, [dots('Success', 'Successes'), dots('Fail', 'Failures')]),
+    ]));
+    // skills: MPMB's skill name button cycles not proficient → proficient → expertise
+    const skills = el('div', { cls: 'skills two' });
+    for (const [f, name, abi] of SKILLS) {
+      skills.append(el('div', { cls: 'skill' }, [
+        el('button', { cls: 'dot sm', type: 'button', 'data-mpmb': P + 'Text.Comp.Use.Skills.' + f + '.Name', 'data-prof': P + 'Text.Comp.Use.Skills.' + f + '.Prof', 'data-title': name, 'aria-pressed': 'false', 'aria-label': name + ' proficiency' }),
+        el('span', { cls: 'n', text: name }), el('span', { cls: 'a', text: abi }),
+        el('span', { cls: 'v num', 'data-out': U + 'Skills.' + f + '.Mod', text: '–' }),
+      ]));
+    }
+    grid.append(card('Skills', [el('p', { cls: 'hint', text: 'Tap a dot for proficiency, again for expertise, a third time to clear.' }), skills], { 'data-span': '2' }));
+    // attacks
+    const atks = el('div', {}, [el('datalist', { id: 'dl-' + fid(P + 'atk'), 'data-items': U + 'Attack.1.Weapon Selection' })]);
+    for (let i = 1; i <= COMP_ATTACKS; i++) {
+      const p = U + 'Attack.' + i + '.';
+      atks.append(el('div', { cls: 'attack', 'data-cattack': p }, [
+        el('div', { cls: 'line' }, [
+          el('label', { cls: 'f' }, [el('span', { text: 'Attack ' + i }), el('input', { cls: 'in', 'data-f': p + 'Weapon Selection', id: fid(p + 'Weapon Selection'), list: 'dl-' + fid(P + 'atk'), autocomplete: 'off', placeholder: 'Pick or type an attack' })]),
+          lineMenu(U + 'Attack.Button.' + i, 'Attack ' + i),
+        ]),
+        el('div', { cls: 'figs', 'data-figs': '1' }, [
+          el('span', {}, [el('span', { cls: 'muted', text: 'To hit ' }), el('b', { 'data-out': p + 'To Hit', text: '–' })]),
+          el('span', {}, [el('span', { cls: 'muted', text: 'Damage ' }), el('b', { 'data-out': p + 'Damage', text: '–' }), el('span', { text: ' ' }), el('span', { 'data-out': p + 'Damage Type', text: '' })]),
+          el('span', {}, [el('span', { cls: 'muted', text: 'Range ' }), el('b', { 'data-out': p + 'Range', text: '–' })]),
+        ]),
+        el('div', { cls: 'desc', 'data-out': p + 'Description', 'data-figs': '1', text: '' }),
+        el('div', { cls: 'atk-set', 'data-figs': '1' }, [
+          el('span', { cls: 'tg' }, [el('button', { cls: 'dot sm', type: 'button', 'data-toggle': p + 'Proficiency', 'aria-pressed': 'false', 'aria-label': 'Attack ' + i + ' proficiency' }), el('span', { text: 'Proficient' })]),
+          el('label', { cls: 'f inline' }, [el('span', { text: 'Ability' }), cSelect(p + 'Mod', 'Attack ' + i + ' ability')]),
+        ]),
+      ]));
+    }
+    grid.append(card('Attacks', [el('div', { cls: 'row-ad' }, [el('label', { cls: 'f inline' }, [el('span', { text: 'Attacks per action' }), el('input', { cls: 'in num', 'data-f': U + 'Attack.perAction', id: fid(U + 'Attack.perAction'), inputmode: 'numeric', autocomplete: 'off' })])]), atks], { 'data-span': '2' }));
+    // traits and features as MPMB formats them, with the text to edit underneath
+    const richBox = (field, label) => el('div', { cls: 'stack' }, [
+      el('span', { cls: 'lbl', text: label }), el('div', { cls: 'rich', 'data-rich': field, 'data-empty': 'None' }),
+      el('details', { cls: 'more' }, [el('summary', { text: 'Edit ' + label.toLowerCase() }), el('textarea', { cls: 'in', rows: '6', 'data-f': field, id: fid(field), 'aria-label': label })]),
+    ]);
+    grid.append(card('Traits and features', [richBox(U + 'Traits', 'Traits'), richBox(U + 'Features', 'Features')]));
+    // equipment (MPMB can hide this section: Options → Change visible sections)
+    const gear = el('div', {}, [el('div', { cls: 'gear-head' }, [el('span', { text: 'Item' }), el('span', { text: 'Amount' }), el('span', { text: 'Weight' }), el('span')])]);
+    for (let i = 1; i <= COMP_GEAR; i++) {
+      const g = P + 'Comp.eqp.Gear ';
+      gear.append(el('div', { cls: 'gear-row', 'data-cgear': g + 'Row ' + i }, [
+        el('input', { cls: 'in', 'data-f': g + 'Row ' + i, id: fid(g + 'Row ' + i), autocomplete: 'off', placeholder: 'Add an item', 'aria-label': 'Item ' + i }),
+        el('input', { cls: 'in num', 'data-f': g + 'Amount ' + i, id: fid(g + 'Amount ' + i), inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Amount' }),
+        el('input', { cls: 'in num', 'data-f': g + 'Weight ' + i, id: fid(g + 'Weight ' + i), inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Weight' }),
+        lineMenu(P + 'Comp.eqpB.Button ' + i, 'Item ' + i),
+      ]));
+    }
+    grid.append(card('Equipment', [gear], { 'data-span': '2', 'data-vis': P + 'Comp.eqp.Gear Row 1', hidden: '' }));
+    // notes: the page's notes columns and the boxes MPMB shows in place of a hidden section
+    grid.append(card(el('h3', {}, [el('span', { text: 'Notes' }), el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Cnote.Options', 'data-title': 'Notes options' }, [document.createTextNode('Options')])]), [
+      cText(P + 'Cnote.Left', 'Notes', 8), cText(P + 'Cnote.Right', 'More notes', 8),
+      cText(P + 'Comp.img.Notes', 'Appearance', 4), cText(P + 'Comp.eqp.Notes', 'Notes (in place of equipment)', 6),
+    ]));
+    for (const c of grid.children) if (c.dataset.span) c.classList.add('span-2');
+    // with more than one companion, a heading per companion
+    const head = total > 1 ? [el('h3', { cls: 'comp-title' }, [el('span', { 'data-compname': P, text: 'Companion' }), el('span', { cls: 'chip', text: n + ' of ' + total })])] : [];
+    return el('div', { cls: 'comp', 'data-comp': P }, head.concat([grid]));
+  }
+  // build (or rebuild) the companion cards when the companion pages change, and watch their fields
+  async function syncCompanions(list) {
+    const p = (list || []).filter((x) => x.key === 'AScomp')[0];
+    const prefixes = p ? p.prefixes : [];
+    if (JSON.stringify(prefixes) === JSON.stringify(compPrefixes) && $('#comp-list').childElementCount === prefixes.length) return;
+    compPrefixes = prefixes.slice();
+    const box = $('#comp-list');
+    box.textContent = '';
+    prefixes.forEach((P, i) => box.append(buildCompanion(P, i + 1, prefixes.length)));
+    $('#comp-none').hidden = prefixes.length > 0;
+    $('#comp-add').hidden = prefixes.length > 0;
+    buildIndex();
+    const names = new Set();
+    for (const n of $$(BOUND.map((a) => '#comp-list [' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) names.add(n.getAttribute(a));
+    for (const P of prefixes) names.add(P + 'Comp.Use.Ability.Str.Mod');
+    if (names.size) { const snaps = await state.worker.call('watch', { names: Array.from(names) }); for (const s of snaps) apply(s); }
+    gridCols = 0; layoutGrids(true);
+    refreshDerived();
+  }
+  function refreshCompanions(v) {
+    for (const h of $$('[data-compname]')) {
+      const P = h.dataset.compname;
+      h.textContent = v(P + 'Comp.Desc.Name') || v(P + 'Comp.Race') || 'Companion';
+    }
+    // attacks and equipment: the filled lines plus the first empty one
+    for (const comp of $$('[data-comp]')) {
+      let first = true;
+      for (const row of comp.querySelectorAll('[data-cattack]')) {
+        const has = v(row.dataset.cattack + 'Weapon Selection') !== '' || row.contains(document.activeElement);
+        row.hidden = !has && !first;
+        for (const x of row.querySelectorAll('[data-figs]')) x.hidden = !has;
+        row.querySelector('.more').hidden = !has;
+        if (!has) first = false;
+      }
+      first = true;
+      for (const row of comp.querySelectorAll('[data-cgear]')) {
+        const has = v(row.dataset.cgear) !== '' || row.contains(document.activeElement);
+        row.hidden = !has && !first;
+        row.querySelector('.more').hidden = !has;
+        if (!has) first = false;
+      }
+    }
+  }
+
   // ---------------------------------------------------------------- binding fields to the screen
   function boundNames() {
     const s = new Set();
@@ -462,7 +649,8 @@
   }
   // the attributes that bind an element to an MPMB field (data-mpmb: one of MPMB's buttons, shown when MPMB shows it)
   // data-vis: shown only while MPMB shows that field (its modifier fields, for example)
-  const BOUND = ['data-f', 'data-out', 'data-rich', 'data-toggle', 'data-items', 'data-mpmb', 'data-vis'];
+    // data-opts: a drop-down filled with the combo box's items; data-prof: a skill dot for a not/proficient/expertise box
+  const BOUND = ['data-f', 'data-out', 'data-rich', 'data-toggle', 'data-items', 'data-mpmb', 'data-vis', 'data-opts', 'data-prof'];
   const shown = (snap) => { if (!snap || !snap.exists) return ''; const d = snap.display !== undefined ? snap.display : snap.value; return Array.isArray(d) ? d.join(', ') : String(d === null || d === undefined ? '' : d); };
   function renderRich(node, snap) {
     node.textContent = '';
@@ -537,6 +725,19 @@
     state.snap.set(snap.name, snap);
     const ix = (index && index.get(snap.name)) || {};
     const sel = (attr) => ix[attr] || [];
+    for (const n of sel('data-opts')) {
+      const items = (snap.items || []).filter((it) => it[1] !== undefined);
+      if (JSON.stringify(items) === n.dataset.had) continue;
+      n.dataset.had = JSON.stringify(items);
+      n.textContent = '';
+      for (const it of items) n.append(el('option', { value: String(it[1]), text: String(it[0]).trim() || '–' }));
+    }
+    // a combo box can hold text that isn't one of its items (Alignment "Unaligned"): show that too
+    for (const n of sel('data-opts')) {
+      const v = snap.exists && snap.value !== null && snap.value !== undefined ? String(snap.value) : '';
+      if (!Array.from(n.options).some((o) => o.value === v)) n.append(el('option', { value: v, text: v || '–' }));
+    }
+    for (const n of sel('data-prof')) { const v = String(snap.value || ''); n.setAttribute('aria-pressed', v === 'proficient' || v === 'expertise' ? 'true' : 'false'); n.classList.toggle('exp', v === 'expertise'); }
     for (const n of sel('data-f')) { if (document.activeElement !== n) n.value = snap.exists ? (Array.isArray(snap.value) ? snap.value.join(', ') : snap.value) : ''; n.readOnly = !!snap.readonly; }
     for (const n of sel('data-out')) { const t = shown(snap); n.textContent = t === '' && n.classList.contains('v') ? '–' : t; }
     for (const n of sel('data-rich')) { if (n.dataset.features) renderFeatures(n, snap); else renderRich(n, snap); }
@@ -655,6 +856,7 @@
         if (empty && !n.hidden) shownEmpty = true;
       }
     }
+    refreshCompanions(v);
     renderLog();
   }
 
@@ -909,6 +1111,7 @@
     $('#hp-minus').addEventListener('click', () => hpStep(-1));
     $('#hp-plus').addEventListener('click', () => hpStep(1));
     $('#run-test').addEventListener('click', runSelfTest);
+    $('#comp-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'AScomp' }); await refreshPages(); });
     $('#notes-clear-open').addEventListener('click', () => { if (state.worker) clearNotesPages(); });
     $('#stuck-ok').addEventListener('click', () => $('#stuck').close());
     $('#stuck-clear').addEventListener('click', () => { $('#stuck').close(); if (state.worker) clearNotesPages(); });
@@ -934,7 +1137,7 @@
   }
 
   // ---------------------------------------------------------------- tabs that follow the scroll
-  const BANDS = ['main', 'combat', 'spells', 'features', 'gear', 'sheetinfo'];
+  const BANDS = ['main', 'combat', 'spells', 'features', 'gear', 'companion', 'sheetinfo'];
   let spyLock = 0;
   function setTab(id) { for (const a of $$('[data-tab]')) a.setAttribute('aria-current', a.dataset.tab === id ? 'true' : 'false'); }
   function goTo(id, tab) {
@@ -1000,7 +1203,7 @@
       };
       $('#menu-back').onclick = () => { stack.pop(); render(); };
       $('#menu-close').onclick = () => finish(null);
-      dlg.onclose = () => finish(null);
+      dlg.onclose = () => { if (!dlg.open) finish(null); };   // a late close event from the last menu doesn't cancel this one
       render();
       dlg.showModal();
     });
@@ -1020,11 +1223,12 @@
     const dlg = $('#ask');
     $('#ask-title').textContent = q.title || 'MPMB asks';
     $('#ask-msg').textContent = String(q.msg || '').trim();
+    // the buttons answer straight away; the close event (Esc, back) only counts as No. Chrome can deliver a close event
+    // late (a page in the background), and it mustn't answer the next question.
     return new Promise((resolve) => {
-      let answer = false;
-      $('#ask-yes').onclick = () => { answer = true; dlg.close(); };
-      $('#ask-no').onclick = () => dlg.close();
-      dlg.onclose = () => resolve(answer);
+      $('#ask-yes').onclick = () => { resolve(true); dlg.close(); };
+      $('#ask-no').onclick = () => { resolve(false); dlg.close(); };
+      dlg.onclose = () => { if (!dlg.open) resolve(false); };
       dlg.showModal();
     });
   }
@@ -1078,6 +1282,7 @@
     }
     const notes = list.filter((p) => p.key === 'ASnotes')[0];
     $('#notes-clear-open').hidden = !(notes && notes.prefixes.length);
+    await syncCompanions(list);
   }
 
   // ---------------------------------------------------------------- spells
@@ -1588,6 +1793,7 @@
   async function showSheet() {
     buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildDefense(); buildCoins(); buildMagicItems(); buildGear(); buildMods(); buildConditions(); buildAmmo();
     state.spellOpts = null; state.sheet = null;
+    compPrefixes = []; $('#comp-list').textContent = '';
     renderCasters(); renderSpellList();
     buildIndex();
     const snaps = await state.worker.call('watch', { names: boundNames() });

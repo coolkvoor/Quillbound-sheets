@@ -393,10 +393,17 @@ dl.kv dd { margin: 0; overflow-wrap: anywhere; }
 
 /* tab bar */
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
-nav.tabs ul { list-style: none; margin: 0 auto; padding: 0 4px; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); max-width: 48rem; }
-@media (max-width: 420px) { nav.tabs a { font-size: 0.86rem; letter-spacing: 0; } }
+nav.tabs ul { list-style: none; margin: 0 auto; padding: 0 4px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); max-width: 52rem; }
+nav.tabs .narrow-only { display: none; }
+@media (max-width: 560px) { nav.tabs .wide-only { display: none; } nav.tabs .narrow-only { display: inline; } }
+.comp + .comp { margin-top: 18px; }
+.row.three > * { flex-basis: 4.5rem; }
+.comp-title { font-family: var(--font-display); font-size: 1.1rem; margin: 4px 0 8px; display: flex; gap: 10px; align-items: baseline; }
+.comp-title .chip { font-family: var(--font-body); }
 nav.tabs a { display: grid; place-items: center; min-height: var(--tabbar-h); text-decoration: none; color: var(--muted); font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; letter-spacing: 0.02em; position: relative; }
 nav.tabs a[aria-current="true"] { color: var(--accent); }
+/* seven tabs on a phone: 'Features' must fit in a seventh of 393 px */
+@media (max-width: 420px) { nav.tabs a { font-size: 0.76rem; letter-spacing: 0; } }
 nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
 @media (max-height: 460px) { :root { --tabbar-h: 48px; --header-h: 48px; } header.top { min-height: 48px; padding-block: 4px; } }
 </style>
@@ -704,6 +711,13 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
       </div>
     </section>
 
+    <section class="band" id="companion" aria-labelledby="t-companion">
+      <h2 class="band-title" id="t-companion">Companion</h2>
+      <p class="note" id="comp-none" hidden>Your PDF has no companion page now. Add one for a familiar, mount or other companion: MPMB fills it in from the creature you pick.</p>
+      <button class="btn primary" id="comp-add" type="button" hidden>Add a companion page</button>
+      <div id="comp-list"></div>
+    </section>
+
     <section class="band" id="sheetinfo" aria-labelledby="t-sheet">
       <h2 class="band-title" id="t-sheet">Sheet <small id="sheet-ver"></small></h2>
       <div class="grid">
@@ -771,6 +785,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
       <li><a href="#spells" data-tab="spells">Spells</a></li>
       <li><a href="#features" data-tab="features">Features</a></li>
       <li><a href="#gear" data-tab="gear">Gear</a></li>
+      <li><a href="#companion" data-tab="companion"><span class="wide-only">Companion</span><span class="narrow-only">Comp.</span></a></li>
       <li><a href="#sheetinfo" data-tab="sheetinfo">Sheet</a></li>
     </ul>
   </nav>

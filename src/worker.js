@@ -105,6 +105,11 @@ const ops = {
       + ' var prefixes = multi && tDoc.getField("Template.extras." + t) ? What("Template.extras." + t).split(",").slice(1) : [];'
       + ' return { key: t, shown: !!isTemplVis(t), multi: multi, prefixes: prefixes }; }))'));
   },
+  // a page MPMB can add more than once (a companion page): added with MPMB's own page function
+  addPage({ key }) {
+    if (['AScomp', 'ASnotes', 'WSfront', 'ALlog'].indexOf(key) === -1) throw new Error('Unknown page: ' + key);
+    return actionOp(() => { engine.evalExpr('DoTemplate("' + key + '", "Add")'); return {}; });
+  },
   // the Notes pages' text, and removing all of them with MPMB's own page removal (no question: the app asked)
   notesText() {
     return JSON.parse(engine.evalExpr('JSON.stringify(What("Template.extras.ASnotes").split(",").slice(1).map(function (p) {'
