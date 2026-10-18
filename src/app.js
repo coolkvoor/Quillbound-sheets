@@ -429,53 +429,30 @@
       else into.append(document.createTextNode(p));
     }
   }
+  // MPMB's feature texts as a list that folds open (parsing in features.js)
   function renderFeatures(node, snap) {
     const raw = snap && snap.exists ? String(snap.value || '') : '';
     node.textContent = '';
+    // Text saved before the line-break fix (descriptions piled up, features left empty): offer a rebuild
+    if (node.dataset.features === 'class') { const note = $('#cf-stale'); if (note) note.hidden = !MPMBFeatures.staleClassText(raw); }
     if (!raw.trim()) return;
-    const lines = raw.replace(/\r\n?|\n/g, '\n').split('\n');
-    let cur = null;
-    const flush = () => {
-      if (!cur) return;
-      const key = node.dataset.features + '|' + cur.name;
+    for (const it of MPMBFeatures.parse(raw)) {
+      if (it.group) { node.append(el('div', { cls: 'fgroup', text: it.group })); continue; }
+      if (it.para) { const p = el('p', { cls: 'fpara' }); inlineMarkup(it.para, p); node.append(p); continue; }
+      const key = node.dataset.features + '|' + it.name;
       const d = el('details', { cls: 'feat' });
       d.open = openFeatures.has(key);
       d.addEventListener('toggle', () => { if (d.open) openFeatures.add(key); else openFeatures.delete(key); });
-      const sum = el('summary', {}, [el('span', { cls: 'fname', text: cur.name })]);
-      if (cur.usage) sum.append(el('span', { cls: 'chip use', text: cur.usage }));
-      if (cur.src) sum.append(el('span', { cls: 'fsrc', text: cur.src }));
+      const sum = el('summary', {}, [el('span', { cls: 'fname', text: it.name })]);
+      if (it.usage) sum.append(el('span', { cls: 'chip use', text: it.usage }));
+      if (it.src) sum.append(el('span', { cls: 'fsrc', text: it.src }));
       d.append(sum);
       const body = el('div', { cls: 'fbody' });
-      for (const t of cur.text) { const p = el('p'); inlineMarkup(t, p); body.append(p); }
-      if (!cur.text.length) body.append(el('p', { cls: 'muted', text: 'No description.' }));
+      for (const t of it.text) { const p = el('p'); inlineMarkup(t, p); body.append(p); }
+      if (!it.text.length) body.append(el('p', { cls: 'muted', text: 'No description on the sheet.' }));
       d.append(body);
       node.append(d);
-      cur = null;
-    };
-    // Text saved before the line-break fix: every description piled under the last feature of a class, the others
-    // empty. Spot it (2+ empty features, and the last one holding more lines than there are empty ones) and offer a rebuild.
-    // Also after levelling up such a character: MPMB rewrites features whose text changes, but leaves others (Ritual
-    // Adept) without their text. So: a normal feature heading with no description at all means old text. A choice line
-    // such as "#◆ Scholar: Arcana# (Wizard 2, SRD'24 78) [Expertise in Arcana]" has no description by design.
-    if (node.dataset.features === 'class') {
-      const NORMAL = /^#\s*◆\s*[^#]+#\s*(?:\([^)]*\))?\s*(?:#\[.*\]#)?\s*$/;
-      let stale = false, open = null;
-      for (const line of lines.concat(['#◆ end#'])) {
-        if (/^#\s*◆/.test(line) || /^\*\*/.test(line)) { if (open && open.normal && !open.text) stale = true; open = /^#\s*◆/.test(line) ? { normal: NORMAL.test(line), text: 0 } : null; }
-        else if (open && line.trim()) open.text++;
-      }
-      const note = $('#cf-stale'); if (note) note.hidden = !stale;
     }
-    for (const line of lines) {
-      let m;
-      if (!line.trim()) continue;
-      if ((m = /^\*\*(.+?):?\*\*\s*$/.exec(line))) { flush(); node.append(el('div', { cls: 'fgroup', text: m[1] })); continue; }
-      // the usage in brackets comes as #[…]# normally, and as plain […] after a feature choice ("Scholar: Arcana")
-      if ((m = /^#\s*◆\s*(.+?)#\s*(?:\(([^)]*)\))?\s*(?:#?\[(.*)\]#?)?\s*$/.exec(line))) { flush(); cur = { name: m[1].trim(), src: (m[2] || '').trim(), usage: (m[3] || '').trim(), text: [] }; continue; }
-      if ((m = /^##\s*◆\s*(.+?)##\.?\s*(.*)$/.exec(line))) { flush(); cur = { name: m[1].trim(), src: '', usage: '', text: m[2] ? [m[2]] : [] }; continue; }
-      if (cur) cur.text.push(line); else { const p = el('p', { cls: 'fpara' }); inlineMarkup(line, p); node.append(p); }
-    }
-    flush();
   }
   // name -> elements bound to it, per binding kind (rebuilt after the screens are built)
   let index = null;

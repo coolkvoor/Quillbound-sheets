@@ -12,11 +12,11 @@ const workerCdn = ['importScripts(' + JSON.stringify(PDFLIB_CDN) + ');'].concat(
 const workerBundled = [read('node_modules/pdf-lib/dist/pdf-lib.min.js').replace(/\uFFFD/g, '\\ufffd')].concat(own).join('\n;\n');
 // the version and build time show under Sheet > This sheet, to tell which build a device is running
 const BUILT = new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
-const app = read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Version ' + VERSION + ', built ' + BUILT) + ';');
+const app = read('src/features.js') + '\n;\n' + read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Version ' + VERSION + ', built ' + BUILT) + ';');
 if (app.indexOf('built ' + BUILT) === -1) throw new Error('APP_BUILD marker not found in src/app.js');
 function page(worker) {
   for (const bad of ['</script', '<!--']) if (worker.includes(bad) || app.includes(bad)) throw new Error('bundle contains ' + bad);
-  let p = read('src/index.html').replace('<script src="app.js"></script>', '');
+  let p = read('src/index.html').replace('<script src="features.js"></script>', '').replace('<script src="app.js"></script>', '');
   p += '\n<script type="text/plain" id="mpmb-worker-src">\n' + worker + '\n</script>\n'
     + '<script>window.MPMB_WORKER_URL = URL.createObjectURL(new Blob([document.getElementById("mpmb-worker-src").textContent], { type: "text/javascript" }));</script>\n'
     + '<script>\n' + app + '\n</script>\n';
