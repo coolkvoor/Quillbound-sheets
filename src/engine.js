@@ -862,6 +862,18 @@
       if (typeof uneval === 'undefined') this.uneval = function (v) { return v === null ? 'null' : v === undefined ? '(void 0)' : src(v, true, []); };
     }.toString() + ')()', 'mpmb:toSource');
 
+    // localeCompare as MPMB expects from Acrobat: a leading space sorts first and a leading no-break space last (MPMB
+    // prefixes menu names this way, e.g. " Simple Melee Weapon" first and "\xA0Mastery Text Only" last in Weapon
+    // Mastery). The browser's collation ignores both, which put Mastery Text Only first.
+    evalGlobal('(' + function () {
+      var base = String.prototype.localeCompare;
+      var lead = function (s) { var c = s.charAt(0); return c === ' ' ? 0 : c === '\xA0' ? 2 : 1; };
+      Object.defineProperty(String.prototype, 'localeCompare', { writable: true, configurable: true, enumerable: false, value: function (that) {
+        var a = String(this), b = String(that), d = lead(a) - lead(b);
+        return d ? (d < 0 ? -1 : 1) : base.apply(a, arguments);
+      } });
+    }.toString() + ')()', 'mpmb:localeCompare');
+
     // ---- running ---------------------------------------------------------------------------------
     const stats = { startupMs: 0, calcPasses: 0, spawns: [], docScriptMs: {} };
     function flushTimeouts() {
