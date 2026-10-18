@@ -146,6 +146,7 @@ label.f > span.hint { text-transform: none; letter-spacing: 0; font-size: 0.85re
 .skill .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .skill .a { font-size: 0.8rem; color: var(--muted); width: 2.4rem; text-align: right; margin-right: 8px; }
 .skill .v { width: 2.6rem; text-align: right; font-weight: 700; }
+.skill input.in-v { width: 3.2rem; min-height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: inherit; font: inherit; font-weight: 700; padding: 0 6px; }
 
 /* HP */
 .hp { display: grid; grid-template-columns: 56px minmax(0, 1fr) 56px; gap: 8px; align-items: center; }
@@ -394,7 +395,8 @@ dl.kv dd { margin: 0; overflow-wrap: anywhere; }
 
 /* tab bar */
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
-nav.tabs ul { list-style: none; margin: 0 auto; padding: 0 4px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); max-width: 52rem; }
+nav.tabs ul { list-style: none; margin: 0 auto; padding: 0 4px; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); max-width: 52rem; }
+nav.tabs li[hidden] { display: none; }
 nav.tabs .narrow-only { display: none; }
 @media (max-width: 560px) { nav.tabs .wide-only { display: none; } nav.tabs .narrow-only { display: inline; } }
 .comp + .comp { margin-top: 18px; }
@@ -719,6 +721,13 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
       <div id="comp-list"></div>
     </section>
 
+    <section class="band" id="wildshape" aria-labelledby="t-wildshape" hidden>
+      <h2 class="band-title" id="t-wildshape">Wild Shape</h2>
+      <p class="note" id="ws-none" hidden>MPMB gives this character Wild Shape (known forms: <span data-out="Wildshapes.Info.KnownForms"></span>), but your PDF has no Wild Shapes page yet. Add one: MPMB works out each beast you pick with your own proficiencies.</p>
+      <button class="btn primary" id="ws-add" type="button" hidden>Add a Wild Shapes page</button>
+      <div id="ws-list"></div>
+    </section>
+
     <section class="band" id="sheetinfo" aria-labelledby="t-sheet">
       <h2 class="band-title" id="t-sheet">Sheet <small id="sheet-ver"></small></h2>
       <div class="grid">
@@ -787,6 +796,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
       <li><a href="#features" data-tab="features">Features</a></li>
       <li><a href="#gear" data-tab="gear">Gear</a></li>
       <li><a href="#companion" data-tab="companion"><span class="wide-only">Companion</span><span class="narrow-only">Comp.</span></a></li>
+      <li id="tab-wildshape" hidden><a href="#wildshape" data-tab="wildshape"><span class="wide-only">Wild Shape</span><span class="narrow-only">Shape</span></a></li>
       <li><a href="#sheetinfo" data-tab="sheetinfo">Sheet</a></li>
     </ul>
   </nav>

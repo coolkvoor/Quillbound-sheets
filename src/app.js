@@ -637,6 +637,159 @@
     }
   }
 
+  // ---------------------------------------------------------------- wild shape pages
+  // MPMB's Wild Shapes page (template WSfront): four shapes per page, each worked out by MPMB from the creature picked
+  // in its Wildshape.Race.N box, plus the page's Wild Shape details (copies of MPMB's Wildshapes.Info fields). The
+  // page's Settings menu adds and removes shapes (limited to what the character can take), recalculates and adds
+  // or removes pages. The PDF as distributed has none; the band shows once there is a page or MPMB has given the
+  // character Wild Shape.
+  const WS_PER_PAGE = 4, WS_ATTACKS = 2, WS_BLANK = 'make a selection';
+  let wsPrefixes = [];
+  function buildWildShapePage(P, n, total) {
+    const grid = el('div', { cls: 'grid' });
+    const card = (title, kids, attrs) => el('div', Object.assign({ cls: 'card' }, attrs || {}), [typeof title === 'string' ? el('h3', { text: title }) : title].concat(kids));
+    const I = P + 'Wildshapes.Info.';
+    grid.append(card(el('h3', {}, [el('span', { text: 'Wild Shape' }), el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Wildshapes.Settings', 'data-title': 'Wild Shapes', 'data-pages': '1' }, [document.createTextNode('Options')])]), [
+      el('p', { cls: 'hint', text: 'Options → Add Wild Shape lists the beasts this character can take; MPMB works out each shape with your own proficiencies. It also removes shapes, recalculates them (after a level up) and adds or removes Wild Shapes pages.' }),
+      el('div', { cls: 'row' }, [cInput(I + 'KnownForms', 'Known forms'), cInput(I + 'TempHP', 'Temp HP', { inputmode: 'numeric', cls: 'in num' })]),
+      cInput(I + 'Limitations', 'Limitations'),
+      cInput(I + 'Duration', 'Duration'),
+    ]));
+    for (let i = 1; i <= WS_PER_PAGE; i++) {
+      const W = P + 'Wildshape.' + i + '.', T = P + 'Text.Wildshape.' + i + '.Skills.', race = P + 'Wildshape.Race.' + i;
+      const body = el('div', { cls: 'stack', 'data-wsbody': '1' });
+      body.append(
+        el('div', { cls: 'row' }, [
+          el('label', { cls: 'f' }, [el('span', { text: 'Type' }), cSelect(W + 'MonsterType', 'Creature type')]),
+          el('label', { cls: 'f' }, [el('span', { text: 'Size' }), cSelect(W + 'Size', 'Size')]),
+        ]),
+        el('div', { cls: 'row' }, [cInput(W + 'CR', 'Challenge'), cInput(W + 'HD', 'Hit dice')]),
+        el('div', { cls: 'stats' }, [
+          el('div', { cls: 'stat big' }, [el('span', { cls: 'k', text: 'Armor Class' }), el('span', { cls: 'v num', 'data-out': W + 'AC', text: '–' })]),
+          el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Initiative' }), el('span', { cls: 'v num', 'data-out': W + 'Initiative Bonus', text: '–' })]),
+          el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Proficiency' }), el('span', { cls: 'v num', 'data-out': W + 'Proficiency Bonus', text: '–' })]),
+          el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Passive Perc.' }), el('span', { cls: 'v num', 'data-out': W + 'Skills.PassPerc', text: '–' })]),
+        ]),
+        cInput(W + 'Speed', 'Speed'),
+        el('div', { cls: 'row three' }, [
+          cInput(W + 'HP Temp', 'Temp HP', { inputmode: 'numeric', cls: 'in num' }),
+          cInput(W + 'HP Current', 'Current HP', { inputmode: 'numeric', cls: 'in num' }),
+          cInput(W + 'HP Max', 'Max HP', { inputmode: 'numeric', cls: 'in num' }),
+        ]),
+      );
+      const abis = el('div', { cls: 'abilities' });
+      for (const [k, long] of ABILITIES) {
+        const A = W + 'Ability.' + k + '.';
+        abis.append(el('div', { cls: 'abi' }, [
+          el('span', { cls: 'k', text: k.toUpperCase(), title: long }),
+          el('span', { cls: 'mod num', 'data-out': A + 'Mod', text: '–' }),
+          el('input', { 'data-f': A + 'Score', id: fid(A + 'Score'), inputmode: 'numeric', autocomplete: 'off', 'aria-label': long + ' score', cls: 'num' }),
+          el('div', { cls: 'save' }, [
+            el('button', { cls: 'dot sm', type: 'button', 'data-toggle': A + 'ST.Prof', 'aria-pressed': 'false', 'aria-label': long + ' saving throw proficiency' }),
+            el('span', { text: 'Save ' }), el('b', { cls: 'num', 'data-out': A + 'ST.Mod', text: '–' }),
+          ]),
+        ]));
+      }
+      body.append(abis);
+      // skills: the proficient ones in the summary, all of them (with MPMB's proficiency buttons) folded
+      const skills = el('div', { cls: 'skills two' });
+      for (const [f, name, abi] of SKILLS) {
+        skills.append(el('div', { cls: 'skill' }, [
+          el('button', { cls: 'dot sm', type: 'button', 'data-mpmb': T + f + '.Name', 'data-prof': T + f + '.Prof', 'data-title': name, 'aria-pressed': 'false', 'aria-label': name + ' proficiency' }),
+          el('span', { cls: 'n', text: name }), el('span', { cls: 'a', text: abi }),
+          el('input', { cls: 'v num in-v', 'data-f': W + 'Skills.' + f, id: fid(W + 'Skills.' + f), inputmode: 'numeric', autocomplete: 'off', 'aria-label': name }),
+        ]));
+      }
+      body.append(el('details', { cls: 'more' }, [el('summary', {}, [document.createTextNode('Skills '), el('span', { cls: 'muted', 'data-wsskills': W })]),
+        el('p', { cls: 'hint', text: 'MPMB works these out when the shape is added. A dot marks proficiency (tap again for expertise, a third time to clear) but, as on the PDF, doesn’t change the number: type it in.' }), skills]));
+      // attacks as MPMB worked them out, editable underneath
+      for (let a = 1; a <= WS_ATTACKS; a++) {
+        const p = W + 'Attack.' + a + '.';
+        body.append(el('div', { cls: 'attack', 'data-wsattack': p }, [
+          el('b', { 'data-out': p + 'Weapon' }),
+          el('div', { cls: 'figs' }, [
+            el('span', {}, [el('span', { cls: 'muted', text: 'To hit ' }), el('b', { 'data-out': p + 'To Hit', text: '–' })]),
+            el('span', {}, [el('span', { cls: 'muted', text: 'Damage ' }), el('b', { 'data-out': p + 'Damage', text: '–' }), el('span', { text: ' ' }), el('span', { 'data-out': p + 'Damage Type', text: '' })]),
+            el('span', {}, [el('span', { cls: 'muted', text: 'Range ' }), el('b', { 'data-out': p + 'Range', text: '–' })]),
+          ]),
+          el('div', { cls: 'desc', 'data-out': p + 'Description', text: '' }),
+        ]));
+      }
+      const edits = [];
+      for (let a = 1; a <= WS_ATTACKS; a++) {
+        const p = W + 'Attack.' + a + '.';
+        edits.push(el('div', { cls: 'stack' }, [
+          cInput(p + 'Weapon', 'Attack ' + a),
+          el('div', { cls: 'row three' }, [cInput(p + 'To Hit', 'To hit'), cInput(p + 'Damage', 'Damage'), cInput(p + 'Range', 'Range')]),
+          el('label', { cls: 'f' }, [el('span', { text: 'Damage type' }), el('input', { cls: 'in', 'data-f': p + 'Damage Type', id: fid(p + 'Damage Type'), list: 'dl-' + fid(p + 'Damage Type'), autocomplete: 'off' }), el('datalist', { id: 'dl-' + fid(p + 'Damage Type'), 'data-items': p + 'Damage Type' })]),
+          cInput(p + 'Description', 'Description'),
+        ]));
+      }
+      body.append(el('details', { cls: 'more' }, [el('summary', { text: 'Edit attacks' })].concat(edits)));
+      // traits as MPMB formats them (senses, special abilities)
+      body.append(el('div', { cls: 'stack' }, [
+        el('span', { cls: 'lbl', text: 'Traits' }), el('div', { cls: 'rich', 'data-rich': W + 'Traits', 'data-empty': 'None' }),
+        el('details', { cls: 'more' }, [el('summary', { text: 'Edit traits' }), el('textarea', { cls: 'in', rows: '6', 'data-f': W + 'Traits', id: fid(W + 'Traits'), 'aria-label': 'Traits' })]),
+      ]));
+      grid.append(card(el('h3', {}, [el('span', { 'data-wsname': race, text: 'Shape ' + i }), el('span', { cls: 'chip', 'data-wscr': W + 'CR', hidden: '' })]), [
+        el('label', { cls: 'f' }, [el('span', { text: 'Creature' }), el('input', { cls: 'in', 'data-f': race, 'data-blank': WS_BLANK, id: fid(race), list: 'dl-' + fid(race), autocomplete: 'off', placeholder: 'Pick or type a beast' }), el('datalist', { id: 'dl-' + fid(race), 'data-items': race })]),
+        body,
+      ], { 'data-ws': race }));
+    }
+    const head = total > 1 ? [el('h3', { cls: 'comp-title' }, [el('span', { text: 'Wild Shapes page' }), el('span', { cls: 'chip', text: n + ' of ' + total })])] : [];
+    return el('div', { cls: 'comp', 'data-wspage': P }, head.concat([grid]));
+  }
+  // build (or rebuild) the wild shape cards when the Wild Shapes pages change, and watch their fields
+  async function syncWildShapes(list) {
+    const p = (list || []).filter((x) => x.key === 'WSfront')[0];
+    const prefixes = p ? p.prefixes : [];
+    if (JSON.stringify(prefixes) === JSON.stringify(wsPrefixes) && $('#ws-list').childElementCount === prefixes.length) return;
+    wsPrefixes = prefixes.slice();
+    const box = $('#ws-list');
+    box.textContent = '';
+    prefixes.forEach((P, i) => box.append(buildWildShapePage(P, i + 1, prefixes.length)));
+    buildIndex();
+    const names = new Set();
+    for (const n of $$(BOUND.map((a) => '#ws-list [' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) names.add(n.getAttribute(a));
+    if (names.size) { const snaps = await state.worker.call('watch', { names: Array.from(names) }); for (const s of snaps) apply(s); }
+    gridCols = 0; layoutGrids(true);
+    refreshDerived();
+  }
+  function refreshWildShapes(v) {
+    const band = $('#wildshape');
+    // the band: shown with a Wild Shapes page, or when MPMB has given the character Wild Shape (its known forms)
+    const has = wsPrefixes.length > 0, known = v('Wildshapes.Info.KnownForms') !== '';
+    const show = has || known;
+    if (band.hidden === show) { band.hidden = !show; $('#tab-wildshape').hidden = !show; }
+    $('#ws-none').hidden = has;
+    $('#ws-add').hidden = has;
+    // shapes: the picked ones plus the first empty one per page
+    let changed = false;
+    for (const page of $$('[data-wspage]')) {
+      let first = true;
+      for (const c of page.querySelectorAll('[data-ws]')) {
+        const r = v(c.dataset.ws), picked = r !== '' && r.toLowerCase() !== WS_BLANK;
+        const hide = !picked && !first && !c.contains(document.activeElement);
+        if (c.hidden !== hide) { c.hidden = hide; changed = true; }
+        c.querySelector('[data-wsbody]').hidden = !picked;
+        const name = c.querySelector('[data-wsname]');
+        name.textContent = picked ? r : 'Add a shape';
+        const cr = c.querySelector('[data-wscr]'), crv = v(cr.dataset.wscr);
+        cr.textContent = 'CR ' + crv; cr.hidden = !picked || !crv;
+        // an attack line without a name stays out of sight
+        for (const a of c.querySelectorAll('[data-wsattack]')) a.hidden = v(a.dataset.wsattack + 'Weapon') === '';
+        if (!picked) first = false;
+      }
+    }
+    for (const s of $$('[data-wsskills]')) {
+      const W = s.dataset.wsskills, T = W.replace(/Wildshape\.(\d+)\.$/, 'Text.Wildshape.$1.Skills.');
+      const prof = SKILLS.filter(([f]) => { const x = v(T + f + '.Prof'); return x === 'proficient' || x === 'expertise'; })
+        .map(([f, name]) => name + ' ' + v(W + 'Skills.' + f));
+      s.textContent = prof.length ? '(' + prof.join(', ') + ')' : '';
+    }
+    if (changed) { gridCols = 0; layoutGrids(true); }
+  }
+
   // ---------------------------------------------------------------- binding fields to the screen
   function boundNames() {
     const s = new Set();
@@ -739,7 +892,11 @@
       if (!Array.from(n.options).some((o) => o.value === v)) n.append(el('option', { value: v, text: v || '–' }));
     }
     for (const n of sel('data-prof')) { const v = String(snap.value || ''); n.setAttribute('aria-pressed', v === 'proficient' || v === 'expertise' ? 'true' : 'false'); n.classList.toggle('exp', v === 'expertise'); }
-    for (const n of sel('data-f')) { if (document.activeElement !== n) n.value = snap.exists ? (Array.isArray(snap.value) ? snap.value.join(', ') : snap.value) : ''; n.readOnly = !!snap.readonly; }
+    // data-blank: a combo box's "nothing picked" item ("Make a Selection") shows as an empty box
+    for (const n of sel('data-f')) {
+      if (document.activeElement !== n) { const x = snap.exists ? (Array.isArray(snap.value) ? snap.value.join(', ') : snap.value) : ''; n.value = n.dataset.blank && String(x).toLowerCase() === n.dataset.blank ? '' : x; }
+      n.readOnly = !!snap.readonly;
+    }
     for (const n of sel('data-out')) { const t = shown(snap); n.textContent = t === '' && n.classList.contains('v') ? '–' : t; }
     for (const n of sel('data-rich')) { if (n.dataset.features) renderFeatures(n, snap); else renderRich(n, snap); }
     for (const n of sel('data-toggle')) n.setAttribute('aria-pressed', snap.checked ? 'true' : 'false');
@@ -858,6 +1015,7 @@
       }
     }
     refreshCompanions(v);
+    refreshWildShapes(v);
     renderLog();
   }
 
@@ -1113,6 +1271,7 @@
     $('#hp-plus').addEventListener('click', () => hpStep(1));
     $('#run-test').addEventListener('click', runSelfTest);
     $('#comp-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'AScomp' }); await refreshPages(); });
+    $('#ws-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'WSfront' }); await refreshPages(); });
     $('#notes-clear-open').addEventListener('click', () => { if (state.worker) clearNotesPages(); });
     $('#stuck-ok').addEventListener('click', () => $('#stuck').close());
     $('#stuck-clear').addEventListener('click', () => { $('#stuck').close(); if (state.worker) clearNotesPages(); });
@@ -1138,7 +1297,7 @@
   }
 
   // ---------------------------------------------------------------- tabs that follow the scroll
-  const BANDS = ['main', 'combat', 'spells', 'features', 'gear', 'companion', 'sheetinfo'];
+  const BANDS = ['main', 'combat', 'spells', 'features', 'gear', 'companion', 'wildshape', 'sheetinfo'];
   let spyLock = 0;
   function setTab(id) { for (const a of $$('[data-tab]')) a.setAttribute('aria-current', a.dataset.tab === id ? 'true' : 'false'); }
   function goTo(id, tab) {
@@ -1152,7 +1311,7 @@
     if (Date.now() < spyLock) return;
     const line = window.innerHeight * 0.35;
     let cur = BANDS[0];
-    for (const id of BANDS) { const b = document.getElementById(id); if (b && b.getBoundingClientRect().top <= line) cur = id; }
+    for (const id of BANDS) { const b = document.getElementById(id); if (b && !b.hidden && b.getBoundingClientRect().top <= line) cur = id; }
     if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) cur = BANDS[BANDS.length - 1];
     setTab(cur);
   }
@@ -1284,6 +1443,7 @@
     const notes = list.filter((p) => p.key === 'ASnotes')[0];
     $('#notes-clear-open').hidden = !(notes && notes.prefixes.length);
     await syncCompanions(list);
+    await syncWildShapes(list);
   }
 
   // ---------------------------------------------------------------- spells
@@ -1795,6 +1955,7 @@
     buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildDefense(); buildCoins(); buildMagicItems(); buildGear(); buildMods(); buildConditions(); buildAmmo();
     state.spellOpts = null; state.sheet = null;
     compPrefixes = []; $('#comp-list').textContent = '';
+    wsPrefixes = []; $('#ws-list').textContent = '';
     renderCasters(); renderSpellList();
     buildIndex();
     const snaps = await state.worker.call('watch', { names: boundNames() });

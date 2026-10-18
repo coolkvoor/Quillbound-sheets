@@ -108,14 +108,15 @@ const ops = {
   // a page MPMB can add more than once (a companion page): added with MPMB's own page function
   addPage({ key }) {
     if (['AScomp', 'ASnotes', 'WSfront', 'ALlog'].indexOf(key) === -1) throw new Error('Unknown page: ' + key);
-    return actionOp(() => { engine.evalExpr('DoTemplate("' + key + '", "Add")'); return {}; });
+    // as an action: MPMB restarts calculations from a timer (calcCont), which fills the new page's calculated fields
+    return actionOp(() => { engine.action('DoTemplate("' + key + '", "Add")', 'addPage'); return {}; });
   },
   // the Notes pages' text, and removing all of them with MPMB's own page removal (no question: the app asked)
   notesText() {
     return JSON.parse(engine.evalExpr('JSON.stringify(What("Template.extras.ASnotes").split(",").slice(1).map(function (p) {'
       + ' return { prefix: p, left: String(What(p + "Notes.Left") || ""), right: String(What(p + "Notes.Right") || "") }; }))'));
   },
-  clearNotesPages() { return actionOp(() => { engine.evalExpr('DoTemplate("ASnotes", "RemoveAll", false, true)'); return {}; }); },
+  clearNotesPages() { return actionOp(() => { engine.action('DoTemplate("ASnotes", "RemoveAll", false, true)', 'clearNotesPages'); return {}; }); },
   // suggestions for the tool lines: MPMB's tools (with add-on content)
   toolNames() { return JSON.parse(engine.evalExpr('JSON.stringify((function () { var r = []; for (var k in ToolsList) { var n = ToolsList[k].name || k; if (r.indexOf(n) === -1) r.push(n); } return r.sort(); })())')); },
   // The character written into the sheet's own PDF (writer.js); the bytes go back to the app to offer as a download
