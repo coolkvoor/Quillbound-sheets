@@ -24,7 +24,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 2. Main screens (Main, Combat, Features). First version is in 0.1.
 3. Dialogs and menus: one renderer for MPMB's 32 dialogs (`app.execDialog`) and `app.popUpMenuEx` menus.
 4. Saving back into the PDF (pdf-lib), verified by opening the result in real Acrobat.
-5. Spells, inventory, notes, companion, wild shape; template page spawning.
+5. Spells, inventory, notes, companion, wild shape; template page spawning. Spells, gear, notes and the Companion screen are built (2026-10-19); Wild Shape pages (`P#.WSfront.*`) are next.
 6. Play extras (rests, slot pips), offline install.
 
 ## Files
@@ -61,6 +61,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `node test/features.test.js [all]`: every class and subclass levelled 1 → 20 one level at a time, read with the app's parser (`src/features.js`): every feature must have a description and no "Rebuild feature texts" may be offered. Each class runs in its own child process on a fresh sheet with a 300 s limit (one sheet reused for ~40 subclasses with the WotC content ended up looping inside MPMB). `all` adds the first content file in `resources/` (50 subclasses, about 25 s). Part of `npm test` (SRD only). `VERBOSE=1` prints every check.
 - `node test/debug.js 'expr' ...`: runs the self-test steps, then evaluates expressions inside the sheet's realm.
 - `npx playwright install chromium` once on a new machine (the test falls back to Playwright's own Chromium).
+- Checking a screen in the Claude preview pane with the owner's sheet: `.claude/launch.json` (local, untracked) has a "sheet" server (`notes/sheet-serve.js`, gitignored) that serves `test/sheet.pdf` on localhost:8124 only. The page fetches it and puts it on `#file` with a DataTransfer. Never copy the sheet into `dist-single` (that folder is published). While the pane is hidden, dialog close events and resize events wait until it renders: reload at the size you want rather than resizing.
 - `node test/ui.test.js [phone-portrait|phone-landscape|tablet-portrait|tablet-landscape]`: Playwright at the real device sizes, with screenshots in `test/shots/`. Env: `SCHEME=dark`, `NOCDN=1`, `DIST=dist-single`, `URL=file:///…`.
 - `tools/build.sh` → `dist/` (multi-file). `node tools/build-single.js [version]` → `dist-single/index.html` (artifact page, pdf-lib from cdnjs) and `dist-single/MPMB-Sheet-App.html` (one downloadable file with pdf-lib bundled; the worker starts from a blob URL, or a data: URL when Chrome refuses blob workers on file:// pages).
 
