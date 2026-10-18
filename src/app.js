@@ -141,6 +141,14 @@
   }
 
   // ---------------------------------------------------------------- building the screens
+  // the sheet's advantage / disadvantage marks (MPMB's check boxes "<x> Adv" and "<x> Dis"; ticking one clears the other)
+  const advDis = (pre, label) => el('span', { cls: 'ad' }, [
+    el('button', { type: 'button', 'data-toggle': pre + ' Adv', 'aria-pressed': 'false', 'aria-label': label + ': advantage', title: 'Advantage', text: 'A' }),
+    el('button', { type: 'button', 'data-toggle': pre + ' Dis', 'aria-pressed': 'false', 'aria-label': label + ': disadvantage', title: 'Disadvantage', text: 'D' }),
+  ]);
+  // a drop-down of one of MPMB's combo boxes whose items are [value, shown] pairs
+  const abilitySelect = (field, label, empty) => el('select', { cls: 'in', 'data-f': field, id: 'f-' + field.replace(/\W+/g, '-'), 'aria-label': label },
+    [[empty, '–'], ['Str Mod', 'Str'], ['Dex Mod', 'Dex'], ['Con Mod', 'Con'], ['Int Mod', 'Int'], ['Wis Mod', 'Wis'], ['Cha Mod', 'Cha']].map(([v, t]) => el('option', { value: v, text: t })));
   function buildAbilities() {
     const box = $('#abilities');
     box.textContent = '';
@@ -148,6 +156,7 @@
       const save = el('div', { cls: 'save' }, [
         el('button', { cls: 'dot sm', type: 'button', 'data-toggle': k + ' ST Prof', 'aria-pressed': 'false', 'aria-label': long + ' saving throw proficiency' }),
         el('span', { text: 'Save ' }), el('b', { cls: 'num', 'data-out': k + ' ST Mod', text: '–' }),
+        advDis(k + ' ST', long + ' save'),
       ]);
       box.append(el('div', { cls: 'abi' }, [
         el('span', { cls: 'k', text: k.toUpperCase(), title: long }),
@@ -165,6 +174,7 @@
         el('button', { cls: 'dot sm', type: 'button', 'data-skill': f, 'aria-pressed': 'false', 'aria-label': name + ' proficiency' }),
         el('span', { cls: 'n', text: name }),
         el('span', { cls: 'a', text: abi }),
+        advDis(f, name),
         el('span', { cls: 'v num', 'data-out': f, text: '–' }),
       ]));
     }
@@ -198,6 +208,11 @@
           el('span', {}, [el('span', { cls: 'muted', text: 'Range ' }), el('b', { 'data-out': p + 'Range', text: '–' })]),
         ]),
         el('div', { cls: 'desc', 'data-out': p + 'Description', text: '' }),
+        // what MPMB worked the numbers out with: proficiency and ability (MPMB sets them, the player can change them)
+        el('div', { cls: 'atk-set', 'data-figs': String(i) }, [
+          el('span', { cls: 'tg' }, [el('button', { cls: 'dot sm', type: 'button', 'data-toggle': p + 'Proficiency', 'aria-pressed': 'false', 'aria-label': 'Attack ' + i + ' proficiency' }), el('span', { text: 'Proficient' })]),
+          el('label', { cls: 'f inline' }, [el('span', { text: 'Ability' }), abilitySelect(p + 'Mod', 'Attack ' + i + ' ability', 'empty')]),
+        ]),
         // MPMB's modifier ("blue text") fields for this attack, shown when MPMB shows them
         el('div', { cls: 'row atk-mods', 'data-vis': 'BlueText.' + p + 'To Hit Bonus', hidden: '' }, [
           modInput('BlueText.' + p + 'To Hit Bonus', 'To hit +'),
@@ -280,6 +295,17 @@
     }
     const dl = $('#dl-languages');
     for (const n of LANGUAGES) dl.append(el('option', { value: n }));
+  }
+  // Defense details: advantage marks, the AC parts, damage resistances; spell save DC
+  function buildDefense() {
+    $('#init-ad').replaceChildren(advDis('Init', 'Initiative'));
+    $('#att-ad').replaceChildren(advDis('Att', 'Attack rolls'));
+    const res = $('#resistances');
+    res.textContent = '';
+    res.append(el('datalist', { id: 'dl-res', 'data-items': 'Resistance Damage Type 1' }));
+    for (let i = 1; i <= 6; i++) res.append(el('input', { cls: 'in', 'data-f': 'Resistance Damage Type ' + i, id: 'f-res' + i, list: 'dl-res', autocomplete: 'off', 'aria-label': 'Resistance ' + i, placeholder: 'Add resistance' }));
+    $('#dc1-mod').replaceChildren(abilitySelect('Spell DC 1 Mod', 'Ability of save DC 1', ' '));
+    $('#dc2-mod').replaceChildren(abilitySelect('Spell DC 2 Mod', 'Ability of save DC 2', ' '));
   }
   function buildCoins() {
     const box = $('#coins');
@@ -533,7 +559,7 @@
     for (const row of $$('[data-attack]')) {
       const has = v('Attack.' + row.dataset.attack + '.Weapon Selection') !== '' || row.contains(document.activeElement);
       row.hidden = !has && !firstEmpty;
-      row.querySelector('[data-figs]').hidden = !has;
+      for (const x of row.querySelectorAll('[data-figs]')) x.hidden = !has;
       row.querySelector('.more').hidden = !has;
       if (!has) firstEmpty = false;
     }
@@ -563,10 +589,10 @@
     }
     const none = $('#slots-none'); if (none) none.hidden = anySlots;
     // tools and languages: show the filled lines and the first empty one (and whichever is being typed in)
-    for (const id of ['#tools', '#languages']) {
+    for (const id of ['#tools', '#languages', '#resistances']) {
       let shownEmpty = false;
       for (const n of document.querySelectorAll(id + ' input')) {
-        const empty = !v(n.dataset.f) && !n.value;
+        const empty = !v(n.dataset.f) && !n.value.trim();
         n.hidden = empty && shownEmpty && document.activeElement !== n;
         if (empty && !n.hidden) shownEmpty = true;
       }
@@ -1463,7 +1489,7 @@
   if (window.ResizeObserver) new ResizeObserver(() => layoutGrids(false)).observe(document.documentElement);
 
   async function showSheet() {
-    buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildCoins(); buildMagicItems(); buildGear(); buildMods(); buildConditions(); buildAmmo();
+    buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildDefense(); buildCoins(); buildMagicItems(); buildGear(); buildMods(); buildConditions(); buildAmmo();
     state.spellOpts = null; state.sheet = null;
     renderCasters(); renderSpellList();
     buildIndex();

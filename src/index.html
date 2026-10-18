@@ -341,6 +341,27 @@ select.in { appearance: auto; }
 .ap-row .tot small { display: block; font-size: 0.75rem; font-weight: 400; color: var(--muted); }
 .ap-explain summary { cursor: pointer; color: var(--accent); min-height: 40px; display: flex; align-items: center; }
 
+/* advantage / disadvantage marks */
+.ad { display: inline-flex; gap: 2px; flex: none; }
+.ad button { width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; }
+.ad button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.skill .ad { margin-right: 6px; }
+.save .ad { margin-left: auto; }
+.row-ad { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 40px; }
+.f.inline { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; }
+.f.inline .in { width: auto; min-width: 4.5rem; }
+.atk-set { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 0.9rem; }
+/* save DC, AC parts */
+.dc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 44px; }
+.dc-row .k { color: var(--muted); }
+.dc-row > b { font-size: 1.3rem; min-width: 2ch; }
+.dc-row .in { width: auto; min-width: 4.5rem; }
+.dc-row .f.mod { margin: 0; }
+details.more { margin: 8px 0; border-top: 1px solid var(--line); }
+details.more summary { cursor: pointer; padding: 10px 0; min-height: 44px; color: var(--accent); }
+.ac-parts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; }
+.ac-parts .wide { grid-column: span 2; }
+.ac-parts label.f b { display: block; padding: 10px 0; font-size: 1.1rem; }
 /* proficiencies, coins */
 .plines { display: grid; grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr)); gap: 6px 8px; margin-top: 4px; }
 .profs { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 10px; align-items: center; }
@@ -440,6 +461,10 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           </div>
           <label class="f"><span>Senses</span><div class="rich" data-rich="Vision" data-empty="None yet"></div></label>
           <label class="f"><span>Saving throw notes</span><div class="rich" data-rich="Saving Throw advantages / disadvantages" data-empty="None yet"></div></label>
+          <div class="dc-row"><span class="k">Save DC</span><b class="num" data-out="Spell save DC 1">–</b><span class="dc-mod" id="dc1-mod"></span></div>
+          <div class="dc-row" data-vis="Spell save DC 2" hidden><span class="k">Second DC</span><b class="num" data-out="Spell save DC 2">–</b><span class="dc-mod" id="dc2-mod"></span>
+            <label class="f mod"><span>Bonus</span><input class="in num" data-f="Spell DC 2 Bonus" id="f-dc2-bonus" autocomplete="off"></label></div>
+          <p class="hint">The ability the DC uses (8 + proficiency + ability, as on the sheet). <button class="btn sm" type="button" data-mpmb="ShowHide 2nd DC" data-title="Second DC">Show or hide a second DC</button></p>
         </div>
         <div class="card span-2">
           <h3>Skills <button class="btn sm" type="button" data-mpmb="SkillsClick" data-title="Skill options">Options</button></h3>
@@ -466,6 +491,28 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           </div>
           <label class="f"><span>Armor</span><input class="in" data-f="AC Armor Description" id="f-armor" list="dl-armor" autocomplete="off" placeholder="Pick or type armor"><datalist id="dl-armor" data-items="AC Armor Description"></datalist></label>
           <label class="f"><span>Shield</span><input class="in" data-f="AC Shield Bonus Description" id="f-shield" autocomplete="off" placeholder="e.g. Shield"></label>
+          <div class="row-ad"><span class="muted">Initiative rolls</span><span id="init-ad"></span></div>
+          <details class="more">
+            <summary>Armor class parts</summary>
+            <div class="ac-parts">
+              <label class="f"><span>Armor</span><input class="in num" data-f="AC Armor Bonus" id="f-ac-armor" inputmode="numeric" autocomplete="off"></label>
+              <label class="f"><span>Dexterity</span><b class="num" data-out="AC Dexterity Modifier">–</b></label>
+              <label class="f"><span>Shield</span><input class="in num" data-f="AC Shield Bonus" id="f-ac-shield" inputmode="numeric" autocomplete="off"></label>
+              <label class="f"><span>Magic</span><input class="in num" data-f="AC Magic" id="f-ac-magic" autocomplete="off"></label>
+              <label class="f wide"><span>Magic, from</span><input class="in" data-f="AC Magic Description" id="f-ac-magic-d" autocomplete="off"></label>
+              <label class="f"><span>Other 1</span><input class="in num" data-f="AC Misc Mod 1" id="f-ac-misc1" autocomplete="off"></label>
+              <label class="f wide"><span>Other 1, from</span><input class="in" data-f="AC Misc Mod 1 Description" id="f-ac-misc1-d" autocomplete="off"></label>
+              <label class="f"><span>Other 2</span><input class="in num" data-f="AC Misc Mod 2" id="f-ac-misc2" autocomplete="off"></label>
+              <label class="f wide"><span>Other 2, from</span><input class="in" data-f="AC Misc Mod 2 Description" id="f-ac-misc2-d" autocomplete="off"></label>
+            </div>
+            <div class="toggles">
+              <span class="tg"><button class="dot sm" type="button" data-toggle="Medium Armor" aria-pressed="false" aria-label="Medium armor"></button><span>Medium armor (Dex max <span data-out="Medium Armor Max Mod">2</span>)</span></span>
+              <span class="tg"><button class="dot sm" type="button" data-toggle="Heavy Armor" aria-pressed="false" aria-label="Heavy armor"></button><span>Heavy armor (no Dex)</span></span>
+              <span class="tg"><button class="dot sm" type="button" data-toggle="AC Stealth Disadvantage" aria-pressed="false" aria-label="Stealth disadvantage"></button><span>Stealth disadvantage</span></span>
+            </div>
+            <p class="hint">MPMB fills these in from your armor, shield and features. "Other" and "Magic" take a number, or a formula such as Con. <span data-out="AC during Rest"></span></p>
+          </details>
+          <div class="stack"><span class="lbl">Damage resistances</span><div class="plines" id="resistances"></div></div>
         </div>
         <div class="card">
           <h3>Hit points</h3>
@@ -510,6 +557,8 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
         </div>
         <div class="card span-2">
           <h3>Attacks and cantrips</h3>
+          <div class="row-ad"><span class="muted">All attack rolls</span><span id="att-ad"></span>
+            <label class="f inline"><span>Attacks per action</span><input class="in num" data-f="Attacks per Action" id="f-atk-per" inputmode="numeric" autocomplete="off"></label></div>
           <div id="attacks"></div>
         </div>
       </div>
