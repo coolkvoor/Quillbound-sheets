@@ -105,6 +105,12 @@ const ops = {
       + ' var prefixes = multi && tDoc.getField("Template.extras." + t) ? What("Template.extras." + t).split(",").slice(1) : [];'
       + ' return { key: t, shown: !!isTemplVis(t), multi: multi, prefixes: prefixes }; }))'));
   },
+  // the Notes pages' text, and removing all of them with MPMB's own page removal (no question: the app asked)
+  notesText() {
+    return JSON.parse(engine.evalExpr('JSON.stringify(What("Template.extras.ASnotes").split(",").slice(1).map(function (p) {'
+      + ' return { prefix: p, left: String(What(p + "Notes.Left") || ""), right: String(What(p + "Notes.Right") || "") }; }))'));
+  },
+  clearNotesPages() { return actionOp(() => { engine.evalExpr('DoTemplate("ASnotes", "RemoveAll", false, true)'); return {}; }); },
   // suggestions for the tool lines: MPMB's tools (with add-on content)
   toolNames() { return JSON.parse(engine.evalExpr('JSON.stringify((function () { var r = []; for (var k in ToolsList) { var n = ToolsList[k].name || k; if (r.indexOf(n) === -1) r.push(n); } return r.sort(); })())')); },
   // The character written into the sheet's own PDF (writer.js); the bytes go back to the app to offer as a download

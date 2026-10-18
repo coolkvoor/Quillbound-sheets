@@ -129,7 +129,9 @@
     }
     function normalize(rec, v) {
       if (v === null || v === undefined) return isToggle(rec) ? 'Off' : '';
-      if (Array.isArray(v)) return v.map(String);
+      // only a list box keeps several values; any other field stores an array as text, as Acrobat does ("a,b"; [""] is "").
+      // MPMB writes arrays into text fields (Template.extras.* after removing pages) and reads them back with split().
+      if (Array.isArray(v)) { if (kind(rec) === 'listbox') return v.map(String); v = v.join(','); }
       if (typeof v === 'number') return isFinite(v) ? String(v) : String(v);
       // Acrobat stores line breaks in text fields as \r, whatever the script wrote. MPMB depends on it: it finds a
       // class feature's section by its \r lines, and with \n left in, new features went in under the wrong heading.

@@ -95,6 +95,12 @@ check('... and nothing is removed before the answer', comps() === c0, comps() + 
 r = tapAsk(LAYOUT, ['template#AScomp#remove'], [true]);
 check('... Yes removes it', !r.question && comps() === c0 - 1, comps() + ' companion pages');
 
+// clearing out the Notes pages (the app's recovery for MPMB's AddToNotes loop): MPMB's remove-all, then a new page works
+e.evalExpr('DoTemplate("ASnotes", "RemoveAll", false, true)');
+check('all Notes pages removed', e.snapshot('Template.extras.ASnotes').value === '', JSON.stringify(e.snapshot('Template.extras.ASnotes').value));
+e.evalExpr('DoTemplate("ASnotes", "Add")');
+check('... and a new Notes page can be added', /ASnotes/.test(String(e.snapshot('Template.extras.ASnotes').value)), e.snapshot('Template.extras.ASnotes').value);
+
 check('no script errors', e.log.errors.length === 0, e.log.errors.map((x) => x.where + ': ' + x.msg + ' ' + x.at).join(' | '));
 console.log(failed ? failed + ' FAILED' : 'all passed');
 process.exitCode = failed ? 1 : 0;

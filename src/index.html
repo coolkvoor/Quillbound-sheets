@@ -734,6 +734,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <h3>Pages <button class="btn sm" type="button" data-bookmark="Functions/Set Pages Layout" data-title="Pages and layout" data-pages="1">Change</button></h3>
           <p class="note">The extra pages in your PDF, from MPMB's Set Pages Layout menu (it also has the sheet's colour, equipment and spell sheet options).</p>
           <ul class="list" id="page-list"></ul>
+          <button class="btn" id="notes-clear-open" type="button" hidden>Clear out Notes pages…</button>
         </div>
         <div class="card">
           <h3>Self-test</h3>
@@ -789,6 +790,29 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
 <dialog class="panel" id="notice" aria-labelledby="notice-title">
   <div class="panel-head"><h3 id="notice-title">MPMB</h3><button class="btn sm" id="notice-close" type="button">OK</button></div>
   <div class="panel-body" id="notice-body"></div>
+</dialog>
+
+<!-- Safety net: MPMB stopped responding, the app reopened the character from the autosave -->
+<dialog class="panel" id="stuck" aria-labelledby="stuck-title">
+  <div class="panel-head"><h3 id="stuck-title">MPMB got stuck</h3><button class="btn sm" id="stuck-ok" type="button">OK</button></div>
+  <div class="panel-body">
+    <p>MPMB's scripts stopped responding during <b id="stuck-op">a change</b>, so the app restarted the sheet and reopened your character as it was saved just before that change.</p>
+    <div id="stuck-notes" hidden>
+      <p>A known cause is a bug in MPMB's own code: removing something whose text is on the third (or later) Notes page makes it loop forever. Clearing out the Notes pages prevents that; you can copy their text first.</p>
+      <button class="btn primary" id="stuck-clear" type="button">Clear out Notes pages…</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- Clearing out the Notes pages -->
+<dialog class="panel" id="notes-clear" aria-labelledby="notes-clear-title">
+  <div class="panel-head"><h3 id="notes-clear-title">Clear out Notes pages</h3></div>
+  <div class="panel-body">
+    <p>This removes all <span id="notes-clear-count">Notes pages</span> from your PDF (MPMB's own page removal). The Notes on the third page and on the Notes card stay. This can't be undone.</p>
+    <p class="note" id="notes-clear-empty">The Notes pages are empty.</p>
+    <textarea class="in" id="notes-clear-text" rows="8" readonly aria-label="Text on the Notes pages"></textarea>
+    <div class="row ask-btns"><button class="btn" id="notes-clear-copy" type="button">Copy text</button><button class="btn" id="notes-clear-no" type="button">Cancel</button><button class="btn primary" id="notes-clear-yes" type="button">Remove the pages</button></div>
+  </div>
 </dialog>
 
 <!-- MPMB's yes/no questions ("This can't be undone! Are you sure?") -->

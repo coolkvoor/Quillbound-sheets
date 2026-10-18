@@ -32,15 +32,29 @@
       throw new Error('WORKER_FAILED: ' + (location.protocol === 'file:' ? 'FILE_PAGE' : (e && e.message) || 'no worker'));
     }
   }
+  // Safety net: MPMB's code can get stuck in a loop (its AddToNotes does with 3+ Notes pages), and then the engine never
+  // answers. A request that runs past its limit calls onStuck (the app restarts the engine from the autosave).
+  // The limits are far above normal (most requests take well under a second, opening a sheet ~10 s on a phone).
+  const SLOW_OPS = { open: 300, savePdf: 300, addContent: 300, removeContent: 300, setSources: 300, setUserScript: 300, chooseSpells: 180, selftest: 180 };
+  const LIMIT_S = 60;
   function connect() {
     const w = newWorker();
     const pending = new Map();
-    let seq = 0;
+    let seq = 0, stuck = false;
     const api = {
       onProgress: null,
+      onStuck: null,
       call(op, args, transfer) {
         const id = ++seq;
-        return new Promise((resolve, reject) => { pending.set(id, { resolve, reject }); w.postMessage({ id, op, args }, transfer || []); });
+        return new Promise((resolve, reject) => {
+          const timer = setTimeout(() => {
+            if (stuck || !pending.has(id)) return;
+            stuck = true;
+            if (api.onStuck) api.onStuck(op); else api.terminate();
+          }, (SLOW_OPS[op] || LIMIT_S) * 1000);
+          pending.set(id, { resolve: (v) => { clearTimeout(timer); resolve(v); }, reject: (e) => { clearTimeout(timer); reject(e); } });
+          w.postMessage({ id, op, args }, transfer || []);
+        });
       },
       terminate() { w.terminate(); for (const p of pending.values()) p.reject(new Error('stopped')); pending.clear(); },
     };
@@ -125,6 +139,7 @@
       w = connect();
       state.worker = w;
       w.onProgress = (t) => { $('#loading-text').textContent = t; };
+      w.onStuck = (op) => recoverFromStuck(op);
       const res = await w.call('open', { bytes: buf, fileName: name, saved: stored && stored.saved ? stored.saved : null, state: char && char.state ? char.state : null }, [buf]);
       state.info = res.info; state.stats = res.stats; state.stats.openMs = Math.round(performance.now() - t0); state.log = res.log;
       state.content = res.content; state.saved = res.saved;
@@ -138,6 +153,57 @@
       loading.hidden = true; $('#start-actions').hidden = false;
       showError(friendlyError(e));
     }
+  }
+
+  // ---------------------------------------------------------------- when MPMB gets stuck
+  // Stop the engine and open the sheet again with the autosaved character: what was saved before the change that got
+  // stuck (that change never finished, so it was never saved). Then offer to clear the Notes pages, the known cause.
+  let recovering = false;
+  async function recoverFromStuck(op) {
+    if (recovering) return;
+    recovering = true;
+    clearTimeout(saveTimer); saveTimer = 0;
+    const w = state.worker;
+    state.worker = null;
+    if (w) w.terminate();
+    state.busy = 0; setBusy(0);
+    for (const d of $$('dialog[open]')) d.close();
+    toast('MPMB stopped responding. Reopening your character…');
+    try {
+      await openSheet(state.bytes.slice(0), state.fileName, false);
+      await refreshPages();
+      const notes = (state.pages || []).filter((p) => p.key === 'ASnotes')[0];
+      $('#stuck-op').textContent = OP_NAMES[op] || op;
+      $('#stuck-notes').hidden = !(notes && notes.prefixes.length);
+      $('#stuck').showModal();
+    } finally { recovering = false; }
+  }
+  const OP_NAMES = { commit: 'a change to a field', toggle: 'a tick box', press: 'a button', tap: 'a button or menu', applyClasses: 'changing your class', chooseSpells: 'choosing spells', removeSpells: 'removing the spell list', addContent: 'adding content', setSources: 'changing sources', applyAbilities: 'changing ability scores', rebuildClassText: 'rebuilding the feature texts', exportState: 'saving' };
+
+  // Clearing out the Notes pages (MPMB's own removal of all of them); their text is shown first, to copy what to keep
+  async function clearNotesPages() {
+    const pages = await state.worker.call('notesText', {});
+    const box = $('#notes-clear-text');
+    box.textContent = '';
+    const all = [];
+    for (const p of pages) for (const t of [p.left, p.right]) if (t.trim()) all.push(t.trim());
+    box.value = all.length ? all.join('\n\n——\n\n') : '';
+    $('#notes-clear-empty').hidden = !!all.length;
+    box.hidden = !all.length;
+    $('#notes-clear-count').textContent = pages.length + (pages.length === 1 ? ' Notes page' : ' Notes pages');
+    const dlg = $('#notes-clear');
+    const yes = await new Promise((resolve) => {
+      let ok = false;
+      $('#notes-clear-copy').onclick = async () => { try { await navigator.clipboard.writeText(box.value); toast('Copied'); } catch (e) { box.select(); } };
+      $('#notes-clear-yes').onclick = () => { ok = true; dlg.close(); };
+      $('#notes-clear-no').onclick = () => dlg.close();
+      dlg.onclose = () => resolve(ok);
+      dlg.showModal();
+    });
+    if (!yes) return;
+    await send('clearNotesPages', {});
+    await refreshPages();
+    toast('Notes pages removed');
   }
 
   // ---------------------------------------------------------------- building the screens
@@ -843,6 +909,9 @@
     $('#hp-minus').addEventListener('click', () => hpStep(-1));
     $('#hp-plus').addEventListener('click', () => hpStep(1));
     $('#run-test').addEventListener('click', runSelfTest);
+    $('#notes-clear-open').addEventListener('click', () => { if (state.worker) clearNotesPages(); });
+    $('#stuck-ok').addEventListener('click', () => $('#stuck').close());
+    $('#stuck-clear').addEventListener('click', () => { $('#stuck').close(); if (state.worker) clearNotesPages(); });
     $('#save-pdf').addEventListener('click', downloadPdf);
     // phones close apps in the background without warning: save right away when the page is hidden
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && saveTimer) { clearTimeout(saveTimer); saveTimer = 0; saveNow(); } });
@@ -1007,6 +1076,8 @@
       const n = p.multi ? p.prefixes.length : (p.shown ? 1 : 0);
       ul.append(el('li', {}, [el('span', { cls: 'grow', text: PAGE_NAMES[p.key] || p.key }), el('span', { cls: n ? 'chip' : 'chip muted', text: p.multi ? (n ? n + '×' : 'none') : (n ? 'shown' : 'hidden') })]));
     }
+    const notes = list.filter((p) => p.key === 'ASnotes')[0];
+    $('#notes-clear-open').hidden = !(notes && notes.prefixes.length);
   }
 
   // ---------------------------------------------------------------- spells
