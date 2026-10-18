@@ -111,6 +111,10 @@ label.f > span.hint { text-transform: none; letter-spacing: 0; font-size: 0.85re
 .stat input.lvl { width: 3.4rem; min-height: 40px; font-size: 1.5rem; font-weight: 700; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .hd { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: 1 1 100%; }
 .hd .uses input { width: 3.6rem; }
+.hd .hd-die { display: inline-flex; align-items: center; gap: 4px; }
+.hd .hd-die input { width: 3rem; }
+.hd .hd-con { margin-right: auto; }
+.in.note { margin-top: 6px; font-size: 0.9rem; }
 .results { display: grid; gap: 0; }
 .res { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .res .lab { font-weight: 500; }
@@ -677,6 +681,12 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <h3>Equipment <button class="btn sm" type="button" data-mpmb="Equipment.menu" data-title="Add equipment">Add gear</button></h3>
           <p class="hint">Type an item; MPMB fills in its weight. The menu adds packs and starting gear.</p>
           <div id="gear-list"></div>
+        </div>
+        <div class="card span-2">
+          <h3>Extra equipment <span class="chip">page 3</span></h3>
+          <p class="hint">More room for gear, as on the sheet's third page. Weight: <b class="num" id="xgear-weight">–</b> (by default MPMB doesn't add this to the weight you carry: it counts coins and the Equipment list. The sheet's Weight options can change that; the app doesn't have them yet).</p>
+          <div id="xgear-list"></div>
+          <label class="f"><span>Other holdings</span><textarea class="in" rows="4" data-f="Extra.Other Holdings" id="f-holdings" placeholder="Property, investments, things kept elsewhere"></textarea></label>
         </div>
         <div class="card">
           <h3>Coins and weight</h3>

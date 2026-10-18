@@ -185,6 +185,8 @@
     for (let i = 1; i <= HITDICE; i++) {
       box.append(el('div', { cls: 'hd', 'data-row': 'HD' + i + ' Level' }, [
         el('span', { 'data-hd': String(i), text: 'Hit dice' }),
+        el('label', { cls: 'hd-die' }, [el('span', { cls: 'hint', text: 'Die' }), el('input', { cls: 'num', 'data-f': 'HD' + i + ' Die', id: 'f-hdd' + i, inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Hit die size' })]),
+        el('span', { cls: 'hint hd-con', 'data-hdcon': String(i) }),
         el('label', { cls: 'uses' }, [el('span', { cls: 'hint', text: 'Used' }), el('input', { cls: 'num', 'data-f': 'HD' + i + ' Used', id: 'f-hd' + i, inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Hit dice used' })]),
       ]));
     }
@@ -256,6 +258,7 @@
           lineMenu('Feat Button ' + i, 'Feat ' + i),
         ]),
         el('div', { cls: 'hint rich', 'data-rich': 'Feat Description ' + i }),
+        el('input', { cls: 'in note', 'data-f': 'Feat Note ' + i, id: 'f-featnote' + i, autocomplete: 'off', placeholder: 'Note (e.g. the choice you made)', 'aria-label': 'Feat ' + i + ' note' }),
       ])]));
     }
   }
@@ -341,7 +344,7 @@
   }
 
   // Magic items: the 6 lines on the Additional sheet (page 3); Equipment: the 46 lines on page 2
-  const MAGIC = 6, GEAR = 46;
+  const MAGIC = 6, GEAR = 46, XGEAR = 42;
   function buildMagicItems() {
     const box = $('#magic-items');
     box.textContent = '';
@@ -361,19 +364,23 @@
       ]));
     }
   }
+  // gear lists: page 2's equipment ("Adventuring Gear …") and page 3's extra equipment ("Extra.Gear …")
   function buildGear() {
-    const box = $('#gear-list');
-    box.textContent = '';
-    box.append(el('div', { cls: 'gear-head' }, [el('span', { text: 'Item' }), el('span', { text: 'Amount' }), el('span', { text: 'Weight' }), el('span')]));
-    for (let i = 1; i <= GEAR; i++) {
-      const p = 'Adventuring Gear ';
-      box.append(el('div', { cls: 'gear-row', 'data-gear': String(i) }, [
-        el('input', { cls: 'in', 'data-f': p + 'Row ' + i, id: 'f-gear' + i, autocomplete: 'off', placeholder: 'Add an item', 'aria-label': 'Item ' + i }),
-        el('input', { cls: 'in num', 'data-f': p + 'Amount ' + i, id: 'f-gearn' + i, inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Amount' }),
-        el('input', { cls: 'in num', 'data-f': p + 'Weight ' + i, id: 'f-gearw' + i, inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Weight' }),
-        lineMenu('Adventuring Gear Button ' + i, 'Item ' + i),
-      ]));
-    }
+    const list = (boxSel, p, btn, count, key, idp) => {
+      const box = $(boxSel);
+      box.textContent = '';
+      box.append(el('div', { cls: 'gear-head' }, [el('span', { text: 'Item' }), el('span', { text: 'Amount' }), el('span', { text: 'Weight' }), el('span')]));
+      for (let i = 1; i <= count; i++) {
+        box.append(el('div', { cls: 'gear-row', ['data-' + key]: String(i) }, [
+          el('input', { cls: 'in', 'data-f': p + 'Row ' + i, id: 'f-' + idp + i, autocomplete: 'off', placeholder: 'Add an item', 'aria-label': 'Item ' + i }),
+          el('input', { cls: 'in num', 'data-f': p + 'Amount ' + i, id: 'f-' + idp + 'n' + i, inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Amount' }),
+          el('input', { cls: 'in num', 'data-f': p + 'Weight ' + i, id: 'f-' + idp + 'w' + i, inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Weight' }),
+          lineMenu(btn + i, 'Item ' + i),
+        ]));
+      }
+    };
+    list('#gear-list', 'Adventuring Gear ', 'Adventuring Gear Button ', GEAR, 'gear', 'gear');
+    list('#xgear-list', 'Extra.Gear ', 'Extra.Gear Button ', XGEAR, 'xgear', 'xgear');
   }
 
   // ---------------------------------------------------------------- binding fields to the screen
@@ -381,7 +388,8 @@
     const s = new Set();
     for (const n of $$(BOUND.map((a) => '[' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) s.add(n.getAttribute(a));
     for (const [f] of SKILLS) { s.add(f + ' Prof'); s.add(f + ' Exp'); }
-    for (let i = 1; i <= HITDICE; i++) { s.add('HD' + i + ' Level'); s.add('HD' + i + ' Die'); }
+    for (let i = 1; i <= HITDICE; i++) { s.add('HD' + i + ' Level'); s.add('HD' + i + ' Die'); s.add('HD' + i + ' Con Mod'); }
+    s.add('Extra.Gear Weight Subtotal Left'); s.add('Extra.Gear Weight Subtotal Right');
     for (let i = 1; i <= 8; i++) { s.add('Tool ' + i); s.add('Language ' + i); }
     for (let l = 1; l <= 9; l++) s.add('SpellSlots.CheckboxesSet.lvl' + l);
     return Array.from(s);
@@ -524,7 +532,7 @@
     const showFilled = (sel, field, extra) => {
       let first = true;
       for (const row of $$(sel)) {
-        const i = row.dataset.mi || row.dataset.gear;
+        const i = row.dataset.mi || row.dataset.gear || row.dataset.xgear;
         const has = v(field(i)) !== '' || row.contains(document.activeElement);
         row.hidden = !has && !first;
         row.querySelector('.more').hidden = !has;
@@ -541,12 +549,16 @@
     });
     $('#attuned-chip').textContent = attuned + ' attuned';
     showFilled('[data-gear]', (i) => 'Adventuring Gear Row ' + i);
+    showFilled('[data-xgear]', (i) => 'Extra.Gear Row ' + i);
+    const xw = (Number(v('Extra.Gear Weight Subtotal Left')) || 0) + (Number(v('Extra.Gear Weight Subtotal Right')) || 0);
+    $('#xgear-weight').textContent = xw ? String(Math.round(xw * 100) / 100) : '–';
     // feats: filled lines plus the first empty one, to pick a new feat
     let featEmpty = true;
     for (const li of $$('[data-feat]')) {
       const has = v('Feat Name ' + li.dataset.feat) !== '' || li.contains(document.activeElement);
       li.hidden = !has && !featEmpty;
       li.querySelector('.more').hidden = !has;
+      li.querySelector('.note').hidden = !(v('Feat Name ' + li.dataset.feat) !== '');
       if (!has) featEmpty = false;
     }
     for (const list of ['#limited', '#actions']) {
@@ -573,6 +585,9 @@
       if (has) shownHd++;
       row.querySelector('[data-hd]').textContent = has ? 'Hit dice ' + lv + ' × ' + (die.indexOf('d') === 0 ? die : 'd' + die) : 'Hit dice: none yet';
       row.querySelector('.uses').hidden = !has;
+      row.querySelector('.hd-die').hidden = !has;
+      const con = v('HD' + i + ' Con Mod');
+      row.querySelector('[data-hdcon]').textContent = has && con !== '' ? (Number(con) < 0 ? '' : '+') + con + ' each' : '';
     }
     // spell slots: levels with slots, and only the boxes MPMB shows
     let anySlots = false;
