@@ -31,23 +31,30 @@ check('parser: plain heading with text below', p[5].name === 'Reckless Attack' &
 check('stale: a plain heading without text is old text', features.staleClassText("#◆ Ritual Adept# (Wizard 1, SRD'24 78)\r#◆ Scholar# (Wizard 2)\rtext"));
 check('stale: a heading with a usage and nothing else is not', !features.staleClassText("#◆ Wild Shape# (Druid 2, SRD'24 42) #[regain 1/SR, 3× per Long Rest]#\r#◆ Next# (Druid 3)\rtext"));
 
-const ctx = vm.createContext({ __modelJSON: fs.readFileSync(path.join(__dirname, 'model.json'), 'utf8') });
-const ev = (code, name) => vm.runInContext(code, ctx, { filename: name || 'eval' });
-ev(fs.readFileSync(path.join(SRC, 'engine.js'), 'utf8'), 'engine.js');
-ctx.__host = { global: ctx, evalGlobal: ev };
-const e = ev('MPMBEngine.createEngine(JSON.parse(__modelJSON), __host, { fileName: "sheet.pdf" })');
-e.start();
-content.restore(e);
-if (process.argv[2] === 'all') {
-  const dir = path.join(ROOT, 'resources');
-  const file = fs.existsSync(dir) && fs.readdirSync(dir).filter((f) => /\.js$/i.test(f)).sort()[0];
-  if (file) { const r = content.addFile(e, fs.readFileSync(path.join(dir, file), 'utf8')); check('add-on content added: ' + file, !r.errors.length, r.errors[0]); }
-  else console.log('SKIP no add-on content file in resources/');
+// Each class runs in its own child process on a fresh sheet, with a time limit: one sheet reused for ~40 subclasses with
+// the WotC content ended up looping in MPMB's code (a real character doesn't go through dozens of classes), and a hang
+// must fail the class instead of stalling the run.
+const MODE = process.argv[2] === 'all' ? 'all' : 'srd';
+const ONE = (process.argv.filter((x) => x.indexOf('--class=') === 0)[0] || '').slice(8);
+const LIMIT_S = 300;
+function newSheet() {
+  const ctx = vm.createContext({ __modelJSON: fs.readFileSync(path.join(__dirname, 'model.json'), 'utf8') });
+  const ev = (code, name) => vm.runInContext(code, ctx, { filename: name || 'eval' });
+  ev(fs.readFileSync(path.join(SRC, 'engine.js'), 'utf8'), 'engine.js');
+  ctx.__host = { global: ctx, evalGlobal: ev };
+  const e = ev('MPMBEngine.createEngine(JSON.parse(__modelJSON), __host, { fileName: "sheet.pdf" })');
+  e.start();
+  content.restore(e);
+  if (MODE === 'all') {
+    const dir = path.join(ROOT, 'resources');
+    const file = fs.existsSync(dir) && fs.readdirSync(dir).filter((x) => /\.js$/i.test(x)).sort()[0];
+    if (!file) { if (!ONE) console.log('SKIP no add-on content file in resources/'); }
+    else { const r = content.addFile(e, fs.readFileSync(path.join(dir, file), 'utf8')); if (r.errors.length) check('add-on content added: ' + file, false, r.errors[0]); }
+  }
+  return e;
 }
-
-const t0 = Date.now();
-let builds = 0;
-for (const c of classes.options(e).classes) {
+function runClass(e, c) {
+  let builds = 0;
   for (const sub of c.subclasses.length ? c.subclasses : ['']) {
     classes.apply(e, []);
     e.evalExpr('Value("Class Features", "")');
@@ -66,8 +73,28 @@ for (const c of classes.options(e).classes) {
     check(label + ': every feature has a description', !Object.keys(empty).length, Object.values(empty).join('; '));
     check(label + ': no rebuild offered', !stale, 'at level ' + stale);
   }
+  return builds;
 }
-classes.apply(e, []);
+if (ONE) {
+  const e = newSheet();
+  const c = classes.options(e).classes.filter((x) => x.name === ONE)[0];
+  if (!c) check('class ' + ONE + ' exists', false);
+  const n = c ? runClass(e, c) : 0;
+  console.log('BUILT ' + n);
+  process.exit(failed ? 1 : 0);
+}
+const t0 = Date.now();
+let builds = 0;
+for (const c of classes.options(newSheet()).classes) {
+  const t = Date.now();
+  const r = require('child_process').spawnSync(process.execPath, [__filename, MODE, '--class=' + c.name], { encoding: 'utf8', timeout: LIMIT_S * 1000, env: process.env });
+  const out = (r.stdout || '') + (r.stderr || '');
+  for (const line of out.split('\n')) if (/^(FAIL|PASS|SKIP)/.test(line)) console.log(line);
+  const m = /BUILT (\d+)/.exec(out); if (m) builds += Number(m[1]);
+  if (r.error && r.error.code === 'ETIMEDOUT') check(c.name + ': finishes within ' + LIMIT_S + ' s', false, 'stopped after ' + Math.round((Date.now() - t) / 1000) + ' s');
+  else check(c.name + ': all subclasses checked', r.status === 0 && !!m, r.status !== 0 ? 'exit ' + r.status + ' ' + out.split('\n').filter((l) => /^FAIL|Error/.test(l)).slice(0, 2).join(' | ') : '');
+  if (process.env.VERBOSE) console.log('     ' + c.name + ' ' + Math.round((Date.now() - t) / 1000) + ' s');
+}
 console.log(builds + ' levels built in ' + Math.round((Date.now() - t0) / 1000) + ' s');
 console.log(failed ? failed + ' FAILED' : 'all passed');
 process.exit(failed ? 1 : 0);
