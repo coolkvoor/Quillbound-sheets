@@ -222,13 +222,14 @@
       const save = el('div', { cls: 'save' }, [
         el('button', { cls: 'dot sm', type: 'button', 'data-toggle': k + ' ST Prof', 'aria-pressed': 'false', 'aria-label': long + ' saving throw proficiency' }),
         el('span', { text: 'Save ' }), el('b', { cls: 'num', 'data-out': k + ' ST Mod', text: '–' }),
-        advDis(k + ' ST', long + ' save'),
       ]);
       box.append(el('div', { cls: 'abi' }, [
         el('span', { cls: 'k', text: k.toUpperCase(), title: long }),
         el('span', { cls: 'mod num', 'data-out': k + ' Mod', text: '–' }),
         el('input', { 'data-f': k, id: 'f-abi-' + k, inputmode: 'numeric', autocomplete: 'off', 'aria-label': long + ' score', cls: 'num' }),
         save,
+        // the sheet's two small Adv / Dis boxes beside the save; on their own line here, as a box is too narrow on a phone
+        advDis(k + ' ST', long + ' save'),
       ]));
     }
   }
