@@ -649,7 +649,7 @@
   }
   // the attributes that bind an element to an MPMB field (data-mpmb: one of MPMB's buttons, shown when MPMB shows it)
   // data-vis: shown only while MPMB shows that field (its modifier fields, for example)
-    // data-opts: a drop-down filled with the combo box's items; data-prof: a skill dot for a not/proficient/expertise box
+  // data-opts: a drop-down filled with the combo box's items; data-prof: a skill dot for a not/proficient/expertise box
   const BOUND = ['data-f', 'data-out', 'data-rich', 'data-toggle', 'data-items', 'data-mpmb', 'data-vis', 'data-opts', 'data-prof'];
   const shown = (snap) => { if (!snap || !snap.exists) return ''; const d = snap.display !== undefined ? snap.display : snap.value; return Array.isArray(d) ? d.join(', ') : String(d === null || d === undefined ? '' : d); };
   function renderRich(node, snap) {
