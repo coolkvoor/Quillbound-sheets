@@ -947,6 +947,18 @@
     }
     return new Promise((resolve) => { $('#notice-close').onclick = () => dlg.close(); dlg.onclose = () => resolve(); dlg.showModal(); });
   }
+  function askYesNo(q) {
+    const dlg = $('#ask');
+    $('#ask-title').textContent = q.title || 'MPMB asks';
+    $('#ask-msg').textContent = String(q.msg || '').trim();
+    return new Promise((resolve) => {
+      let answer = false;
+      $('#ask-yes').onclick = () => { answer = true; dlg.close(); };
+      $('#ask-no').onclick = () => dlg.close();
+      dlg.onclose = () => resolve(answer);
+      dlg.showModal();
+    });
+  }
   let toastTimer = 0;
   function toast(text) {
     let t = $('#toast');
@@ -959,10 +971,16 @@
   async function tapMpmb(btn) {
     const name = btn.dataset.mpmb, title = btn.dataset.title || btn.textContent.trim();
     const where = btn.dataset.bookmark ? { bookmark: btn.dataset.bookmark.split('/') } : { name, modifier: btn.dataset.modifier === '1' };
-    const answers = [];
-    for (let i = 0; i < 6; i++) {
-      const res = await send('tap', Object.assign({ answers }, where));
+    const answers = [], yes = [];
+    for (let i = 0; i < 10; i++) {
+      const res = await send('tap', Object.assign({ answers, yes }, where));
       if (!res) return;
+      // MPMB asked a yes/no question (answered No for now): ask the user; on Yes, run it again with Yes
+      if (res.question) {
+        if (!(await askYesNo(res.question))) return;
+        yes.push(true);
+        continue;
+      }
       if (res.menu) {
         const ret = await pickFromMenu(res.menu, title, name === 'Class Features Menu' || name === 'Race Features Menu');
         if (ret === null) return;
@@ -971,7 +989,23 @@
       }
       if (res.alerts && res.alerts.length) await showNotice(res.alerts);
       else if (btn.dataset.done) toast(btn.dataset.done);
+      if (btn.dataset.pages) { refreshPages(); spellsSoon(); }
       return;
+    }
+  }
+
+  // ---------------------------------------------------------------- the sheet's extra pages (Set Pages Layout)
+  const PAGE_NAMES = { ASfront: 'Third page (conditions, magic items, extra equipment)', ASoverflow: 'Overflow page (more magic items, feats, actions)',
+    ASbackgr: 'Background and organisation page', AScomp: 'Companion page', ASnotes: 'Notes page', WSfront: 'Wild Shapes page', ALlog: 'Adventurers Logsheet', SSfront: 'Spell sheet' };
+  async function refreshPages() {
+    let list;
+    try { list = await state.worker.call('pageList', {}); } catch (e) { return; }
+    state.pages = list;
+    const ul = $('#page-list');
+    ul.textContent = '';
+    for (const p of list) {
+      const n = p.multi ? p.prefixes.length : (p.shown ? 1 : 0);
+      ul.append(el('li', {}, [el('span', { cls: 'grow', text: PAGE_NAMES[p.key] || p.key }), el('span', { cls: n ? 'chip' : 'chip muted', text: p.multi ? (n ? n + '×' : 'none') : (n ? 'shown' : 'hidden') })]));
     }
   }
 
@@ -1500,6 +1534,7 @@
     setTab('main');
     refreshSpells();
     state.worker.call('xpInfo', {}).then((x) => { state.xpTable = x.table; refreshDerived(); }).catch(() => {});
+    refreshPages();
     state.worker.call('toolNames', {}).then((names) => { const dl = $('#dl-tools'); dl.textContent = ''; for (const n of names) dl.append(el('option', { value: n })); }).catch(() => {});
   }
   wireEvents();

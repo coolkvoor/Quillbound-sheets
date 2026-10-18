@@ -97,6 +97,14 @@ const ops = {
   },
   // level by experience points, by MPMB's own table
   xpInfo() { return JSON.parse(engine.evalExpr('JSON.stringify((function () { var lv = Number(What("Character Level")) || 0; var r = getCurrentLevelByXP(lv, What("Total Experience")); return { level: lv, xpLevel: r[0], table: ExperiencePointsList }; })())')); },
+  // the sheet's optional pages, as MPMB keeps track of them: shown or not, and for pages that can be added more than
+  // once (companion, notes, wild shapes, logsheet, spell sheets) the field prefix of each copy ("P4.AScomp.")
+  pageList() {
+    return JSON.parse(engine.evalExpr('JSON.stringify(["ASfront", "ASoverflow", "ASbackgr", "AScomp", "ASnotes", "WSfront", "ALlog", "SSfront"].map(function (t) {'
+      + ' var multi = TemplatesWithExtras.indexOf(t) !== -1;'
+      + ' var prefixes = multi && tDoc.getField("Template.extras." + t) ? What("Template.extras." + t).split(",").slice(1) : [];'
+      + ' return { key: t, shown: !!isTemplVis(t), multi: multi, prefixes: prefixes }; }))'));
+  },
   // suggestions for the tool lines: MPMB's tools (with add-on content)
   toolNames() { return JSON.parse(engine.evalExpr('JSON.stringify((function () { var r = []; for (var k in ToolsList) { var n = ToolsList[k].name || k; if (r.indexOf(n) === -1) r.push(n); } return r.sort(); })())')); },
   // The character written into the sheet's own PDF (writer.js); the bytes go back to the app to offer as a download
@@ -112,18 +120,23 @@ const ops = {
   setSources({ excluded }) { return contentOp(() => MPMBContent.setSources(engine, excluded)); },
   // A tap on one of MPMB's buttons (or a bookmark) that may open menus. answers: the menu choices so far, in order.
   // If the action opens a menu nobody answered yet, it comes back as `menu` and the app asks the user, then taps again.
-  tap({ name, widget, bookmark, answers, modifier }) {
+  // A yes/no question MPMB asks on the way comes back as `question` (answered No this time); the app asks the user and
+  // taps again with the answers so far in `yes` (true/false, in order).
+  tap({ name, widget, bookmark, answers, modifier, yes }) {
     const t = now(), seq = engine.logSeq;
     engine.clearQueues();
     for (const a of answers || []) engine.queueMenu(a);
-    if (bookmark) engine.runBookmark(bookmark); else engine.press(name, widget || 0, { modifier: !!modifier });
-    const menu = engine.takeMenu();
+    for (const y of yes || []) engine.queueAnswer(y);
+    engine.askQuestions(true);
+    try { if (bookmark) engine.runBookmark(bookmark); else engine.press(name, widget || 0, { modifier: !!modifier }); }
+    finally { engine.askQuestions(false); }
+    const menu = engine.takeMenu(), question = engine.takeQuestion();
     engine.clearQueues();
-    // what MPMB showed: alerts, and dialogs that only show text (both in the order they came)
-    const shown = engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ seq: a.seq, title: a.title, msg: a.msg }))
+    // what MPMB showed: alerts (not its questions, which the app asks), and dialogs that only show text, in order
+    const shown = engine.log.alerts.filter((a) => a.seq > seq && !a.question).map((a) => ({ seq: a.seq, title: a.title, msg: a.msg }))
       .concat(engine.log.dialogs.filter((d) => d.seq > seq && d.text).map((d) => ({ seq: d.seq, title: d.title, msg: d.text })))
       .sort((a, b) => a.seq - b.seq).map((x) => ({ title: x.title, msg: x.msg }));
-    return { menu, alerts: shown, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
+    return { menu, question, alerts: shown, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
   },
   // Spells (spells.js)
   spellOptions() { return MPMBSpells.options(engine); },

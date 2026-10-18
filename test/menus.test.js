@@ -75,6 +75,26 @@ check('Arcana +2 modifier counts', val('Arc') === '5', 'Arcana ' + val('Arc'));
 m = tap('SkillsClick');
 check('the menu marks the option as on', find(m, /skills#bluetextfields/).marked, JSON.stringify(find(m, /skills#bluetextfields/)));
 
+// pages (Functions → Set Pages Layout), and MPMB's yes/no questions: asked before anything changes, as the worker's tap does
+function tapAsk(path, answers, yes) {
+  e.clearQueues(); for (const a of answers || []) e.queueMenu(a); for (const y of yes || []) e.queueAnswer(y);
+  e.askQuestions(true); try { e.runBookmark(path); } finally { e.askQuestions(false); }
+  const r = { menu: e.takeMenu(), question: e.takeQuestion() }; e.clearQueues(); return r;
+}
+const comps = () => String(e.snapshot('Template.extras.AScomp').value).split(',').length - 1;
+const LAYOUT = ['Functions', 'Set Pages Layout'];
+let r = tapAsk(LAYOUT);
+check('Set Pages Layout menu lists the pages', !!find(r.menu, /^template#WSfront#add/) && !!find(r.menu, /^template#AScomp#remove/));
+const pages0 = e.evalExpr('tDoc.numPages');
+tapAsk(LAYOUT, ['template#WSfront#add']);
+check('adding a Wild Shapes page', e.evalExpr('tDoc.numPages') === pages0 + 1 && /WSfront/.test(String(e.snapshot('Template.extras.WSfront').value)), e.snapshot('Template.extras.WSfront').value);
+const c0 = comps();
+r = tapAsk(LAYOUT, ['template#AScomp#remove']);
+check('removing a Companion page asks first', !!r.question && /can't be undone/i.test(r.question.msg), r.question && r.question.msg.slice(0, 80));
+check('... and nothing is removed before the answer', comps() === c0, comps() + ' companion pages');
+r = tapAsk(LAYOUT, ['template#AScomp#remove'], [true]);
+check('... Yes removes it', !r.question && comps() === c0 - 1, comps() + ' companion pages');
+
 check('no script errors', e.log.errors.length === 0, e.log.errors.map((x) => x.where + ': ' + x.msg + ' ' + x.at).join(' | '));
 console.log(failed ? failed + ' FAILED' : 'all passed');
 process.exitCode = failed ? 1 : 0;

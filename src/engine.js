@@ -453,6 +453,12 @@
     const standingAnswers = {}; // dialog name -> answer used every time it opens (unless one is queued)
     const menuAnswers = [];     // cReturn values for the next app.popUpMenuEx calls, in order (null = nothing chosen)
     let lastMenu = null;        // the last menu nobody answered: [{ name, ret, marked, enabled, items }]
+    // Yes/No questions (app.alert with nType 2 or 3). Normally answered Yes. While asking is on (a tap from the app), a
+    // question without a queued answer is answered No and kept (lastQuestion) for the app to ask; the tap then runs
+    // again with the user's answer queued. MPMB asks such questions ("This can't be undone! Are you sure?") before it
+    // changes anything, so the No run has no effect.
+    const alertAnswers = [];    // 4 (Yes) / 3 (No) / 2 (Cancel), used in order
+    let askQuestions = false, lastQuestion = null;
     function menuTree(arr) {
       const out = [];
       for (let i = 0; i < arr.length; i++) {
@@ -533,10 +539,14 @@
       alert(a, nIcon, nType, cTitle, oDoc, oCheckbox) {
         const o = typeof a === 'object' && a !== null ? a : { cMsg: a, nIcon, nType, cTitle, oCheckbox };
         const type = o.nType || 0;
-        push(log.alerts, { title: o.cTitle ? String(o.cTitle) : '', msg: String(o.cMsg === undefined ? '' : o.cMsg), type, t: Date.now() });
+        const question = type === 2 || type === 3;
+        let answer = question ? 4 : 1;   // Yes / OK
+        if (question && alertAnswers.length) answer = alertAnswers.shift();
+        else if (question && askQuestions) { answer = 3; if (!lastQuestion) lastQuestion = { title: o.cTitle ? String(o.cTitle) : '', msg: String(o.cMsg === undefined ? '' : o.cMsg), type }; }
+        push(log.alerts, { title: o.cTitle ? String(o.cTitle) : '', msg: String(o.cMsg === undefined ? '' : o.cMsg), type, question, t: Date.now() });
         if (o.oCheckbox) o.oCheckbox.bAfterValue = false;
         if (opts.onAlert) opts.onAlert(log.alerts[log.alerts.length - 1]);
-        return type === 2 || type === 3 ? 4 : 1;   // Yes / OK
+        return answer;
       },
       execDialog(d) {
         // Without a queued answer: the defaults the dialog loads itself (as if the user pressed OK).
@@ -1068,7 +1078,11 @@
       setStandingAnswer(name, answer) { if (answer) standingAnswers[name] = Object.assign({ name }, answer); else delete standingAnswers[name]; },
       queueMenu(ret) { menuAnswers.push(ret === undefined ? null : ret); },
       takeMenu() { const m = lastMenu; lastMenu = null; return m; },
-      clearQueues() { fileQueue.length = 0; dialogAnswers.length = 0; menuAnswers.length = 0; lastMenu = null; },
+      // yes/no questions: queueAnswer(true|false), askQuestions(on), takeQuestion() → { title, msg } or null
+      queueAnswer(yes) { alertAnswers.push(yes ? 4 : 3); },
+      askQuestions(on) { askQuestions = !!on; },
+      takeQuestion() { const q = lastQuestion; lastQuestion = null; return q; },
+      clearQueues() { fileQueue.length = 0; dialogAnswers.length = 0; menuAnswers.length = 0; lastMenu = null; alertAnswers.length = 0; lastQuestion = null; },
       runBookmark(path) {
         let node = { children: g.bookmarkRoot.children };
         for (let i = 0; i < path.length; i++) { const kids = node.children || []; let next = null; for (let j = 0; j < kids.length; j++) if (kids[j].name === path[i]) { next = kids[j]; break; } if (!next) return false; node = next; }

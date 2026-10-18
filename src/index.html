@@ -89,6 +89,8 @@ section.band { scroll-margin-top: calc(var(--header-h) + 8px); padding-top: 12px
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 12px; min-width: 0; container-type: inline-size; }
 .card h3 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; letter-spacing: 0.03em; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .card h3 .chip { font-family: var(--font-body); letter-spacing: 0; }
+.chip.muted { opacity: 0.6; }
+.ask-btns { justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
 label.f { display: grid; gap: 4px; min-width: 0; }
 label.f > span { font-size: 0.82rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
@@ -728,6 +730,11 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <p class="note">Choose which books MPMB's automation uses. Content from books you switch off doesn't appear in the lists.</p>
           <div id="source-list"></div>
         </div>
+        <div class="card" id="pages">
+          <h3>Pages <button class="btn sm" type="button" data-bookmark="Functions/Set Pages Layout" data-title="Pages and layout" data-pages="1">Change</button></h3>
+          <p class="note">The extra pages in your PDF, from MPMB's Set Pages Layout menu (it also has the sheet's colour, equipment and spell sheet options).</p>
+          <ul class="list" id="page-list"></ul>
+        </div>
         <div class="card">
           <h3>Self-test</h3>
           <p class="note">Builds a level 3 Elf Wizard on a fresh copy of your sheet and checks MPMB's results. Your own character isn't touched.</p>
@@ -782,6 +789,13 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
 <dialog class="panel" id="notice" aria-labelledby="notice-title">
   <div class="panel-head"><h3 id="notice-title">MPMB</h3><button class="btn sm" id="notice-close" type="button">OK</button></div>
   <div class="panel-body" id="notice-body"></div>
+</dialog>
+
+<!-- MPMB's yes/no questions ("This can't be undone! Are you sure?") -->
+<dialog class="panel" id="ask" aria-labelledby="ask-title">
+  <div class="panel-head"><h3 id="ask-title">MPMB asks</h3></div>
+  <div class="panel-body"><div class="notice-msg" id="ask-msg"></div>
+    <div class="row ask-btns"><button class="btn" id="ask-no" type="button">No</button><button class="btn primary" id="ask-yes" type="button">Yes</button></div></div>
 </dialog>
 
 <!-- Choosing spells: MPMB's spell selection, on the app's own screen -->
