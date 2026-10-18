@@ -24,8 +24,8 @@ const p = features.parse([
 ].join('\r'));
 check('parser: group heading', p[0].group === 'Wizard, level 3', JSON.stringify(p[0]));
 check('parser: usage and description', p[1].usage === '3 cantrips known & 6 spells to prepare' && p[1].text[0] === 'I can cast Wizard spells.', JSON.stringify(p[1]));
-check('parser: description in brackets on the heading line', p[2].usage === '' && p[2].text[0] === "In 4 skills I'm proficient with", JSON.stringify(p[2]));
-check('parser: feature choice', p[3].name === 'Scholar: Arcana' && p[3].text[0] === 'Expertise in Arcana', JSON.stringify(p[3]));
+check('parser: description in brackets on the heading line (chip and text)', p[2].usage === "in 4 skills I'm proficient with" && p[2].text[0] === "In 4 skills I'm proficient with", JSON.stringify(p[2]));
+check('parser: feature choice', p[3].name === 'Scholar: Arcana' && p[3].usage === 'Expertise in Arcana' && p[3].text[0] === 'Expertise in Arcana', JSON.stringify(p[3]));
 check('parser: text after the usage', p[4].usage === 'regain 1/SR, 2× per Long Rest' && p[4].text[0] === '(see 3rd page)', JSON.stringify(p[4]));
 check('parser: plain heading with text below', p[5].name === 'Reckless Attack' && p[5].text.length === 1, JSON.stringify(p[5]));
 check('stale: a plain heading without text is old text', features.staleClassText("#◆ Ritual Adept# (Wizard 1, SRD'24 78)\r#◆ Scholar# (Wizard 2)\rtext"));

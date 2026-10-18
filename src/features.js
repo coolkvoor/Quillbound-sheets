@@ -6,6 +6,7 @@
  *   ##◆ Name##. text                                           a feature with its text on the same line
  *   other lines                                                the description of the feature above
  * parse(text) → [{ group } | { name, src, usage, text: [lines] } | { para }]
+ *   usage: the #[…]# text, or else a description in plain brackets (shown both on the line and when unfolded)
  * staleClassText(text): true when the text looks like it was saved before the line-break fix (a normal feature heading
  *   without any description). Not counted: a heading with a usage and nothing else, because MPMB rewrites such a
  *   heading when the usage changes on a level up and drops the short text that followed it, e.g. Wild Shape's
@@ -31,7 +32,9 @@
       if ((m = HEAD.exec(line))) {
         const rest = m[4].trim(), b = /^\[(.*)\]$/.exec(rest);
         const inline = b ? b[1].trim() : rest;
-        cur = { name: m[1].trim(), src: (m[2] || '').trim(), usage: (m[3] || '').trim(), text: inline ? [cap(inline)] : [] };
+        // a description in brackets is short: it also goes in the chip on the line, unless there is a usage there
+        const usage = (m[3] || '').trim() || (b ? inline : '');
+        cur = { name: m[1].trim(), src: (m[2] || '').trim(), usage, text: inline ? [cap(inline)] : [] };
         out.push(cur);
         continue;
       }
