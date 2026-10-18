@@ -609,7 +609,7 @@
     for (const n of $$(BOUND.map((a) => '#comp-list [' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) names.add(n.getAttribute(a));
     for (const P of prefixes) names.add(P + 'Comp.Use.Ability.Str.Mod');
     if (names.size) { const snaps = await state.worker.call('watch', { names: Array.from(names) }); for (const s of snaps) apply(s); }
-    gridCols = 0; layoutGrids(true);
+    layoutGrids(true, $$('#comp-list .grid'));
     refreshDerived();
   }
   function refreshCompanions(v) {
@@ -752,7 +752,7 @@
     const names = new Set();
     for (const n of $$(BOUND.map((a) => '#ws-list [' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) names.add(n.getAttribute(a));
     if (names.size) { const snaps = await state.worker.call('watch', { names: Array.from(names) }); for (const s of snaps) apply(s); }
-    gridCols = 0; layoutGrids(true);
+    layoutGrids(true, $$('#ws-list .grid'));
     refreshDerived();
   }
   function refreshWildShapes(v) {
@@ -764,13 +764,13 @@
     $('#ws-none').hidden = has;
     $('#ws-add').hidden = has;
     // shapes: the picked ones plus the first empty one per page
-    let changed = false;
+    const changed = [];
     for (const page of $$('[data-wspage]')) {
       let first = true;
       for (const c of page.querySelectorAll('[data-ws]')) {
         const r = v(c.dataset.ws), picked = r !== '' && r.toLowerCase() !== WS_BLANK;
         const hide = !picked && !first && !c.contains(document.activeElement);
-        if (c.hidden !== hide) { c.hidden = hide; changed = true; }
+        if (c.hidden !== hide) { c.hidden = hide; if (changed.indexOf(page) === -1) changed.push(page); }
         c.querySelector('[data-wsbody]').hidden = !picked;
         const name = c.querySelector('[data-wsname]');
         name.textContent = picked ? r : 'Add a shape';
@@ -787,7 +787,7 @@
         .map(([f, name]) => name + ' ' + v(W + 'Skills.' + f));
       s.textContent = prof.length ? '(' + prof.join(', ') + ')' : '';
     }
-    if (changed) { gridCols = 0; layoutGrids(true); }
+    if (changed.length) layoutGrids(true, changed.map((pg) => pg.querySelector('.grid')));
   }
 
   // ---------------------------------------------------------------- binding fields to the screen
@@ -1930,12 +1930,19 @@
   // number of columns changes (rotating, resizing), never because a card's content grows or folds.
   let gridCols = 0;
   const colCount = () => (window.innerWidth >= 1000 ? 3 : window.innerWidth >= 600 ? 2 : 1);
-  function layoutGrids(force) {
+  // only: lay out just these grids (new or changed ones) at the current number of columns
+  function layoutGrids(force, only) {
     const n = colCount();
-    if (n === gridCols && !force) return;
-    gridCols = n;
-    for (const grid of $$('.grid')) {
+    if (!only) {
+      if (n === gridCols && !force) return;
+      gridCols = n;
+    }
+    // a grid keeps its height while its cards are put back, so the page never gets shorter for a moment: a shorter
+    // page pulls the scroll position up, and the screen jumped every time a card was shown or hidden
+    const y = window.scrollY;
+    for (const grid of only || $$('.grid')) {
       if (!grid._cards) grid._cards = Array.from(grid.children).filter((c) => c.classList.contains('card'));
+      grid.style.minHeight = grid.offsetHeight + 'px';
       const cols = [];
       for (let i = 0; i < n; i++) cols.push(el('div', { cls: 'gcol' }));
       grid.textContent = '';
@@ -1945,7 +1952,9 @@
         for (const c of cols) if (c.offsetHeight < best.offsetHeight) best = c;
         best.append(card);
       }
+      grid.style.minHeight = '';
     }
+    if (window.scrollY !== y) window.scrollTo(0, y);
   }
   window.addEventListener('resize', () => layoutGrids(false));
   for (const q of ['(min-width: 600px)', '(min-width: 1000px)']) { const mq = window.matchMedia && window.matchMedia(q); if (mq && mq.addEventListener) mq.addEventListener('change', () => layoutGrids(false)); }
