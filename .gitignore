@@ -7,3 +7,4 @@ dist-single/
 resources/
 test/saved-character.pdf
 /*.pdf
+notes/
