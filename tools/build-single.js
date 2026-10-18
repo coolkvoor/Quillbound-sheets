@@ -11,7 +11,13 @@ const workerCdn = ['importScripts(' + JSON.stringify(PDFLIB_CDN) + ');'].concat(
 // the publisher rejects raw U+FFFD characters; they only occur inside pdf-lib's string literals
 const workerBundled = [read('node_modules/pdf-lib/dist/pdf-lib.min.js').replace(/\uFFFD/g, '\\ufffd')].concat(own).join('\n;\n');
 // the version and build time show under Sheet > This sheet, to tell which build a device is running
-const BUILT = new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC';
+// build time in Amsterdam time (CET/CEST), e.g. "2026-10-18 23:45 CEST"
+const BUILT = (() => {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZoneName: 'short' })
+    .formatToParts(new Date()).map((x) => [x.type, x.value]));
+  const zone = p.timeZoneName === 'GMT+2' ? 'CEST' : p.timeZoneName === 'GMT+1' ? 'CET' : p.timeZoneName;
+  return p.year + '-' + p.month + '-' + p.day + ' ' + p.hour + ':' + p.minute + ' ' + zone;
+})();
 const app = read('src/features.js') + '\n;\n' + read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Version ' + VERSION + ', built ' + BUILT) + ';');
 if (app.indexOf('built ' + BUILT) === -1) throw new Error('APP_BUILD marker not found in src/app.js');
 function page(worker) {
