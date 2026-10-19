@@ -1029,6 +1029,82 @@
     if (changed.length) layoutGrids(true, changed.map((pg) => pg.querySelector('.grid')));
   }
 
+  // ---------------------------------------------------------------- adventure logsheet pages
+  // MPMB's Adventurers League logsheet (template ALlog, from Adventurers League → Show Adventure Logsheet(s)): seven
+  // entries per page, each with XP, gold, downtime, renown and magic items as start + gain = total (MPMB carries a
+  // total into the next entry's start), and the session's details. The page's Options menu adds and removes pages,
+  // generates the next entry and sets the date format; an entry's menu moves, inserts, deletes or clears it.
+  const LOG_PER_PAGE = 7;
+  const LOG_COUNTS = [['xp', 'XP'], ['gold', 'Gold'], ['downtime', 'Downtime'], ['renown', 'Renown'], ['magicItems', 'Magic items']];
+  let logPrefixes = [];
+  function buildLogPage(P, n, total) {
+    const grid = el('div', { cls: 'grid' });
+    const card = (title, kids, attrs) => el('div', Object.assign({ cls: 'card' }, attrs || {}), [title].concat(kids));
+    grid.append(card(el('h3', {}, [el('span', { text: 'Logsheet' }), el('span', { cls: 'chip', 'data-out': P + 'AdvLog.sheetNumber', text: '' }),
+      el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'AdvLog.Options', 'data-title': 'Logsheet options', 'data-pages': '1' }, [document.createTextNode('Options')])]), [
+      el('p', { cls: 'hint', text: 'One entry per session. Options → Generate next Logsheet Entry starts the next one from the totals; Options also sets the date format and adds or removes logsheet pages. An entry’s ⋯ button moves, inserts, deletes or clears it.' }),
+    ]));
+    for (let i = 1; i <= LOG_PER_PAGE; i++) {
+      const E = P + 'AdvLog.' + i + '.';
+      const counts = el('div', { cls: 'log-counts' }, [el('span', {}), el('span', { cls: 'k', text: 'Start' }), el('span', { cls: 'k', text: '+ / −' }), el('span', { cls: 'k', text: 'Total' })]);
+      for (const [k, label] of LOG_COUNTS) {
+        counts.append(el('span', { cls: 'lbl', text: label }),
+          el('input', { cls: 'in num', 'data-f': E + k + '.start', id: fid(E + k + '.start'), inputmode: 'decimal', autocomplete: 'off', 'aria-label': label + ' at the start' }),
+          el('input', { cls: 'in num', 'data-f': E + k + '.gain', id: fid(E + k + '.gain'), autocomplete: 'off', 'aria-label': label + ' gained or lost' }),
+          el('b', { cls: 'num', 'data-out': E + k + '.total', text: '–' }));
+      }
+      grid.append(card(el('h3', {}, [el('span', { 'data-logname': E, text: 'Entry ' + i }),
+        el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Button.AdvLog.' + i, 'data-title': 'Logsheet entry', 'aria-label': 'Entry ' + i + ' menu' }, [document.createTextNode('⋯')])]), [
+        el('div', { cls: 'row' }, [cInput(E + 'date', 'Date'), cInput(E + 'session', 'Session')]),
+        cInput(E + 'adventure', 'Adventure'),
+        cInput(E + 'dm', 'DM (name and DCI)'),
+        counts,
+        el('div', { cls: 'stack' }, [
+          el('span', { cls: 'lbl', text: 'Notes' }), el('div', { cls: 'rich', 'data-rich': E + 'notes', 'data-empty': 'None' }),
+          el('details', { cls: 'more' }, [el('summary', { text: 'Edit notes' }), el('textarea', { cls: 'in', rows: '5', 'data-f': E + 'notes', id: fid(E + 'notes'), 'aria-label': 'Notes' })]),
+        ]),
+      ], { 'data-log': E }));
+    }
+    const head = total > 1 ? [el('h3', { cls: 'comp-title' }, [el('span', { text: 'Logsheet page' }), el('span', { cls: 'chip', text: n + ' of ' + total })])] : [];
+    return el('div', { cls: 'comp', 'data-logpage': P }, head.concat([grid]));
+  }
+  async function syncLogs(list) {
+    const p = (list || []).filter((x) => x.key === 'ALlog')[0];
+    const prefixes = p ? p.prefixes : [];
+    if (JSON.stringify(prefixes) === JSON.stringify(logPrefixes) && $('#log-list').childElementCount === prefixes.length) return;
+    logPrefixes = prefixes.slice();
+    const box = $('#log-list');
+    box.textContent = '';
+    prefixes.forEach((P, i) => box.append(buildLogPage(P, i + 1, prefixes.length)));
+    buildIndex();
+    const names = new Set();
+    for (const n of $$(BOUND.map((a) => '#log-list [' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) names.add(n.getAttribute(a));
+    if (names.size) { const snaps = await state.worker.call('watch', { names: Array.from(names) }); for (const s of snaps) apply(s); }
+    layoutGrids(true, $$('#log-list .grid'));
+    refreshDerived();
+  }
+  function refreshLogs(v) {
+    const show = logPrefixes.length > 0;
+    const band = $('#advlog');
+    if (band.hidden === show) { band.hidden = !show; $('#tab-advlog').hidden = !show; }
+    // entries: the used ones plus the first empty one per page
+    const changed = [];
+    for (const page of $$('[data-logpage]')) {
+      let first = true;
+      for (const c of page.querySelectorAll('[data-log]')) {
+        const E = c.dataset.log;
+        const used = ['date', 'adventure', 'session', 'dm', 'notes', 'xp.gain', 'gold.gain', 'downtime.gain', 'renown.gain', 'magicItems.gain'].some((k) => v(E + k) !== '');
+        const hide = !used && !first && !c.contains(document.activeElement);
+        if (c.hidden !== hide) { c.hidden = hide; if (changed.indexOf(page) === -1) changed.push(page); }
+        const name = c.querySelector('[data-logname]');
+        const title = [v(E + 'adventure'), v(E + 'date')].filter((x) => x !== '').join(' · ');
+        name.textContent = used ? title || 'Entry ' + E.replace(/^.*AdvLog\.(\d+)\.$/, '$1') : 'New entry';
+        if (!used) first = false;
+      }
+    }
+    if (changed.length) layoutGrids(true, changed.map((pg) => pg.querySelector('.grid')));
+  }
+
   // ---------------------------------------------------------------- binding fields to the screen
   function boundNames() {
     const s = new Set();
@@ -1279,6 +1355,7 @@
     }
     refreshCompanions(v);
     refreshWildShapes(v);
+    refreshLogs(v);
     renderLog();
   }
 
@@ -1646,7 +1723,7 @@
   }
 
   // ---------------------------------------------------------------- tabs that follow the scroll
-  const BANDS = ['main', 'combat', 'spells', 'features', 'gear', 'companion', 'wildshape', 'sheetinfo'];
+  const BANDS = ['main', 'combat', 'spells', 'features', 'gear', 'companion', 'wildshape', 'advlog', 'sheetinfo'];
   let spyLock = 0;
   function setTab(id) { for (const a of $$('[data-tab]')) a.setAttribute('aria-current', a.dataset.tab === id ? 'true' : 'false'); }
   function goTo(id, tab) {
@@ -1908,6 +1985,7 @@
     $('#notes-clear-open').hidden = !(notes && notes.prefixes.length);
     await syncCompanions(list);
     await syncWildShapes(list);
+    await syncLogs(list);
   }
 
   // ---------------------------------------------------------------- spells

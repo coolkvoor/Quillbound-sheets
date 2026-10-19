@@ -176,6 +176,13 @@ label.f > span.hint { text-transform: none; letter-spacing: 0; font-size: 0.85re
 .dot.sm { width: 32px; height: 32px; }
 .dot.sm::before { width: 13px; height: 13px; }
 
+/* adventure log: start + gain = total, one row per count */
+.log-counts { display: grid; grid-template-columns: minmax(5.5em, auto) repeat(2, minmax(0, 1fr)) minmax(3.5em, auto); gap: 6px 8px; align-items: center; }
+.log-counts .k { font-size: .8em; color: var(--muted); }
+.log-counts .in { width: 100%; min-width: 0; }
+.log-counts b { text-align: right; }
+.al-bg:not(:has(> .f:not([hidden]))) { display: none; }
+
 /* skills */
 .skills { display: grid; grid-template-columns: minmax(0, 1fr); }
 @container (min-width: 520px) { .skills.two { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 12px; } }
@@ -492,6 +499,8 @@ nav.tabs a { display: grid; place-items: center; min-height: var(--tabbar-h); te
 nav.tabs a[aria-current="true"] { color: var(--accent); }
 /* seven tabs on a phone: 'Features' must fit in a seventh of 393 px */
 @media (max-width: 420px) { nav.tabs a { font-size: 0.76rem; letter-spacing: 0; } }
+/* nine tabs (Wild Shape and Log both shown) on a phone */
+@media (max-width: 420px) { nav.tabs ul:has(> #tab-wildshape:not([hidden])):has(> #tab-advlog:not([hidden])) { padding: 0 1px; } nav.tabs ul:has(> #tab-wildshape:not([hidden])):has(> #tab-advlog:not([hidden])) a { font-size: 0.64rem; letter-spacing: -0.015em; } }
 nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
 @media (max-height: 460px) { :root { --tabbar-h: 48px; --header-h: 48px; } header.top { min-height: 48px; padding-block: 4px; } }
 /* ---------- looks ---------- */
@@ -712,6 +721,7 @@ window.MPMBTheme = (() => {
             <div class="line"><input class="in" data-f="Class and Levels" id="f-class" autocomplete="off" placeholder="e.g. Wizard 3, or Fighter 2 Rogue 1" aria-label="Class and levels"><button class="btn" id="class-open" type="button">Change</button></div>
             <span class="hint">Use Change to pick a class, subclass and level, level up, or multiclass. Typing works too.</span></div>
           <label class="f"><span>Background</span><input class="in" data-f="Background" id="f-bg" list="dl-bg" autocomplete="off" placeholder="Pick or type a background"><datalist id="dl-bg" data-items="Background"></datalist></label>
+          <label class="f" data-vis="DCI.Text" hidden><span>DCI number</span><input class="in" data-f="DCI.Text" id="f-dci" autocomplete="off"></label>
           <label class="f" id="bg-extra"><span>Background extra</span><input class="in" data-f="Background Extra" id="f-bg-extra" list="dl-bg-extra" autocomplete="off" placeholder="Pick or type"><datalist id="dl-bg-extra" data-items="Background Extra"></datalist></label>
           <div class="row xp">
             <label class="f"><span>Experience</span><input class="in num" data-f="Total Experience" id="f-xp" inputmode="numeric" autocomplete="off"></label>
@@ -895,6 +905,11 @@ window.MPMBTheme = (() => {
         <div class="card">
           <h3>Background <button class="btn sm" type="button" data-mpmb="Background Menu" data-title="Background traits">Add traits</button></h3>
           <div><b data-out="Background Feature"></b><div class="hint rich" data-rich="Background Feature Description"></div></div>
+          <div class="row wrap al-bg">
+            <label class="f" data-vis="Background_Faction.Text" hidden><span>Faction</span><input class="in" data-f="Background_Faction.Text" id="f-faction" list="dl-faction" autocomplete="off" placeholder="Pick or type"><datalist id="dl-faction" data-items="Background_Faction.Text"></datalist></label>
+            <label class="f" data-vis="Background_FactionRank.Text" hidden><span>Faction rank</span><input class="in" data-f="Background_FactionRank.Text" id="f-faction-rank" list="dl-faction-rank" autocomplete="off" placeholder="Pick or type"><datalist id="dl-faction-rank" data-items="Background_FactionRank.Text"></datalist></label>
+            <label class="f" data-vis="Background_Renown.Text" hidden><span>Renown</span><input class="in num" data-f="Background_Renown.Text" id="f-renown" autocomplete="off"></label>
+          </div>
           <label class="f"><span>Personality traits</span><textarea class="in" rows="3" data-f="Personality Trait" id="f-trait"></textarea></label>
           <label class="f"><span>Ideal</span><textarea class="in" rows="2" data-f="Ideal" id="f-ideal"></textarea></label>
           <label class="f"><span>Bond</span><textarea class="in" rows="2" data-f="Bond" id="f-bond"></textarea></label>
@@ -1018,6 +1033,11 @@ window.MPMBTheme = (() => {
       <div id="ws-list"></div>
     </section>
 
+    <section class="band" id="advlog" aria-labelledby="t-advlog" hidden>
+      <h2 class="band-title" id="t-advlog">Adventure log</h2>
+      <div id="log-list"></div>
+    </section>
+
     <section class="band" id="sheetinfo" aria-labelledby="t-sheet">
       <h2 class="band-title" id="t-sheet">Sheet <small id="sheet-ver"></small></h2>
       <div class="grid">
@@ -1063,6 +1083,7 @@ window.MPMBTheme = (() => {
             <button class="btn" type="button" data-bookmark="Functions/Unit System" data-title="Unit system">Unit system</button>
             <button class="btn" type="button" data-bookmark="Functions/Text Options" data-title="Text options">Text options</button>
             <button class="btn" type="button" data-bookmark="Functions|Auto/Manual" data-title="Automation">Automation on/off</button>
+            <button class="btn" type="button" data-bookmark="Functions/Adventurers League" data-title="Adventurers League" data-pages="1">Adventurers League</button>
           </div>
         </div>
         <div class="card">
@@ -1096,6 +1117,7 @@ window.MPMBTheme = (() => {
       <li><a href="#gear" data-tab="gear">Gear</a></li>
       <li><a href="#companion" data-tab="companion"><span class="wide-only">Companion</span><span class="narrow-only">Comp.</span></a></li>
       <li id="tab-wildshape" hidden><a href="#wildshape" data-tab="wildshape"><span class="wide-only">Wild Shape</span><span class="narrow-only">Shape</span></a></li>
+      <li id="tab-advlog" hidden><a href="#advlog" data-tab="advlog">Log</a></li>
       <li><a href="#sheetinfo" data-tab="sheetinfo">Sheet</a></li>
     </ul>
   </nav>

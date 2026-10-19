@@ -1105,6 +1105,18 @@
     }
     function commitValue(rec, fld, name, value) {
       delete rec.props.valueIndex;
+      // picking an item of a combo box: Acrobat first sends a keystroke that isn't the commit, with the item's name as
+      // change and its export value as changeEx (MPMB's faction box sets the symbol and the rank list from it)
+      if (rec.scripts.K && kind(rec) === 'combobox') {
+        const it = itemsOf(rec);
+        let pick = null;
+        for (let i = 0; i < it.length && !pick; i++) if (String(it[i][0]) === String(value) || String(it[i][1]) === String(value)) pick = it[i];
+        if (pick) {
+          const ev = mkEvent('Keystroke', fld, { value: typedValue(rec), change: String(pick[0]), changeEx: String(pick[1]), willCommit: false });
+          runScript(rec.scripts.K, ev, 'field:' + name + ':keystroke');
+          if (ev.rc === false) { finishAction(); return { ok: false, reason: 'rejected' }; }
+        }
+      }
       if (rec.scripts.K) {
         const ev = mkEvent('Keystroke', fld, { value, change: '', changeEx: value, willCommit: true, commitKey: 2 });
         runScript(rec.scripts.K, ev, 'field:' + name + ':keystroke');
