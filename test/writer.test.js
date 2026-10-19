@@ -5,7 +5,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const PDFLib = require('pdf-lib');
 const SRC = path.join(__dirname, '..', 'src');
 const { load } = require(path.join(SRC, 'loader.js'));
-const { write } = require(path.join(SRC, 'writer.js'));
+const { write, REDRAW_SCRIPT } = require(path.join(SRC, 'writer.js'));
 const selftest = require(path.join(SRC, 'selftest.js'));
 const content = require(path.join(SRC, 'content.js'));
 const spells = require(path.join(SRC, 'spells.js'));
@@ -52,7 +52,21 @@ const check = (label, ok, detail) => { if (!ok) failed++; console.log(ok ? 'PASS
 
   t = Date.now();
   const m2 = await load(res.bytes, PDFLib);
-  check('read back: the loader reads it', m2.docScripts.length === 27 && m2.pageCount === 7, m2.pageCount + ' pages, ' + m2.fieldOrder.length + ' fields, ' + (Date.now() - t) + ' ms');
+  check('read back: the loader reads it', m2.docScripts.length === 28 && m2.pageCount === 7, m2.pageCount + ' pages, ' + m2.fieldOrder.length + ' fields, ' + (Date.now() - t) + ' ms');
+  // Acrobat redraws the fields before MPMB's scripts are loaded: the app's last document script redraws MPMB's
+  // formatted fields once (feature texts, "+2"), then marks the PDF done
+  const redraw = m2.docScripts[m2.docScripts.length - 1];
+  check('redraw script: after MPMB\'s scripts', redraw.name === REDRAW_SCRIPT && m2.docScripts.slice(0, -1).every((s) => s.name < redraw.name), m2.docScripts.map((s) => s.name).slice(-2).join(', '));
+  check('redraw script: the PDF asks for it', m2.info.MPMBSheetAppRedraw === 'yes', m2.info.MPMBSheetAppRedraw);
+  const touched = [];
+  const fakeDoc = { info: { MPMBSheetAppRedraw: 'yes' }, getField: (n) => (m2.fields[n] ? { type: m2.fields[n].type === 'Tx' ? 'text' : 'other', set password(v) { touched.push(n); } } : null) };
+  vm.runInNewContext('(function () {' + redraw.code + '}).call(doc)', { doc: fakeDoc });
+  check('redraw script: redraws the formatted fields', touched.indexOf('Class Features') !== -1 && touched.indexOf('Acr') !== -1 && fakeDoc.info.MPMBSheetAppRedraw === 'done', touched.length + ' fields, flag ' + fakeDoc.info.MPMBSheetAppRedraw);
+  touched.length = 0;
+  vm.runInNewContext('(function () {' + redraw.code + '}).call(doc)', { doc: fakeDoc });
+  check('redraw script: only once', touched.length === 0);
+  const again = await load((await write(res.bytes, e.exportState(), PDFLib)).bytes, PDFLib);
+  check('saving again keeps one redraw script', again.docScripts.filter((s) => s.name === REDRAW_SCRIPT).length === 1 && again.docScripts.length === 28, again.docScripts.length + ' scripts');
   const e2 = newEngine(JSON.stringify(m2));
   check('read back: MPMB starts without errors', e2.log.errors.length === 0, e2.log.errors.slice(0, 4).map((x) => x.where + ': ' + x.msg).join(' | '));
   const diffs = KEYS.filter((k) => String(e2.snapshot(k).value) !== want[k]);

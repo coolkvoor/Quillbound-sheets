@@ -330,12 +330,49 @@
     }
     // the app doesn't draw field appearances: viewers redraw them from the values
     acro.set(N('NeedAppearances'), PDFBool.True);
+    // Acrobat does that redraw before MPMB's scripts are loaded, so MPMB's Format scripts don't run: feature texts
+    // showed their markup ("#◆ Spellcasting#", "**Druid**") and numbers lost their "+". A last document script
+    // (REDRAW_SCRIPT, after MPMB's in name order) redraws every field with a Format script once MPMB is loaded, the
+    // way MPMB's own redoFieldFormatIfColored does (password = false), and marks the PDF done in its document info, so
+    // after a save in Acrobat it doesn't run again. Saving again from the app replaces it.
+    const formattedNames = [];
+    for (const [name, f] of index) {
+      const c = state.fields && state.fields[name];
+      const aa = get(f.dict, 'AA');
+      if (c && c.s ? c.s.F : aa instanceof PDFDict && has(aa, 'F')) formattedNames.push(name);
+    }
+    {
+      let js = get(names, 'JavaScript');
+      if (!(js instanceof PDFDict)) { js = ctx.obj({ Names: [] }); names.set(N('JavaScript'), ctx.register(js)); }
+      let arr = get(js, 'Names'); if (!(arr instanceof PDFArray)) { arr = ctx.obj([]); js.set(N('Names'), arr); }
+      const action = ctx.register(jsAction(redrawScript(formattedNames)));
+      let at = -1;
+      for (let i = 0; i + 1 < arr.size(); i += 2) if (strOf(arr.get(i)) === REDRAW_SCRIPT) at = i;
+      if (at !== -1) arr.set(at + 1, action); else { arr.push(text(REDRAW_SCRIPT)); arr.push(action); }
+      if (infoDict) infoDict.set(N(REDRAW_FLAG), text('yes'));
+    }
 
     progress('Saving the PDF');
     const out = await doc.save({ useObjectStreams: true, updateFieldAppearances: false });
     return { bytes: out, report };
   }
 
+  // The document script that redraws MPMB's formatted fields in Acrobat (see write); the app's engine doesn't run it
+  const REDRAW_SCRIPT = 'zzMPMBSheetApp', REDRAW_FLAG = 'MPMBSheetAppRedraw';
+  function redrawScript(fieldNames) {
+    return '// Added by the MPMB Sheet App when it saved this PDF. The app asks viewers to redraw the fields, and Acrobat\n'
+      + '// does that before MPMB\'s scripts are loaded, without MPMB\'s formatting (bold feature names, "+2"). This redraws\n'
+      + '// the formatted fields once MPMB is loaded (as MPMB\'s redoFieldFormatIfColored does) and then marks the PDF done.\n'
+      + '(function (doc) {\n'
+      + '\tvar flag = "' + REDRAW_FLAG + '";\n'
+      + '\tif (!doc.info || doc.info[flag] !== "yes") return;\n'
+      + '\tvar names = ' + JSON.stringify(fieldNames) + ';\n'
+      + '\tfor (var i = 0; i < names.length; i++) {\n'
+      + '\t\ttry { var f = doc.getField(names[i]); if (f && f.type === "text") f.password = false; } catch (e) {}\n'
+      + '\t}\n'
+      + '\ttry { doc.info[flag] = "done"; } catch (e) {}\n'
+      + '})(this);\n';
+  }
   // How an icon (a form with bbox and matrix) is fitted into a W×H button: in proportion and centred, Acrobat's
   // default. Returns the matrix [s, 0, 0, s, tx, ty] for drawing the form. Also used to show pictures in the app.
   function iconFit(bbox, matrix, W, H) {
@@ -374,7 +411,7 @@
     page.pushOperators(P.pushGraphicsState(), P.concatTransformationMatrix(f[0], f[1], f[2], f[3], f[4], f[5]), P.drawObject(key), P.popGraphicsState());
     return out.save();
   }
-  const api = { write, iconFit, iconPdf };
+  const api = { write, iconFit, iconPdf, REDRAW_SCRIPT };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MPMBWriter = api;
 })(typeof self !== 'undefined' ? self : this);

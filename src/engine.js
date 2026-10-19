@@ -1065,6 +1065,8 @@
       const t0 = now();
       for (let i = 0; i < model.docScripts.length; i++) {
         const s = model.docScripts[i];
+        // the script the app's writer adds for Acrobat (redraw MPMB's formatted fields): nothing to redraw here
+        if (s.name === 'zzMPMBSheetApp') continue;
         const t = now();
         try { evalGlobal(s.code + '\n//# sourceURL=mpmb:' + s.name, 'mpmb:' + s.name); }
         catch (e) { logError('doc:' + s.name, e); }
