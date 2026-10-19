@@ -160,10 +160,10 @@ label.f > span.hint { text-transform: none; letter-spacing: 0; font-size: 0.85re
 
 /* abilities */
 .abilities { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
-.abi { border: 1px solid var(--line); border-radius: 10px; padding: 8px 6px 10px; display: grid; gap: 4px; justify-items: center; background: var(--bg); }
+.abi { border: 1px solid var(--line); border-radius: 10px; padding: 8px 6px 10px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; justify-items: center; min-width: 0; background: var(--bg); }
 .abi .k { font-family: var(--font-display); font-weight: 700; font-size: 1rem; letter-spacing: 0.06em; color: var(--accent); }
 .abi .mod { font-size: 1.9rem; font-weight: 700; line-height: 1; }
-.abi input { width: 4.2rem; min-height: 40px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 1rem; }
+.abi input { width: 4.2rem; max-width: 100%; min-height: 40px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 1rem; }
 .save { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--muted); min-height: 32px; }
 
 /* toggles: proficiency dots, check boxes */
@@ -423,8 +423,9 @@ select option, select optgroup { background-color: var(--surface); color: var(--
 .ad button { width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; }
 .ad button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .skill .ad { margin-right: 6px; }
-.abi > .ad { gap: 8px; }
-.abi > .ad button { width: 34px; height: 28px; }
+/* the A and D boxes shrink with a narrow panel, both alike, so they stay centred */
+.abi > .ad { gap: 8px; max-width: 100%; justify-content: center; }
+.abi > .ad button { width: 34px; flex: 0 1 34px; min-width: 0; height: 28px; }
 .row-ad { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 40px; }
 .f.inline { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; }
 /* small number boxes beside a label: a box's own width (about 20 characters) made rows wider than the card */
