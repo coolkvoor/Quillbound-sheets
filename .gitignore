@@ -9,3 +9,4 @@ test/saved-character.pdf
 /*.pdf
 notes/
 dist-site/
+proto/quickjs/dist/

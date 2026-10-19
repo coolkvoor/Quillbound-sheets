@@ -1,0 +1,1 @@
+{"name":"mpmb-quickjs-proto","private":true,"description":"Speed test: MPMB's scripts in QuickJS (WebAssembly), which can pause for dialogs","dependencies":{"@jitl/quickjs-singlefile-browser-release-asyncify":"^0.31.0","@jitl/quickjs-singlefile-browser-release-sync":"^0.31.0","esbuild":"^0.24.0","quickjs-emscripten":"^0.31.0","quickjs-emscripten-core":"^0.31.0"}}
