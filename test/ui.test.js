@@ -25,7 +25,8 @@ const DEVICES = {
   const scheme = process.env.SCHEME || 'light';
   for (const name of which) {
     const ctx = await browser.newContext(Object.assign({ colorScheme: scheme }, DEVICES[name]));
-    await ctx.route('https://cdnjs.cloudflare.com/**', (r) => (process.env.NOCDN ? r.abort() : r.fulfill({ status: 200, contentType: 'text/javascript', body: PDFLIB })));
+    // pdf-lib from the local copy; pdf.js (pictures) from cdnjs itself
+    await ctx.route('https://cdnjs.cloudflare.com/**', (r) => (process.env.NOCDN ? r.abort() : /pdf-lib/.test(r.request().url()) ? r.fulfill({ status: 200, contentType: 'text/javascript', body: PDFLIB }) : r.continue()));
     if (!process.env.FONTS) {
       await ctx.route('https://fonts.googleapis.com/**', (r) => r.abort());
       await ctx.route('https://fonts.gstatic.com/**', (r) => r.abort());

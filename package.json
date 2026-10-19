@@ -7,7 +7,7 @@
   },
   "scripts": {
     "start": "node tools/build-single.js 0.2 && node test/serve.js dist-single",
-    "test": "node test/loader.test.js && node test/engine.test.js && node test/content.test.js && node test/spells.test.js && node test/menus.test.js && node test/gear.test.js && node test/save.test.js && node test/writer.test.js && node test/classes.test.js && node test/abilities.test.js && node test/extras.test.js && node test/companion.test.js && node test/wildshape.test.js && node test/dialogs.test.js && node test/replay.test.js && node test/features.test.js",
+    "test": "node test/loader.test.js && node test/engine.test.js && node test/content.test.js && node test/spells.test.js && node test/menus.test.js && node test/gear.test.js && node test/save.test.js && node test/writer.test.js && node test/pictures.test.js && node test/classes.test.js && node test/abilities.test.js && node test/extras.test.js && node test/companion.test.js && node test/wildshape.test.js && node test/dialogs.test.js && node test/replay.test.js && node test/features.test.js",
     "test:ui": "node test/ui.test.js",
     "build": "node tools/build-single.js",
     "build:multi": "sh tools/build.sh"

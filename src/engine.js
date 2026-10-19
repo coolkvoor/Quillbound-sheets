@@ -378,7 +378,16 @@
     };
     FP.buttonSetIcon = function (icon) { const ws = widgetsOf(this); for (let i = 0; i < ws.length; i++) ws[i].props.icon = icon; markDirty(this[R]); };
     FP.buttonGetIcon = function () { const w = widgetsOf(this)[0]; return (w && w.props.icon) || { name: this[R].name, __icon: true }; };
-    FP.buttonImportIcon = function () { unsupported('buttonImportIcon'); return 1; };
+    // Acrobat asks the user for an image or PDF file here. The app picks the image (queueIcon) and taps again; without
+    // one this is the user cancelling (1), and takeIconWanted() tells the app which button wanted a picture.
+    // An imported picture is { __icon, img: { id, mime, data (base64), w, h } }; writer.js puts it in the PDF.
+    FP.buttonImportIcon = function () {
+      if (!iconQueue.length) { iconWanted = this[R].name; return 1; }
+      const icon = iconQueue.shift(), ws = widgetsOf(this);
+      for (let i = 0; i < ws.length; i++) ws[i].props.icon = icon;
+      markDirty(this[R]);
+      return 0;
+    };
     FP.buttonSetCaption = function (c) { const ws = widgetsOf(this); for (let i = 0; i < ws.length; i++) ws[i].props.caption = String(c); markDirty(this[R]); };
     FP.buttonGetCaption = function () { const w = widgetsOf(this)[0]; return w ? (w.props.caption !== undefined ? w.props.caption : (w.caption || '')) : ''; };
     FP.setFocus = function () { if (opts.onFocus) opts.onFocus(this[R].name); };
@@ -481,6 +490,8 @@
     const timeouts = [];
     let timeoutId = 0;
     const fileQueue = [];       // texts for util.readFileIntoStream, picked by the user in the app
+    const iconQueue = [];       // pictures for button.buttonImportIcon, picked by the user in the app
+    let iconWanted = null;      // the button that asked for a picture when none was queued
     const dialogAnswers = [];   // { name, steps: [{ set: {item_id: value} } | { pick } | { press: item_id } | { end }], capture }, used in order
     const standingAnswers = {}; // dialog name -> answer used every time it opens (unless one is queued)
     const menuAnswers = [];     // cReturn values for the next app.popUpMenuEx calls, in order (null = nothing chosen)
@@ -1165,9 +1176,26 @@
       if (k === 'checkbox' || k === 'radiobutton') out.checked = rec.value !== 'Off' && rec.value !== '';
       if (k === 'combobox' || k === 'listbox') { out.items = itemsOf(rec).map((it) => [it[0], it[1]]); out.editable = rec.props.editable !== undefined ? !!rec.props.editable : !!(rec.def.ff & FF.edit); }
       if (k === 'combobox') out.index = fieldObj(rec).currentValueIndices;
-      if (k === 'button') out.caption = fieldObj(rec).buttonGetCaption();
+      if (k === 'button') { out.caption = fieldObj(rec).buttonGetCaption(); out.icon = iconKey(rec); }
       if (k === 'text' || k === 'combobox') { const f = formatted(rec); out.display = f.text; if (f.spans) out.spans = f.spans; out.multiline = !!(rec.def.ff & FF.multiline); }
       return out;
+    }
+    // Which picture a button shows: its own from the PDF ("own:<name>"), one copied from another button
+    // ("fld:<name>", MPMB keeps its pictures in hidden SaveIMG buttons), or one the user picked ("img:<id>")
+    function iconKey(rec) {
+      const ic = rec.widgets[0] && rec.widgets[0].props.icon;
+      if (!ic) return 'own:' + rec.name;
+      return ic.img ? 'img:' + ic.img.id : 'fld:' + ic.name;
+    }
+    // what the app needs to draw a button's picture: the picked image, or the button in the PDF whose icon it shows
+    // (rect: the button's size, for the picture's proportions)
+    function iconInfo(name) {
+      const rec = recs.get(name);
+      if (!rec || !rec.widgets[0]) return null;
+      const w = rec.widgets[0], ic = w.props.icon, r = w.rect || [0, 0, 100, 100];
+      const size = [Math.abs(r[2] - r[0]), Math.abs(r[3] - r[1])];
+      if (ic && ic.img) return { img: ic.img, size };
+      return { field: ic ? ic.name : rec.name, size };
     }
     function drainChanges() { const out = Array.from(dirty); dirty.clear(); return out; }
     function evalExpr(code) { return runGlobal(code, 'expr'); }
@@ -1233,6 +1261,9 @@
     return {
       start, commit, toggle, press, snapshot, drainChanges, evalExpr, getField, preset, action, exportState, importState,
       queueFile(text) { fileQueue.push(String(text)); },
+      queueIcon(icon) { iconQueue.push({ __icon: true, img: icon }); },
+      takeIconWanted() { const n = iconWanted; iconWanted = null; return n; },
+      iconInfo,
       queueDialog(answer) { dialogAnswers.push(answer); },
       setStandingAnswer(name, answer) { if (answer) standingAnswers[name] = Object.assign({ name }, answer); else delete standingAnswers[name]; },
       queueMenu(ret) { menuAnswers.push(ret === undefined ? null : ret); },
@@ -1247,7 +1278,7 @@
       stopForUser(on) { stopForUser = !!on; if (on) stopped = null; },
       takeStopped() { const s = stopped; stopped = null; return s; },
       setReplay(list) { replayQueue = (list || []).slice(); },
-      clearQueues() { fileQueue.length = 0; dialogAnswers.length = 0; menuAnswers.length = 0; lastMenu = null; alertAnswers.length = 0; lastQuestion = null; },
+      clearQueues() { iconQueue.length = 0; iconWanted = null; fileQueue.length = 0; dialogAnswers.length = 0; menuAnswers.length = 0; lastMenu = null; alertAnswers.length = 0; lastQuestion = null; },
       runBookmark(path) {
         let node = { children: g.bookmarkRoot.children };
         for (let i = 0; i < path.length; i++) { const kids = node.children || []; let next = null; for (let j = 0; j < kids.length; j++) if (kids[j].name === path[i]) { next = kids[j]; break; } if (!next) return false; node = next; }

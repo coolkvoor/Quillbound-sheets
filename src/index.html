@@ -571,6 +571,14 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
 @media (min-width: 421px) { [data-look="pf"] nav.tabs a { text-transform: uppercase; letter-spacing: 0.07em; font-size: 0.85rem; } }
 [data-look="pf"] .md-list li[aria-selected="true"], [data-look="pf"] .pk .pill[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
 
+/* pictures (MPMB's portrait, symbol and companion picture buttons), shown on paper as on the sheet */
+.pics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.pic { margin: 0; display: grid; gap: 6px; justify-items: center; min-width: 0; }
+.pic-btn { width: 100%; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: #ffffff; cursor: pointer; overflow: hidden; display: grid; place-items: center; }
+.pic-btn img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.pic-btn img:not([src]) { visibility: hidden; }
+.pic figcaption { font-size: 0.85rem; color: var(--muted); text-align: center; }
+.pic.one { grid-column: 1 / -1; max-width: 22rem; justify-self: center; width: 100%; }
 /* the look picker (Sheet tab) */
 .looks { display: grid; gap: 6px; }
 .look-opt { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 0 12px; align-items: center; min-height: 52px; padding: 4px 0; cursor: pointer; }
@@ -925,6 +933,14 @@ window.MPMBTheme = (() => {
           </div>
           <p class="hint">Size changes what you can carry (Gear tab), as on the sheet.</p>
         </div>
+        <div class="card" id="pictures">
+          <h3>Portrait and symbol</h3>
+          <div class="pics">
+            <figure class="pic"><button class="pic-btn" type="button" data-mpmb="Portrait" data-icon="Portrait" data-title="Portrait" aria-label="Portrait: picture options" style="aspect-ratio: 174 / 220"><img alt="Portrait"></button><figcaption>Portrait</figcaption></figure>
+            <figure class="pic"><button class="pic-btn" type="button" data-mpmb="Symbol" data-icon="Symbol" data-title="Symbol" aria-label="Organisation symbol: picture options" style="aspect-ratio: 174 / 152"><img alt="Organisation symbol"></button><figcaption>Organisation symbol</figcaption></figure>
+          </div>
+          <p class="hint">Tap a picture for MPMB's picture menu: your own image, a faction symbol or a class icon. Pictures are saved in the PDF with your character, so Acrobat shows them too, and pictures added in Acrobat show here.</p>
+        </div>
       </div>
     </section>
 
@@ -1171,6 +1187,15 @@ window.MPMBTheme = (() => {
     <details class="ap-explain"><summary>Where improvements come from</summary><div class="notice-msg hint" id="ap-explain"></div></details>
   </div>
   <div class="panel-foot"><button class="btn primary" id="ap-apply" type="button">Apply</button></div>
+</dialog>
+
+<!-- A picture MPMB asks for ("Set any image as Portrait"), when the browser needs a tap to open the file picker -->
+<dialog class="panel" id="picpick" aria-labelledby="picpick-title">
+  <div class="panel-head"><h3 id="picpick-title">Choose a picture</h3><button class="btn sm" id="picpick-cancel" type="button">Cancel</button></div>
+  <div class="panel-body">
+    <p class="note" id="picpick-note"></p>
+    <label class="btn primary file-btn" for="picpick-file">Choose an image<input id="picpick-file" type="file" accept="image/*"></label>
+  </div>
 </dialog>
 
 <!-- One spell's full text -->

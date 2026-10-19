@@ -11,6 +11,7 @@ if (!self.MPMBEngine) {
 
 let engine = null;
 let sheetBytes = null;   // the PDF as opened: the base the character is written into (writer.js)
+let sheetDoc = null;     // the same PDF read with pdf-lib, the first time a button's picture is shown (iconImage)
 let watched = new Set();
 const evalGlobal = (code) => (0, eval)(code);
 const now = () => performance.now();
@@ -85,7 +86,7 @@ let stateNow = null;    // engine.exportState() while nothing has changed since 
 let stopped = null;     // the dialog or question the last run stopped at
 function currentState() { return stateNow || (stateNow = engine.exportState()); }
 // requests that only read: the saved state stays valid
-const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'pageList', 'xpInfo', 'notesText', 'toolNames', 'spellSheet', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare']);
+const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'pageList', 'xpInfo', 'notesText', 'toolNames', 'spellSheet', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare', 'iconImage']);
 
 function logSummary() {
   const l = engine.log;
@@ -98,7 +99,7 @@ const ops = {
   async open({ bytes, fileName, saved, state }) {
     try { evalGlobal('1+1'); } catch (e) { throw new Error('EVAL_BLOCKED'); }
     const t0 = now();
-    sheetBytes = new Uint8Array(bytes);
+    sheetBytes = new Uint8Array(bytes); sheetDoc = null;
     const model = await MPMBLoader.load(sheetBytes, self.PDFLib, progress);
     const loadMs = Math.round(now() - t0);
     const names = model.docScripts.map((s) => s.name);
@@ -129,7 +130,7 @@ const ops = {
   // a spare copy, made ready in advance: the sheet model and the PDF, MPMB not started yet
   prepare({ model, bytes, fileName }) {
     try { evalGlobal('1+1'); } catch (e) { throw new Error('EVAL_BLOCKED'); }
-    modelJSON = model; sheetBytes = new Uint8Array(bytes); spareName = fileName;
+    modelJSON = model; sheetBytes = new Uint8Array(bytes); sheetDoc = null; spareName = fileName;
     return { ok: true };
   },
   // start MPMB in the spare from a saved state (the character before the change), watching the app's fields
@@ -219,6 +220,17 @@ const ops = {
     const r = await MPMBWriter.write(sheetBytes, engine.exportState(), self.PDFLib, progress);
     return { bytes: r.bytes, report: r.report, ms: Math.round(now() - t) };
   },
+  // A button's picture, for the app to show: a picture the user picked as it is ({ img }), or the icon from the PDF as
+  // a one-page PDF of the button's size with the icon fitted in, as Acrobat draws it ({ pdf }); the app renders that
+  // with pdf.js. MPMB's own icons are PDF drawings, and pictures added in Acrobat are images inside such a drawing.
+  async iconImage({ name }) {
+    const info = engine.iconInfo(name);
+    if (!info) return { none: true };
+    if (info.img) return { img: info.img };
+    if (!sheetDoc) sheetDoc = await self.PDFLib.PDFDocument.load(sheetBytes, { ignoreEncryption: true, updateMetadata: false, throwOnInvalidObject: false });
+    const pdf = await MPMBWriter.iconPdf(sheetDoc, info.field, info.size, self.PDFLib);
+    return pdf ? { pdf, size: info.size } : { none: true };
+  },
   // add-on content and sources: MPMB's own dialogs, answered for the user (content.js)
   addContent({ text }) { return contentOp(() => MPMBContent.addFile(engine, text)); },
   removeContent({ key }) { return contentOp(() => MPMBContent.removeFile(engine, key)); },
@@ -228,21 +240,24 @@ const ops = {
   // If the action opens a menu nobody answered yet, it comes back as `menu` and the app asks the user, then taps again.
   // A yes/no question MPMB asks on the way comes back as `question` (answered No this time); the app asks the user and
   // taps again with the answers so far in `yes` (true/false, in order).
-  tap({ name, widget, bookmark, answers, modifier, yes }) {
+  // A picture MPMB asks for (its picture menu: "Set any image/pdf file as …") comes back as `iconWanted` (the button);
+  // the app asks the user for an image and taps again with it in `icon` ({ id, mime, data (base64), w, h }).
+  tap({ name, widget, bookmark, answers, modifier, yes, icon }) {
     const t = now(), seq = engine.logSeq;
     engine.clearQueues();
     for (const a of answers || []) engine.queueMenu(a);
     for (const y of yes || []) engine.queueAnswer(y);
+    if (icon) engine.queueIcon(icon);
     engine.askQuestions(true);
     try { if (bookmark) engine.runBookmark(bookmark); else engine.press(name, widget || 0, { modifier: !!modifier }); }
     finally { engine.askQuestions(false); }
-    const menu = engine.takeMenu(), question = engine.takeQuestion();
+    const menu = engine.takeMenu(), question = engine.takeQuestion(), iconWanted = engine.takeIconWanted();
     engine.clearQueues();
     // what MPMB showed: alerts (not its questions, which the app asks), and dialogs that only show text, in order
     const shown = engine.log.alerts.filter((a) => a.seq > seq && !a.question).map((a) => ({ seq: a.seq, title: a.title, msg: a.msg }))
       .concat(engine.log.dialogs.filter((d) => d.seq > seq && d.text).map((d) => ({ seq: d.seq, title: d.title, msg: d.text })))
       .sort((a, b) => a.seq - b.seq).map((x) => ({ title: x.title, msg: x.msg }));
-    return { menu, question, alerts: shown, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
+    return { menu, question, iconWanted, alerts: shown, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
   },
   // Spells (spells.js)
   spellOptions() { return MPMBSpells.options(engine); },

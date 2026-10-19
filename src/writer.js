@@ -4,6 +4,7 @@
  *   renamed "P<page>.<template>.<name>"), pages deleted, fields removed
  * - writes values, the field changes scripts made (hidden, read-only, tooltips, submitName, list items, scripts,
  *   captions, icons, colours, positions), the calculation order and the document info
+ * - puts pictures the user picked (portrait, symbol) in as button icons, with an appearance that draws them
  * - asks viewers to redraw the fields (NeedAppearances), since the app doesn't draw appearance streams
  * Works in a Web Worker and Node. */
 (function (root) {
@@ -192,6 +193,28 @@
     const jsAction = (code) => ctx.obj({ S: 'JavaScript', JS: text(code) });
     const color = (c) => { if (!Array.isArray(c) || c[0] === 'T') return ctx.obj([]); return ctx.obj(c.slice(1).map(Number)); };
     function mk(w) { let m = get(w, 'MK'); if (!(m instanceof PDFDict)) { m = ctx.obj({}); w.set(N('MK'), m); } return m; }
+    // ---- button pictures. A picture the user picked becomes an icon (/MK /I: a form XObject drawing the image), one
+    // per picture however many buttons show it. Each button gets an appearance drawing its icon fitted the way Acrobat
+    // does by default (in proportion, centred), so viewers that don't redraw buttons show it too.
+    const pictures = new Map();   // picture id -> icon form ref
+    const nums = (a) => (a instanceof PDFArray ? a.asArray().map((x) => (deref(x) instanceof PDFNumber ? deref(x).asNumber() : 0)) : null);
+    async function pictureIcon(img) {
+      if (pictures.has(img.id)) return pictures.get(img.id);
+      const im = /png/i.test(img.mime) ? await doc.embedPng(fromBase64(img.data)) : await doc.embedJpg(fromBase64(img.data));
+      const ref = ctx.register(ctx.stream('q ' + im.width + ' 0 0 ' + im.height + ' 0 0 cm /Im0 Do Q',
+        { Type: 'XObject', Subtype: 'Form', BBox: [0, 0, im.width, im.height], Resources: { XObject: { Im0: im.ref } } }));
+      pictures.set(img.id, ref);
+      return ref;
+    }
+    function iconAppearance(icon, rect) {
+      const W = +Math.abs(rect[2] - rect[0]).toFixed(3), H = +Math.abs(rect[3] - rect[1]).toFixed(3);
+      const ic = deref(icon);
+      const d = ic && ic.dict;
+      if (!d) return ctx.register(ctx.stream('', { Type: 'XObject', Subtype: 'Form', BBox: [0, 0, W, H] }));
+      const f = iconFit(nums(get(d, 'BBox')) || [0, 0, W, H], nums(get(d, 'Matrix')), W, H);
+      return ctx.register(ctx.stream('q ' + f.map((x) => +x.toFixed(4)).join(' ') + ' cm /FRM Do Q',
+        { Type: 'XObject', Subtype: 'Form', BBox: [0, 0, W, H], Resources: { XObject: { FRM: icon } } }));
+    }
     function setFlag(dict, bit, on) { const ff = deref(inh(dict, 'Ff')); let v = ff instanceof PDFNumber ? ff.asNumber() : 0; v = on ? v | bit : v & ~bit; dict.set(N('Ff'), PDFNumber.of(v)); }
     function setValue(f, v, ft, ff) {
       if (ft === 'Btn' && !(ff & FF.pushbutton)) {
@@ -267,14 +290,21 @@
           if (wp.lineWidth !== undefined) bs.set(N('W'), PDFNumber.of(Number(wp.lineWidth) || 0));
           if (wp.borderStyle !== undefined) bs.set(N('S'), N({ solid: 'S', dashed: 'D', beveled: 'B', inset: 'I', underline: 'U' }[wp.borderStyle] || 'S'));
         }
-        // a button icon copied from another button (MPMB keeps its images in hidden "SaveIMG" buttons)
-        if (wp.icon && wp.icon.name) {
-          const src = index.get(wp.icon.name);
-          const sw = src && deref(src.widgets[0]);
-          if (sw) {
-            const smk = get(sw, 'MK'); const icon = smk instanceof PDFDict ? smk.get(N('I')) : null;
+        // a button's picture: one the user picked, or one copied from another button (MPMB keeps its pictures in
+        // hidden "SaveIMG" buttons; SaveIMG.EmptyIcon has none, which empties the button)
+        if (wp.icon && (wp.icon.img || wp.icon.name)) {
+          let icon = null, known = true;
+          if (wp.icon.img) icon = await pictureIcon(wp.icon.img);
+          else {
+            const src = index.get(wp.icon.name);
+            const sw = src && deref(src.widgets[0]);
+            const smk = sw ? get(sw, 'MK') : null;
+            if (!sw) known = false; else icon = smk instanceof PDFDict ? smk.get(N('I')) || null : null;
+          }
+          if (known) {
             if (icon) mk(w).set(N('I'), icon); else mk(w).delete(N('I'));
-            const sap = sw.get(N('AP')); if (sap) w.set(N('AP'), sap);
+            const rect = (c.r && c.r[i] ? c.r[i].map(Number) : null) || nums(get(w, 'Rect')) || [0, 0, 0, 0];
+            w.set(N('AP'), ctx.obj({ N: iconAppearance(icon, rect) }));
           }
         }
         if (c.r && c.r[i]) w.set(N('Rect'), ctx.obj(c.r[i].map(Number)));
@@ -306,7 +336,45 @@
     return { bytes: out, report };
   }
 
-  const api = { write };
+  // How an icon (a form with bbox and matrix) is fitted into a W×H button: in proportion and centred, Acrobat's
+  // default. Returns the matrix [s, 0, 0, s, tx, ty] for drawing the form. Also used to show pictures in the app.
+  function iconFit(bbox, matrix, W, H) {
+    const m = matrix && matrix.length === 6 ? matrix : [1, 0, 0, 1, 0, 0];
+    const pts = [[bbox[0], bbox[1]], [bbox[2], bbox[1]], [bbox[0], bbox[3]], [bbox[2], bbox[3]]].map(([x, y]) => [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]);
+    const x0 = Math.min(...pts.map((p) => p[0])), x1 = Math.max(...pts.map((p) => p[0]));
+    const y0 = Math.min(...pts.map((p) => p[1])), y1 = Math.max(...pts.map((p) => p[1]));
+    const bw = x1 - x0 || 1, bh = y1 - y0 || 1, s = Math.min(W / bw, H / bh);
+    return [s, 0, 0, s, (W - bw * s) / 2 - x0 * s, (H - bh * s) / 2 - y0 * s];
+  }
+  function fromBase64(b64) {
+    if (typeof atob === 'function') { const t = atob(b64), out = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) out[i] = t.charCodeAt(i); return out; }
+    return new Uint8Array(Buffer.from(b64, 'base64'));
+  }
+  // A button's icon in a PDF (read with pdf-lib) as a one-page PDF of the button's size (W × H) with the icon fitted in
+  // as Acrobat draws it, for the app to show with pdf.js; null when the button has no icon. MPMB's own icons are PDF
+  // drawings, and a picture added in Acrobat is an image inside such a drawing. A page spawned in the app isn't in
+  // the PDF yet: its fields are copies of the template's ("P5.AScomp.Comp.img.Portrait" → "Comp.img.Portrait").
+  async function iconPdf(doc, name, size, PDFLib) {
+    const P = PDFLib, ctx = doc.context, N = (k) => P.PDFName.of(k);
+    const L = (o) => (o instanceof P.PDFRef ? ctx.lookup(o) : o);
+    const form = doc.getForm();
+    const field = form.getFieldMaybe(name) || form.getFieldMaybe(name.replace(/^P\d+\.[^.]+\./, ''));
+    const w = field && field.acroField.getWidgets()[0];
+    const mk = w && L(w.dict.get(N('MK')));
+    const iconRef = mk instanceof P.PDFDict ? mk.get(N('I')) : null;
+    const icon = L(iconRef);
+    if (!icon || !icon.dict) return null;
+    const nums = (a) => { a = L(a); return a instanceof P.PDFArray ? a.asArray().map((x) => { x = L(x); return x instanceof P.PDFNumber ? x.asNumber() : 0; }) : null; };
+    const W = size[0], H = size[1];
+    const out = await P.PDFDocument.create();
+    const copy = P.PDFObjectCopier.for(ctx, out.context).copy(iconRef instanceof P.PDFRef ? iconRef : ctx.register(icon));
+    const page = out.addPage([W, H]);
+    const key = page.node.newXObject('Icon', copy);
+    const f = iconFit(nums(icon.dict.get(N('BBox'))) || [0, 0, W, H], nums(icon.dict.get(N('Matrix'))), W, H);
+    page.pushOperators(P.pushGraphicsState(), P.concatTransformationMatrix(f[0], f[1], f[2], f[3], f[4], f[5]), P.drawObject(key), P.popGraphicsState());
+    return out.save();
+  }
+  const api = { write, iconFit, iconPdf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MPMBWriter = api;
 })(typeof self !== 'undefined' ? self : this);

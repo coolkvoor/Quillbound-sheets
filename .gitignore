@@ -6,6 +6,7 @@ test/shots/
 dist-single/
 resources/
 test/saved-character.pdf
+test/saved-pictures.pdf
 /*.pdf
 notes/
 dist-site/
