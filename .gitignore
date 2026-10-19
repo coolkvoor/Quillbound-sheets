@@ -8,3 +8,4 @@ resources/
 test/saved-character.pdf
 /*.pdf
 notes/
+dist-site/

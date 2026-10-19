@@ -36,3 +36,10 @@ const full = '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta
   + '<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style></head><body>\n' + page(workerBundled) + '\n</body></html>\n';
 fs.writeFileSync(path.join(out, 'MPMB-Sheet-App.html'), full);
 console.log('dist-single/index.html', (artifact.length / 1024).toFixed(0) + ' KB (pdf-lib from cdnjs);', 'MPMB-Sheet-App.html', (full.length / 1024).toFixed(0) + ' KB (pdf-lib bundled)');
+// dist-site/: the app for its own web address (Cloudflare Pages): the complete page, plus the headers that make it
+// cross-origin isolated, so MPMB's dialogs wait for the user (engine worker + Atomics.wait)
+const site = path.join(R, 'dist-site');
+fs.mkdirSync(site, { recursive: true });
+fs.writeFileSync(path.join(site, 'index.html'), full);
+fs.writeFileSync(path.join(site, '_headers'), '/*\n  Cross-Origin-Opener-Policy: same-origin\n  Cross-Origin-Embedder-Policy: credentialless\n  Cache-Control: no-cache\n');
+console.log('dist-site/ for its own web address (index.html + _headers)');
