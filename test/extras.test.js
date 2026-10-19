@@ -1,4 +1,5 @@
-// Experience points, ammunition, conditions and exhaustion, notes: MPMB's own fields and buttons.
+// Experience points, ammunition, conditions and exhaustion, notes, the front page's tool line, initiative bonus and
+// size: MPMB's own fields and buttons.
 const fs = require('fs'), path = require('path'), vm = require('vm');
 const SRC = path.join(__dirname, '..', 'src');
 const selftest = require(path.join(SRC, 'selftest.js'));
@@ -48,6 +49,27 @@ check('exhaustion 2: MPMB\'s effect text', /-4|−4|4/.test(val('Condition.Exhau
 // notes
 e.commit('Extra.Notes', 'Owes the guild 50 gp.');
 check('notes kept', val('Extra.Notes') === 'Owes the guild 50 gp.');
+// exhaustion takes 2 per level off d20 tests (the checks below): back to none
+e.commit('Condition.Exhaustion', '0');
+// the tool or custom skill line: MPMB takes the ability from the name (Dex 14: +2, proficiency +2)
+e.commit('Too Text', "Thieves' Tools (Dex)");
+e.toggle('Too Prof');
+check('tool line: Dex + proficiency', val('Too') === '4', val('Too'));
+// initiative bonus: added to the Dex modifier
+e.commit('Init Bonus', '2');
+check('initiative bonus added', val('Initiative bonus') === '4', val('Initiative bonus'));
+e.toggle('Reaction Used This Round');
+check('reaction used this round', e.snapshot('Reaction Used This Round').checked);
+// size: Medium and Small share an export value; the picked item is kept, also through a save and restore
+const sizes = e.snapshot('Size Category').items, small = sizes.findIndex((it) => it[0] === 'Small');
+e.commit('Size Category', sizes[small][1], small);
+check('size: Small picked', e.snapshot('Size Category').index === small, JSON.stringify(e.snapshot('Size Category').index));
+const saved = e.exportState();
+const e2 = evalGlobal('MPMBEngine.createEngine(JSON.parse(__modelJSON), __host, { fileName: "sheet.pdf" })');
+e2.importState(JSON.parse(JSON.stringify(saved)));
+e2.start();
+check('size: Small after save and restore', e2.snapshot('Size Category').index === small, JSON.stringify(e2.snapshot('Size Category').index));
+check('tool line after save and restore', String(e2.snapshot('Too').value) === '4' && e2.snapshot('Too Prof').checked, String(e2.snapshot('Too').value));
 check('no script errors', e.log.errors.length === 0, e.log.errors.map((y) => y.where + ': ' + y.msg + ' ' + y.at).join(' | '));
 console.log(failed ? failed + ' FAILED' : 'all passed');
 process.exitCode = failed ? 1 : 0;

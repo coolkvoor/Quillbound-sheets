@@ -120,7 +120,7 @@ const ops = {
     for (let i = 0; i < names.length; i++) watched.add(names[i]);
     return names.map((n) => engine.snapshot(n));
   },
-  commit({ name, value }) { const t = now(); const r = engine.commit(name, value); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
+  commit({ name, value, index }) { const t = now(); const r = engine.commit(name, value, index); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   toggle({ name, widget }) { const t = now(); const r = engine.toggle(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   press({ name, widget }) { const t = now(); const r = engine.press(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   log() { return logSummary(); },

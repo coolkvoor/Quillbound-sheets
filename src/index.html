@@ -185,6 +185,7 @@ label.f > span.hint { text-transform: none; letter-spacing: 0; font-size: 0.85re
 .skill .n { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .skill .a { font-size: 0.8rem; color: var(--muted); width: 2.4rem; text-align: right; margin-right: 8px; }
 .skill .v { width: 2.6rem; text-align: right; font-weight: 700; }
+.skill .in.n { min-height: 38px; padding-block: 4px; margin-right: 8px; }
 .skill input.in-v { width: 3.2rem; min-height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: inherit; font: inherit; font-weight: 700; padding: 0 6px; }
 
 /* HP */
@@ -682,6 +683,7 @@ window.MPMBTheme = (() => {
         <div class="card">
           <h3>Character</h3>
           <label class="f"><span>Name</span><input class="in" data-f="PC Name" id="f-name" autocomplete="off"></label>
+          <label class="f"><span>Player</span><input class="in" data-f="Player Name" id="f-player" autocomplete="off"></label>
           <label class="f"><span>Species</span><input class="in" data-f="Race" id="f-race" list="dl-race" autocomplete="off" placeholder="Pick or type a species"><datalist id="dl-race" data-items="Race"></datalist></label>
           <div class="f"><span class="flabel">Class</span>
             <div class="line"><input class="in" data-f="Class and Levels" id="f-class" autocomplete="off" placeholder="e.g. Wizard 3, or Fighter 2 Rogue 1" aria-label="Class and levels"><button class="btn" id="class-open" type="button">Change</button></div>
@@ -740,7 +742,8 @@ window.MPMBTheme = (() => {
           </div>
           <label class="f"><span>Armor</span><input class="in" data-f="AC Armor Description" id="f-armor" list="dl-armor" autocomplete="off" placeholder="Pick or type armor"><datalist id="dl-armor" data-items="AC Armor Description"></datalist></label>
           <label class="f"><span>Shield</span><input class="in" data-f="AC Shield Bonus Description" id="f-shield" autocomplete="off" placeholder="e.g. Shield"></label>
-          <div class="row-ad"><span class="muted">Initiative rolls</span><span id="init-ad"></span></div>
+          <div class="row-ad"><span class="muted">Initiative rolls</span><span id="init-ad"></span>
+            <label class="f mod inline"><span>Initiative bonus</span><input class="in num" data-f="Init Bonus" id="f-init-bonus" autocomplete="off"></label></div>
           <details class="more">
             <summary>Armor class parts</summary>
             <div class="ac-parts">
@@ -803,6 +806,7 @@ window.MPMBTheme = (() => {
         <div class="card">
           <h3>Actions</h3>
           <ul class="list" id="actions"></ul>
+          <div class="toggles"><span class="tg"><button class="dot sm" type="button" data-toggle="Reaction Used This Round" aria-pressed="false" aria-label="Reaction used this round"></button><span>Reaction used this round</span></span></div>
         </div>
         <div class="card span-2">
           <h3>Attacks and cantrips</h3>
@@ -910,6 +914,16 @@ window.MPMBTheme = (() => {
             <label class="f"><span>Height</span><input class="in" data-f="Height" id="f-height" autocomplete="off"></label>
             <label class="f"><span>Weight</span><input class="in" data-f="Weight" id="f-weight" autocomplete="off"></label>
           </div>
+          <div class="row">
+            <label class="f"><span>Gender</span><input class="in" data-f="Sex" id="f-sex" autocomplete="off"></label>
+            <label class="f"><span>Size</span><select class="in" data-pick="Size Category" id="f-size"></select></label>
+          </div>
+          <div class="row">
+            <label class="f"><span>Hair</span><input class="in" data-f="Hair colour" id="f-hair" autocomplete="off"></label>
+            <label class="f"><span>Eyes</span><input class="in" data-f="Eyes colour" id="f-eyes" autocomplete="off"></label>
+            <label class="f"><span>Skin</span><input class="in" data-f="Skin colour" id="f-skin" autocomplete="off"></label>
+          </div>
+          <p class="hint">Size changes what you can carry (Gear tab), as on the sheet.</p>
         </div>
       </div>
     </section>

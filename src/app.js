@@ -466,6 +466,13 @@
         el('span', { cls: 'v num', 'data-out': f, text: '–' }),
       ]));
     }
+    // the sheet's tool or custom skill line: MPMB takes its ability from the name, such as "Thieves' Tools (Dex)"
+    box.append(el('div', { cls: 'skill tool' }, [
+      el('button', { cls: 'dot sm', type: 'button', 'data-skill': 'Too', 'aria-pressed': 'false', 'aria-label': 'Tool proficiency' }),
+      el('input', { cls: 'in n', 'data-f': 'Too Text', id: 'f-too-text', autocomplete: 'off', 'aria-label': 'Tool or custom skill, with its ability, such as Thieves’ Tools (Dex)' }),
+      advDis('Too', 'Tool or custom skill'),
+      el('span', { cls: 'v num', 'data-out': 'Too', text: '–' }),
+    ]));
   }
   function buildHitDice() {
     const box = $('#hitdice');
@@ -1015,7 +1022,7 @@
   function boundNames() {
     const s = new Set();
     for (const n of $$(BOUND.map((a) => '[' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) s.add(n.getAttribute(a));
-    for (const [f] of SKILLS) { s.add(f + ' Prof'); s.add(f + ' Exp'); }
+    for (const [f] of SKILLS.concat([['Too']])) { s.add(f + ' Prof'); s.add(f + ' Exp'); }
     for (let i = 1; i <= HITDICE; i++) { s.add('HD' + i + ' Level'); s.add('HD' + i + ' Die'); s.add('HD' + i + ' Con Mod'); }
     s.add('Extra.Gear Weight Subtotal Left'); s.add('Extra.Gear Weight Subtotal Right');
     for (let i = 1; i <= 8; i++) { s.add('Tool ' + i); s.add('Language ' + i); }
@@ -1025,7 +1032,8 @@
   // the attributes that bind an element to an MPMB field (data-mpmb: one of MPMB's buttons, shown when MPMB shows it)
   // data-vis: shown only while MPMB shows that field (its modifier fields, for example)
   // data-opts: a drop-down filled with the combo box's items; data-prof: a skill dot for a not/proficient/expertise box
-  const BOUND = ['data-f', 'data-out', 'data-rich', 'data-toggle', 'data-items', 'data-mpmb', 'data-vis', 'data-opts', 'data-prof'];
+  // data-pick: a drop-down of a combo box's items by position, for items that share an export value (Size Category)
+  const BOUND = ['data-f', 'data-out', 'data-rich', 'data-toggle', 'data-items', 'data-mpmb', 'data-vis', 'data-opts', 'data-prof', 'data-pick'];
   const shown = (snap) => { if (!snap || !snap.exists) return ''; const d = snap.display !== undefined ? snap.display : snap.value; return Array.isArray(d) ? d.join(', ') : String(d === null || d === undefined ? '' : d); };
   function renderRich(node, snap) {
     node.textContent = '';
@@ -1113,6 +1121,16 @@
       const v = snap.exists && snap.value !== null && snap.value !== undefined ? String(snap.value) : '';
       if (!Array.from(n.options).some((o) => o.value === v)) n.append(el('option', { value: v, text: v || '–' }));
     }
+    for (const n of sel('data-pick')) {
+      const items = snap.items || [];
+      if (JSON.stringify(items) !== n.dataset.had) {
+        n.dataset.had = JSON.stringify(items);
+        n.textContent = '';
+        n.append(el('option', { value: '', text: '–' }));
+        items.forEach((it, i) => n.append(el('option', { value: String(i), text: String(it[0]).trim() || '–' })));
+      }
+      if (document.activeElement !== n) n.value = snap.index >= 0 ? String(snap.index) : '';
+    }
     for (const n of sel('data-prof')) { const v = String(snap.value || ''); n.setAttribute('aria-pressed', v === 'proficient' || v === 'expertise' ? 'true' : 'false'); n.classList.toggle('exp', v === 'expertise'); }
     // data-blank: a combo box's "nothing picked" item ("Make a Selection") shows as an empty box
     for (const n of sel('data-f')) {
@@ -1143,7 +1161,8 @@
       const prof = (state.snap.get(f + ' Prof') || {}).checked, exp = (state.snap.get(f + ' Exp') || {}).checked;
       b.setAttribute('aria-pressed', prof || exp ? 'true' : 'false');
       b.classList.toggle('exp', !!exp);
-      b.setAttribute('aria-label', b.parentElement.querySelector('.n').textContent + (exp ? ' expertise' : prof ? ' proficiency' : ' not proficient'));
+      const nm = b.parentElement.querySelector('.n');
+      b.setAttribute('aria-label', (nm.matches('input') ? nm.value || 'Tool' : nm.textContent) + (exp ? ' expertise' : prof ? ' proficiency' : ' not proficient'));
     }
     // rows that only show when MPMB filled them
     // enough experience for a higher level: MPMB's question is answered "not now"; the app offers Level up instead
@@ -1542,8 +1561,13 @@
   }
   function wireEvents() {
     document.addEventListener('change', (e) => {
-      const n = e.target.closest && e.target.closest('[data-f]');
+      const n = e.target.closest && e.target.closest('[data-f],[data-pick]');
       if (!n || !state.worker) return;
+      if (n.dataset.pick) {
+        const it = ((state.snap.get(n.dataset.pick) || {}).items || [])[Number(n.value)];
+        send('commit', { name: n.dataset.pick, value: n.value === '' || !it ? '' : it[1], index: n.value === '' ? undefined : Number(n.value) });
+        return;
+      }
       send('commit', { name: n.dataset.f, value: n.value });
     });
     document.addEventListener('keydown', (e) => {

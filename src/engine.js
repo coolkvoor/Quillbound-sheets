@@ -1069,13 +1069,20 @@
 
     // A user entering a field, typing a value and leaving it (or picking from a list):
     // On Focus → Keystroke(commit) → Validate → store → Calculate → On Blur
-    function commit(name, value) {
+    // index: the item picked from a combo box's list, where items share an export value (Size: Medium and Small are
+    // both "1"); Acrobat keeps the picked item (/I) as it does after currentValueIndices
+    function commit(name, value, index) {
       const rec = recs.get(name);
       if (!rec) return { ok: false, reason: 'no such field' };
       const fld = fieldObj(rec);
       const w = rec.widgets[0];
       if (w && w.scripts.Fo) runScript(w.scripts.Fo, mkEvent('Focus', fld, { value: typedValue(rec) }), 'field:' + name + ':focus');
       const r = commitValue(rec, fld, name, value);
+      if (index !== undefined && index !== null) {
+        const it = itemsOf(rec), k = Number(index);
+        const first = it[k] ? it.findIndex((x) => x[1] === it[k][1]) : -1;
+        if (first !== -1 && first !== k && rec.value === it[k][1]) { rec.props.valueIndex = k; markDirty(rec); }
+      }
       if (w && w.scripts.Bl) runScript(w.scripts.Bl, mkEvent('Blur', fld, { value: typedValue(rec) }), 'field:' + name + ':blur');
       finishAction();
       return r;
@@ -1157,6 +1164,7 @@
       };
       if (k === 'checkbox' || k === 'radiobutton') out.checked = rec.value !== 'Off' && rec.value !== '';
       if (k === 'combobox' || k === 'listbox') { out.items = itemsOf(rec).map((it) => [it[0], it[1]]); out.editable = rec.props.editable !== undefined ? !!rec.props.editable : !!(rec.def.ff & FF.edit); }
+      if (k === 'combobox') out.index = fieldObj(rec).currentValueIndices;
       if (k === 'button') out.caption = fieldObj(rec).buttonGetCaption();
       if (k === 'text' || k === 'combobox') { const f = formatted(rec); out.display = f.text; if (f.spans) out.spans = f.spans; out.multiline = !!(rec.def.ff & FF.multiline); }
       return out;
