@@ -40,6 +40,32 @@
     const acro = get(catalog, 'AcroForm');
     const topFields = get(acro, 'Fields');
 
+    // A font MPMB set (Text Options) that the form's /DR doesn't have: Acrobat adds the system font to /DR. Here a
+    // copy of the nearest font there ("SegoeUI" for "SegoeUI-Semibold", else Helvetica's metrics), not embedded and
+    // renamed, so Acrobat uses the system font by that name and other viewers substitute with fitting widths
+    function ensureFont(name) {
+      let dr = get(acro, 'DR');
+      if (!(dr instanceof PDFDict)) { dr = ctx.obj({}); acro.set(N('DR'), dr); }
+      let fonts = get(dr, 'Font');
+      if (!(fonts instanceof PDFDict)) { fonts = ctx.obj({}); dr.set(N('Font'), fonts); }
+      if (fonts.has(N(name))) return;
+      const base = name.replace(/[-,]?(Semibold|SemiBold|Bold|Light|Regular|Italic)$/, '');
+      const near = (base !== name && get(fonts, base)) || null;
+      const font = ctx.obj({ Type: 'Font', Subtype: near ? 'TrueType' : 'Type1', BaseFont: name, Encoding: 'WinAnsiEncoding' });
+      if (near) {
+        for (const k of ['FirstChar', 'LastChar', 'Widths']) if (near.has(N(k))) font.set(N(k), near.get(N(k)));
+        const fd = get(near, 'FontDescriptor');
+        if (fd instanceof PDFDict) {
+          const copy = ctx.obj({});
+          for (const [k, v] of fd.entries()) if (!/^\/FontFile/.test(k.toString())) copy.set(k, v);
+          copy.set(N('FontName'), N(name));
+          if (/bold|semibold/i.test(name)) copy.set(N('FontWeight'), PDFNumber.of(/semibold/i.test(name) ? 600 : 700));
+          font.set(N('FontDescriptor'), ctx.register(copy));
+        }
+      }
+      fonts.set(N(name), ctx.register(font));
+    }
+
     // ---- the form's fields by full name: terminal node (ref + dict) and its widgets (refs), as the loader reads them
     const index = new Map();      // full name -> { ref, dict, widgets: [ref] }
     const nodes = new Map();      // full name of any node -> { ref, dict }
@@ -262,7 +288,7 @@
       if (p.textSize !== undefined || p.textFont !== undefined || p.textColor !== undefined) {
         const da = strOf(inh(f.dict, 'DA')) || '/Helv 0 Tf 0 g';
         let font = (/\/([^\s]+)\s+[\d.]+\s+Tf/.exec(da) || [])[1] || 'Helv', size = Number((/([\d.]+)\s+Tf/.exec(da) || [])[1] || 0);
-        if (p.textFont !== undefined) font = String(p.textFont).replace(/^Helvetica$/, 'Helv');
+        if (p.textFont !== undefined) { font = String(p.textFont).replace(/^Helvetica$/, 'Helv'); ensureFont(font); }
         if (p.textSize !== undefined) size = Number(p.textSize) || 0;
         let col = (/(?:[\d.]+\s+){0,4}[gk]$|(?:[\d.]+\s+){3}rg$/.exec(da.trim()) || ['0 g'])[0];
         if (Array.isArray(p.textColor)) { const tc = p.textColor; col = tc[0] === 'G' ? tc[1] + ' g' : tc[0] === 'RGB' ? tc.slice(1).join(' ') + ' rg' : tc[0] === 'CMYK' ? tc.slice(1).join(' ') + ' k' : '0 g'; }

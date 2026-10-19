@@ -119,6 +119,12 @@ async function run(label, rules, action, checks) {
     (e) => e.runBookmark(['Functions', 'Weight']),
     (e) => [['coins not counted', e.evalExpr('CurrentVars.weight.indexOf("cCoi")') === -1, e.evalExpr('JSON.stringify(CurrentVars.weight)')]]);
 
+  // picking a font runs MPMB's list handler, which turns its radio on (the others of the group go off)
+  await run('Text Options: Garamond, line spacing 12', [{ match: /Font and the Font Size/, replies: [{ pick: { fAlS: 'Garamond' }, press: 'fAlS' }, { set: { lOth: true, lOSi: '12' }, press: 'lOSi' }, { press: 'ok' }] }],
+    (e) => { e.queueMenu('text#dodialog'); e.runBookmark(['Functions', 'Text Options']); },
+    (e) => [['font Garamond, its size, line spacing 12', e.evalExpr('tDoc.getField("PC Name").textFont') === 'Garamond' && e.evalExpr('tDoc.getField("Class Features").textSize') === 7.7 && e.evalExpr('CurrentVars.linespacing') === 12,
+      e.evalExpr('tDoc.getField("PC Name").textFont') + ' ' + e.evalExpr('tDoc.getField("Class Features").textSize') + ' ' + e.evalExpr('CurrentVars.linespacing')]]);
+
   console.log('\n' + (failed ? failed + ' FAILED' : 'all passed'));
   process.exitCode = failed ? 1 : 0;
 })().catch((e) => { console.error(e); process.exitCode = 1; });

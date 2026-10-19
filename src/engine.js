@@ -653,6 +653,9 @@
         const setValue = (k, v) => {
           if (types[k] === 'edit_text' && v && typeof v === 'object') { let chosen = ''; for (const n of Object.keys(v)) if (Number(v[n]) > 0) chosen = n; values[k] = chosen; lists[k] = copyPlain(v); }
           else values[k] = v;
+          // a radio turned on turns the others of its group off, also when a handler loads it (Text Options: picking
+          // a font loads fAlt, and commit reads fSta first)
+          if (types[k] === 'radio' && v) { const g = els[k].group_id || 'g'; for (const o of Object.keys(els)) if (o !== k && types[o] === 'radio' && (els[o].group_id || 'g') === g) values[o] = false; }
         };
         // what the dialog's handlers change besides values, for the app: enabled, shown, red text, focus
         const enabled = {}, shown = {}, red = {};
