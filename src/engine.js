@@ -725,6 +725,9 @@
               if (s.press && typeof d[s.press] === 'function') d[s.press](el);
             }
             if (ended === null || ended === 'ok') {
+              // pressing OK, as in Acrobat: the dialog's "ok" handler first (MPMB's spell dialog stores the picks
+              // there, in saveIt, and has no commit), then validate and commit
+              if (typeof d.ok === 'function') d.ok(el);
               if (typeof d.validate === 'function') d.validate(el);
               if (typeof d.commit === 'function') d.commit(el);
             }

@@ -50,6 +50,9 @@
         spells: x.showSp ? { count: x.typeSp === 'book' ? 0 : (x.nmbrSp || 0) + (x.offsetSp || 0), book: x.typeSp === 'book', list: listOf(x.listSp), chosen: (x.selectSp || []).filter(Boolean) } : null,
         show: x.showSpRadio ? { value: x.selectSpRadio || 1, choices: [] } : null,
         prepared: null,
+        // bonus spells (a feat, species trait or magic item that gives spells, such as Magic Initiate): one pick per
+        // slot, each from its own list, named by MPMB ("Cantrip", "1st-Level")
+        bonus: x.showBo && x.nmbrBo ? (x.namesBo || []).slice(0, x.nmbrBo).map((label, i) => ({ label: label || 'Spell', list: listOf((x.listBo || [])[i]), chosen: (x.selectBo || [])[i] || '' })) : null,
       };
       casters.push(c); byKey[c.key] = c;
     }
@@ -79,13 +82,36 @@
     // details for the picker, from MPMB's spell list
     const keys = new Set();
     for (const c of casters) for (const part of [c.cantrips, c.spells, c.prepared]) if (part) for (const s of part.list) keys.add(s.key);
+    for (const c of casters) if (c.bonus) for (const slot of c.bonus) for (const s of slot.list) keys.add(s.key);
     const info = json(engine, '(function (ks) { var o = {}; for (var i = 0; i < ks.length; i++) { var s = SpellsList[ks[i]]; if (!s) continue; o[ks[i]] = { name: s.name, level: s.level, school: s.school || "", time: s.time || "", range: s.range || "", components: s.components || "", duration: s.duration || "", ritual: !!s.ritual, description: s.description || "", source: stringSource(s, "first,abbr", "", "") }; } return o; })(' + JSON.stringify(Array.from(keys)) + ')');
     return { casters, spells: info || {} };
   }
 
-  // picks: { caster: { cantrips: [keys], spells: [keys], prepared: [keys], show: 1-4 } }
+  // picks: { caster: { cantrips: [keys], spells: [keys], prepared: [keys], show: 1-4, bonus: [key per slot] } }
   function choose(engine, picks) {
     const seq = engine.logSeq;
+    // Bonus spells go through MPMB's own spell dialog, as if picked there: its commit works out the rest (which spells
+    // are bonus spells, a "once per long rest" first column). Each slot's drop-down takes the spell's name as the
+    // dialog lists it, so the names come from a first, unchanged run of the dialogs.
+    const bonusPicks = Object.keys(picks || {}).filter((k) => Array.isArray(picks[k].bonus));
+    if (bonusPicks.length) {
+      const selects = probe(engine, false).filter((d) => d.name === SELECT);
+      engine.clearQueues();
+      for (const d of selects) {
+        const x = d.data, want = picks[x.curCast] && picks[x.curCast].bonus, set = {};
+        if (want) for (let i = 0; i < (x.nmbrBo || 0); i++) {
+          const byName = ((x.listBo || [])[i] || [])[1] || {};
+          let shown = '';
+          for (const n of Object.keys(byName)) if (byName[n] === want[i]) { shown = n; break; }
+          set['Bo' + ('0' + (i + 1)).slice(-2)] = shown;
+        }
+        engine.queueDialog({ name: SELECT, steps: want ? [{ set }] : [] });
+      }
+      for (let i = 0; i < 12; i++) { engine.queueDialog({ name: PREPARED, steps: [] }); engine.queueDialog({ name: BOOK, steps: [{ end: 'ok' }] }); }
+      engine.queueDialog({ name: ORDER, steps: [{ end: 'cancel' }] });
+      engine.evalExpr('AskUserSpellSheet(); SetStringifieds("spells");');
+      engine.clearQueues();
+    }
     // A caster that prepares from its whole class list (typeSp "list") has no spellbook or spells known: MPMB takes any
     // selectSp, even an empty one, as a spellbook to prepare from, and the prepared list comes out empty.
     engine.evalExpr('(function (p) { for (var k in p) { var c = CurrentSpells[k]; if (!c) continue; var q = p[k];' +
@@ -93,8 +119,11 @@
       ' if (q.cantrips) c.selectCa = q.cantrips.slice(0, 20); if (q.spells) { c.selectSp = OrderSpells(q.spells, "single").slice(0, 20); if (q.spells.length > 20) c.selectSpSB = OrderSpells(q.spells, "single").slice(20); else delete c.selectSpSB; }' +
       ' if (q.prepared) c.selectPrep = OrderSpells(q.prepared, "single"); if (q.show) c.typeList = q.show; } SetStringifieds("spells"); })(' + JSON.stringify(picks || {}) + ')');
     engine.clearQueues();
-    // the spellbook dialogs would page through spells beyond the first 20; confirm them as loaded
-    for (let i = 0; i < 12; i++) engine.queueDialog({ name: BOOK, steps: [{ end: 'ok' }] });
+    // Generating runs MPMB's spell dialogs again with what was just set: they are part of this screen, so the app
+    // answers them as loaded (OK) instead of showing them; the spellbook dialogs would page through spells beyond the
+    // first 20, confirmed as loaded too
+    for (let i = 0; i < 12; i++) { engine.queueDialog({ name: SELECT, steps: [] }); engine.queueDialog({ name: PREPARED, steps: [] }); engine.queueDialog({ name: BOOK, steps: [{ end: 'ok' }] }); }
+    engine.queueDialog({ name: ORDER, steps: [] });
     engine.action('GenerateSpellSheet();', 'spells:generate');
     engine.clearQueues();
     return report(engine, seq);

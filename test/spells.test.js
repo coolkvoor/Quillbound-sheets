@@ -95,6 +95,25 @@ check('remove: spell sheet gone', r.sheet.pages === 0 && r.sheet.rows.length ===
   const ck = cr.sheet.rows.map((x) => x.key);
   check('Cleric: prepared spells on the list', prep.every((k) => ck.indexOf(k) !== -1) && ck.length === 9, ck.join(', '));
   check('Cleric: no script errors', c.log.errors.length === 0, c.log.errors.map((x) => x.where + ': ' + x.msg).join(' | '));
+
+  // Magic Initiate [Wizard] on a Fighter: bonus spells, one pick per slot, through MPMB's own spell dialog
+  const seqC = c.logSeq;
+  c.commit('Class and Levels', 'Fighter 3');
+  c.queueDialog({ name: 'ASK USER DIALOG', steps: [{ set: { r000: false, r001: false, r002: true } }] });   // Wizard
+  c.queueDialog({ name: 'ASK USER DIALOG', steps: [{ set: { r000: true, r001: false, r002: false } }] });   // Intelligence
+  c.commit('Feat Name 1', 'Magic Initiate');
+  const mi = spells.options(c).casters.filter((x) => /magic initiate/.test(x.key))[0];
+  check('Magic Initiate: three bonus slots', mi && mi.bonus && mi.bonus.length === 3 && mi.bonus[0].label === 'Cantrip' && mi.bonus[2].list.some((s) => s.key === 'magic missile'), mi && mi.bonus && mi.bonus.map((s) => s.label + ' (' + s.list.length + ')').join(', '));
+  const seqG = c.logSeq;
+  const mr = spells.choose(c, { [mi.key]: { cantrips: [], spells: [], prepared: [], bonus: ['fire bolt', 'light', 'magic missile'] } });
+  const mk = mr.sheet.rows.map((x) => x.key);
+  check('Magic Initiate: the picks are on the list', ['fire bolt', 'light', 'magic missile'].every((k) => mk.indexOf(k) !== -1), mk.join(', '));
+  check('Magic Initiate: MPMB marks the 1st-level spell', /oncelr/.test(c.evalExpr('JSON.stringify(CurrentSpells[' + JSON.stringify(mi.key) + '].special)')), c.evalExpr('JSON.stringify(CurrentSpells[' + JSON.stringify(mi.key) + '].special)'));
+  check('Magic Initiate: picker shows the picks again', spells.options(c).casters.filter((x) => x.key === mi.key)[0].bonus.map((s) => s.chosen).join(',') === 'fire bolt,light,magic missile');
+  // making the list answers every MPMB dialog itself: nothing is left for the user (restart and replay would stop there)
+  const left = c.log.dialogs.filter((d) => d.seq > seqG && d.answered === 'defaults').map((d) => d.name);
+  check('making the list leaves no dialog to the user', !left.length, left.join(', '));
+  check('Magic Initiate: no script errors', !c.log.errors.filter((x) => x.seq > seqC).length, c.log.errors.filter((x) => x.seq > seqC).map((x) => x.where + ': ' + x.msg).join(' | '));
 }
 check('no script errors', e.log.errors.length === 0, e.log.errors.map((x) => x.where + ': ' + x.msg + ' ' + x.at).join(' | '));
 console.log(failed ? failed + ' FAILED' : 'all passed');
