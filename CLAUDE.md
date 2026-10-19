@@ -115,6 +115,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - Real dialogs need the engine to wait synchronously for the user. The plan is the worker + `Atomics.wait`, which needs cross-origin isolation (COOP/COEP headers). Claude artifacts can't send headers, so milestone 3 needs real hosting (GitHub Pages + coi-serviceworker, or Cloudflare Pages `_headers`).
 - The character is autosaved in IndexedDB per sheet file and can be downloaded written into the PDF; not yet checked in real Acrobat. Overlay spawns are skipped (reported). Template spawning is basic and untested.
 - Sources can be switched on/off per book; MPMB's per-category exclusions (single classes, spells, etc.) need the dialog renderer.
+- The full list of what the sheet has and the app doesn't (fields, Functions menu items, bigger work, suggested order) is in the design doc, section "Still to do" (checked 2026-10-19). Update it there when items are done.
 
 ## Working safely on the owner's PC
 
