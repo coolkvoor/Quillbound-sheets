@@ -125,7 +125,7 @@ section.band { scroll-margin-top: calc(var(--header-h) + 8px); padding-top: 12px
 .grid { display: flex; gap: 12px; align-items: flex-start; }
 .grid > .gcol { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .grid .card[hidden] { display: none; }
-.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; gap: 12px; min-width: 0; container-type: inline-size; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; min-width: 0; container-type: inline-size; }
 .card h3 { font-family: var(--font-display); font-size: 1.05rem; font-weight: 700; letter-spacing: 0.03em; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .card h3 .chip { font-family: var(--font-body); letter-spacing: 0; }
 .chip.muted { opacity: 0.6; }
@@ -427,13 +427,14 @@ select option, select optgroup { background-color: var(--surface); color: var(--
 .abi > .ad button { width: 34px; height: 28px; }
 .row-ad { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 40px; }
 .f.inline { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; }
-.f.inline .in { width: auto; min-width: 4.5rem; }
+/* small number boxes beside a label: a box's own width (about 20 characters) made rows wider than the card */
+.f.inline .in { width: 5rem; min-width: 0; }
 .atk-set { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 0.9rem; }
 /* save DC, AC parts */
 .dc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 44px; }
 .dc-row .k { color: var(--muted); }
 .dc-row > b { font-size: 1.3rem; min-width: 2ch; }
-.dc-row .in { width: auto; min-width: 4.5rem; }
+.dc-row .in { width: 5rem; min-width: 0; }
 .dc-row .f.mod { margin: 0; }
 details.more { margin: 8px 0; border-top: 1px solid var(--line); }
 details.more summary { cursor: pointer; padding: 10px 0; min-height: 44px; color: var(--accent); }
