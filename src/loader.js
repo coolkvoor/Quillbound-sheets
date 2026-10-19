@@ -125,6 +125,8 @@
         value: val(inh(d, 'V')),
         defaultValue: val(inh(d, 'DV')),
         opts: val(inh(d, 'Opt')),
+        // the picked item's index, when two items share an export value (Medium and Small are both "1")
+        index: val(get(d, 'I')),
         maxLen: num(inh(d, 'MaxLen')) || null,
         q: num(inh(d, 'Q')),
         da: val(inh(d, 'DA')),

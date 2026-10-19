@@ -34,7 +34,11 @@
     const MAXLOG = 200;
     let logSeq = 0;   // every log entry gets a number, so callers can ask "what happened since n"
     const push = (arr, item) => { if (item && typeof item === 'object') item.seq = ++logSeq; arr.push(item); if (arr.length > MAXLOG) arr.shift(); };
+    // thrown out of MPMB's code when the run stops for the user (stopForUser); not an error
+    const STOP = new Error('MPMB stopped for the user');
+    STOP.mpmbStop = true;
     function logError(where, e) {
+      if (e === STOP) return;
       const msg = e && e.message ? e.message : String(e);
       let at = '';
       if (e && e.stack) {
@@ -75,6 +79,7 @@
         })),
         obj: null, widgetObjs: [],
       };
+      if (Array.isArray(def.index) && def.index.length === 1 && Number.isInteger(Number(def.index[0]))) rec.props.valueIndex = Number(def.index[0]);
       return markBaseline(rec);
     }
     // What a field looked like when it was created, so a saved state only holds what changed since
@@ -195,7 +200,19 @@
           if (!rec || !rec.scripts.C) continue;
           const fld = fieldObj(rec);
           const ev = mkEvent('Calculate', fld, { value: typedValue(rec), source: sourceRec ? fieldObj(sourceRec) : fld });
-          if (runScript(rec.scripts.C, ev, 'field:' + rec.name + ':calculate') && ev.rc !== false) setRaw(rec, ev.value);
+          if (!runScript(rec.scripts.C, ev, 'field:' + rec.name + ':calculate') || ev.rc === false) continue;
+          let v = ev.value;
+          // As in Acrobat, a value a calculation changes is validated before it is stored. MPMB relies on this:
+          // it parks a field's new text in field.setVal, the field's Calculate puts it in, and its Validate clears
+          // setVal (doDropDownValCalcWithChoices). Left there, setVal made the next typed species, feat or magic
+          // item be ignored (Human after picking Infernal Tiefling).
+          if (rec.scripts.V && String(v) !== String(rec.value)) {
+            const vev = mkEvent('Validate', fld, { value: v });
+            runScript(rec.scripts.V, vev, 'field:' + rec.name + ':validate');
+            if (vev.rc === false) continue;
+            v = vev.value;
+          }
+          setRaw(rec, v);
         }
       } finally { inCalc = false; }
       stats.calcPasses++;
@@ -203,6 +220,7 @@
 
     // value assignment from script: Validate (before storing), store, then recalculate (Acrobat order)
     function scriptSetValue(rec, v) {
+      delete rec.props.valueIndex;   // a value set directly: no picked index (currentValueIndices sets it again)
       if (inCalc) { setRaw(rec, v); return; }
       if (rec.scripts.V) {
         const ev = mkEvent('Validate', fieldObj(rec), { value: v });
@@ -284,14 +302,21 @@
     accessor('currentValueIndices', function () {
       const rec = this[R], it = itemsOf(rec), v = rec.value;
       if (Array.isArray(v)) { const out = []; for (let i = 0; i < it.length; i++) if (v.indexOf(it[i][1]) !== -1) out.push(i); return out; }
+      // two items can share an export value (Medium and Small are both "1"): the one picked by index, as Acrobat keeps it
+      const k = rec.props.valueIndex;
+      if (k !== undefined && it[k] && it[k][1] === v) return k;
       for (let i = 0; i < it.length; i++) if (it[i][1] === v) return i;
       for (let i = 0; i < it.length; i++) if (it[i][0] === v) return i;
       return -1;
     }, function (v) {
       const rec = this[R], it = itemsOf(rec);
       if (Array.isArray(v) && rec.def.ff & FF.multiSelect) { scriptSetValue(rec, v.map((i) => (it[i] ? it[i][1] : '')).filter(Boolean)); return; }
-      const idx = Array.isArray(v) ? v[0] : v;
+      const idx = Number(Array.isArray(v) ? v[0] : v);
       scriptSetValue(rec, it[idx] ? it[idx][1] : '');
+      // remembered only where the export value alone doesn't tell which item it is
+      const shared = it[idx] && it.some((x, i) => i !== idx && x[1] === it[idx][1]);
+      if (shared && rec.value === it[idx][1]) rec.props.valueIndex = idx; else delete rec.props.valueIndex;
+      markDirty(rec);
     });
     accessor('exportValues', function () { return exportsOf(this[R]); }, function (v) { this[R].props.exportValues = v; });
     accessor('calcOrderIndex', function () { return calcOrder.indexOf(this[R].name); }, function (v) {
@@ -464,6 +489,19 @@
     // A user at the screen (engine.interactive(fn)): dialogs and questions without a queued answer are shown to the user.
     // fn(request) is synchronous (the worker waits for the app with Atomics.wait) and returns the user's reply, or null.
     let interact = null, dialogSeq = 0;
+    const dialogIdBase = Math.random().toString(36).slice(2, 8);
+    // Stopping for the user (replay.js): with stopForUser on, the first dialog or yes/no question that nobody can answer
+    // stops the run (STOP is thrown out of MPMB's code; it isn't logged as an error) and is kept in `stopped`. The
+    // user's answers then go to a fresh copy as a replay queue (setReplay): { kind: 'dialog', name, replies } and
+    // { kind: 'question', yes }, used in order as MPMB asks again. engine.clearQueues() leaves that queue alone.
+    let stopForUser = false, stopped = null, replayQueue = [];
+    function replayTake(kind, name) {
+      for (let i = 0; i < replayQueue.length; i++) {
+        const a = replayQueue[i];
+        if (a.kind === kind && (kind !== 'dialog' || a.name === name)) return replayQueue.splice(i, 1)[0];
+      }
+      return null;
+    }
     function menuTree(arr) {
       const out = [];
       for (let i = 0; i < arr.length; i++) {
@@ -546,12 +584,17 @@
         const type = o.nType || 0;
         const question = type === 2 || type === 3;
         let answer = question ? 4 : 1;   // Yes / OK
+        let replayed = null, stopNow = false;
         if (question && alertAnswers.length) answer = alertAnswers.shift();
+        else if (question && (replayed = replayTake('question'))) answer = replayed.yes ? 4 : replayed.cancel && type === 3 ? 2 : 3;
+        else if (question && stopped) answer = 3;   // after a stop nothing more is asked
+        else if (question && stopForUser && !interact && !askQuestions) { stopped = { kind: 'question', title: o.cTitle ? String(o.cTitle) : '', msg: String(o.cMsg === undefined ? '' : o.cMsg), type }; stopNow = true; }
         else if (question && interact && !askQuestions) { const r = interact({ kind: 'question', title: o.cTitle ? String(o.cTitle) : '', msg: String(o.cMsg === undefined ? '' : o.cMsg), type }); answer = r && r.yes ? 4 : r && r.cancel && type === 3 ? 2 : 3; }
         else if (question && askQuestions) { answer = 3; if (!lastQuestion) lastQuestion = { title: o.cTitle ? String(o.cTitle) : '', msg: String(o.cMsg === undefined ? '' : o.cMsg), type }; }
         push(log.alerts, { title: o.cTitle ? String(o.cTitle) : '', msg: String(o.cMsg === undefined ? '' : o.cMsg), type, question, t: Date.now() });
         if (o.oCheckbox) o.oCheckbox.bAfterValue = false;
         if (opts.onAlert) opts.onAlert(log.alerts[log.alerts.length - 1]);
+        if (stopNow) throw STOP;
         return answer;
       },
       execDialog(d) {
@@ -565,8 +608,19 @@
         for (let i = 0; i < dialogAnswers.length; i++) if (dialogAnswers[i].name === entry.name) { plan = dialogAnswers.splice(i, 1)[0]; break; }
         if (!plan && standingAnswers[entry.name]) plan = standingAnswers[entry.name];
         if (plan) entry.answered = 'app';
-        const user = !plan && interact ? interact : null;
+        // Who answers: a queued plan (steps from an app screen), the replies a user gave this dialog before (a replay,
+        // see engine.setReplay: same name, in order), a user at the screen (interact), or nobody (its defaults). With
+        // stopping on (engine.stopForUser), a dialog nobody can answer stops the run here: it stays open (stopped()),
+        // the user answers it, and the change is made again in a fresh copy with the replies (replay.js).
+        let user = !plan && interact ? interact : null;
         if (user) entry.answered = 'user';
+        if (!plan && !user) {
+          const r = replayTake('dialog', entry.name);
+          if (r) { const q = (r.replies || []).slice(); user = () => (q.length ? q.shift() : null); entry.answered = 'replay'; }
+        }
+        // after a stop, MPMB's code may go on (it can catch the stop): every further dialog is cancelled
+        if (!plan && !user && stopped) { entry.answered = 'cancel (stopped)'; return 'cancel'; }
+        const stopHere = !plan && !user && stopForUser;
         // Acrobat's rules per element type: a text box loaded with a list ({name: -1, chosen: 1}) becomes a drop-down
         // whose store() gives the chosen name as text; list boxes give their list object back (a fresh copy each time)
         const els = elementTypes(desc);
@@ -617,32 +671,44 @@
           const text = [];
           for (const k of Object.keys(els)) if (els[k].type === 'edit_text' && els[k].readonly && els[k].multiline && typeof values[k] === 'string' && values[k].trim()) text.push(values[k]);
           if (text.length && !user) entry.text = text.join('\n\n').slice(0, 20000);
-          if (user) {
-            // Acrobat's buttons: OK runs the "ok" handler, then validate (false keeps the dialog open), commit, and ends
-            // with "ok"; Cancel ends with "cancel"; Other runs the "other" handler, which ends the dialog itself
-            // (without one it ends with "other"). Any other element runs its handler after the user changed it.
-            const id = ++dialogSeq;
-            let first = true;
-            while (ended === null) {
-              const reply = user({ kind: 'dialog', id, name: entry.name, desc: first ? plainDesc(desc) : undefined, values: plainValues(values, types), lists: copyPlain(lists), enabled: Object.assign({}, enabled), shown: Object.assign({}, shown), red: Object.keys(red), focus });
-              first = false;
-              focus = null;
-              if (!reply) { ended = 'cancel'; break; }
-              if (reply.set) for (const k of Object.keys(reply.set)) if (types[k]) setValue(k, reply.set[k]);
-              if (reply.pick) for (const k of Object.keys(reply.pick)) if (types[k]) pickItem(values[k], reply.pick[k]);
-              const b = reply.press;
-              if (b === 'ok') {
-                handler('ok');
-                if (ended !== null) break;
-                let valid = true;
-                if (typeof d.validate === 'function') { try { valid = d.validate(el) !== false; } catch (e) { logError('dialog:' + entry.name + ':validate', e); } }
-                if (!valid) continue;
-                if (typeof d.commit === 'function') d.commit(el);
-                if (ended === null) ended = 'ok';
-              } else if (b === 'cancel') { handler('cancel'); ended = 'cancel'; }
-              else if (b === 'other') { if (!handler('other')) ended = 'other'; }
-              else if (b && types[b]) handler(b);
-            }
+          // One round with the user: the dialog as it is now (request), then their reply (step). Acrobat's buttons: OK runs
+          // the "ok" handler, then validate (false keeps the dialog open), commit, and ends with "ok"; Cancel ends with
+          // "cancel"; Other runs the "other" handler, which ends the dialog itself (without one it ends with "other").
+          // Any other element runs its handler after the user changed it.
+          // unique across copies of MPMB (replay.js starts fresh copies, each counting from 1)
+          const id = dialogIdBase + '-' + (++dialogSeq);
+          let first = true;
+          const request = () => {
+            const r = { kind: 'dialog', id, name: entry.name, title: entry.title, desc: first ? plainDesc(desc) : undefined, values: plainValues(values, types), lists: copyPlain(lists), enabled: Object.assign({}, enabled), shown: Object.assign({}, shown), red: Object.keys(red), focus };
+            first = false;
+            focus = null;
+            return r;
+          };
+          const step = (reply) => {
+            if (!reply) { ended = 'cancel'; return ended; }
+            if (reply.set) for (const k of Object.keys(reply.set)) if (types[k]) setValue(k, reply.set[k]);
+            if (reply.pick) for (const k of Object.keys(reply.pick)) if (types[k]) pickItem(values[k], reply.pick[k]);
+            const b = reply.press;
+            if (b === 'ok') {
+              handler('ok');
+              if (ended !== null) return ended;
+              let valid = true;
+              if (typeof d.validate === 'function') { try { valid = d.validate(el) !== false; } catch (e) { logError('dialog:' + entry.name + ':validate', e); } }
+              if (!valid) return ended;
+              if (typeof d.commit === 'function') d.commit(el);
+              if (ended === null) ended = 'ok';
+            } else if (b === 'cancel') { handler('cancel'); ended = 'cancel'; }
+            else if (b === 'other') { if (!handler('other')) ended = 'other'; }
+            else if (b && types[b]) handler(b);
+            return ended;
+          };
+          if (stopHere) {
+            // the dialog stays usable after the run has stopped: its handlers keep working on this copy of MPMB
+            stopped = { kind: 'dialog', name: entry.name, request, step, get ended() { return ended; },
+              finish() { entry.result = ended; if (typeof d.destroy === 'function') try { d.destroy(el); } catch (e) { /* the copy is thrown away */ } } };
+            entry.answered = 'stopped';
+          } else if (user) {
+            while (ended === null) step(user(request()));
             entry.result = ended;
           } else {
             const steps = plan ? plan.steps || [] : [];
@@ -658,9 +724,11 @@
               if (typeof d.commit === 'function') d.commit(el);
             }
           }
-          if (typeof d.destroy === 'function') d.destroy(el);
+          if (!stopHere && typeof d.destroy === 'function') d.destroy(el);
         } catch (e) { logError('dialog:' + entry.name, e); }
         if (opts.onDialog) opts.onDialog(entry);
+        // outside the try above, so the engine's own error handling doesn't swallow the stop
+        if (stopHere) throw STOP;
         return ended === null ? 'ok' : ended;
       },
       response(q, title, dflt) { push(log.dialogs, { name: 'Question', title: String(q || ''), answered: 'cancel', t: Date.now() }); return null; },
@@ -1005,6 +1073,7 @@
       return r;
     }
     function commitValue(rec, fld, name, value) {
+      delete rec.props.valueIndex;
       if (rec.scripts.K) {
         const ev = mkEvent('Keystroke', fld, { value, change: '', changeEx: value, willCommit: true, commitKey: 2 });
         runScript(rec.scripts.K, ev, 'field:' + name + ':keystroke');
@@ -1158,6 +1227,10 @@
       takeQuestion() { const q = lastQuestion; lastQuestion = null; return q; },
       // a user at the screen: fn(request) → reply, synchronous (see execDialog); null turns it off
       interactive(fn) { interact = typeof fn === 'function' ? fn : null; },
+      // stopping for the user (see STOP): on/off; what the run stopped at (and clears it); the answers for a replay
+      stopForUser(on) { stopForUser = !!on; if (on) stopped = null; },
+      takeStopped() { const s = stopped; stopped = null; return s; },
+      setReplay(list) { replayQueue = (list || []).slice(); },
       clearQueues() { fileQueue.length = 0; dialogAnswers.length = 0; menuAnswers.length = 0; lastMenu = null; alertAnswers.length = 0; lastQuestion = null; },
       runBookmark(path) {
         let node = { children: g.bookmarkRoot.children };

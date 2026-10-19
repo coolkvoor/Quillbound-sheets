@@ -220,6 +220,9 @@
       if (c.i) f.dict.set(N('Opt'), ctx.obj(c.i.map((it) => (it[0] === it[1] ? text(it[0]) : ctx.obj([text(it[1]), text(it[0])])))));
       if (c.v !== undefined) setValue(f, c.v, ft, ff);
       const p = c.p || {};
+      // the picked item when two share an export value (/I, as Acrobat writes it)
+      if (Number.isInteger(p.valueIndex)) f.dict.set(N('I'), ctx.obj([PDFNumber.of(p.valueIndex)]));
+      else if (c.v !== undefined) f.dict.delete(N('I'));
       if (p.readonly !== undefined) setFlag(f.dict, FF.readonly, !!p.readonly);
       if (p.required !== undefined) setFlag(f.dict, FF.required, !!p.required);
       if (p.multiline !== undefined) setFlag(f.dict, FF.multiline, !!p.multiline);
