@@ -26,8 +26,12 @@ const DEVICES = {
   for (const name of which) {
     const ctx = await browser.newContext(Object.assign({ colorScheme: scheme }, DEVICES[name]));
     await ctx.route('https://cdnjs.cloudflare.com/**', (r) => (process.env.NOCDN ? r.abort() : r.fulfill({ status: 200, contentType: 'text/javascript', body: PDFLIB })));
-    await ctx.route('https://fonts.googleapis.com/**', (r) => r.abort());
-    await ctx.route('https://fonts.gstatic.com/**', (r) => r.abort());
+    if (!process.env.FONTS) {
+      await ctx.route('https://fonts.googleapis.com/**', (r) => r.abort());
+      await ctx.route('https://fonts.gstatic.com/**', (r) => r.abort());
+    }
+    // LOOK=colorful-white|colorful-dark|pf-white|pf-dark|pf-black picks a look (Sheet tab); default: match the sheet
+    if (process.env.LOOK) await ctx.addInitScript((c) => { try { localStorage.setItem('mpmb-theme', JSON.stringify({ choice: c })); } catch (e) { /* default look */ } }, process.env.LOOK);
     const page = await ctx.newPage();
     const logs = [];
     page.on('console', (m) => logs.push(m.type() + ': ' + m.text()));

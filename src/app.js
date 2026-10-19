@@ -358,7 +358,8 @@
       state.worker = w;
       wireWorker(w);
       const res = await w.call('open', { bytes: buf, fileName: name, saved: stored && stored.saved ? stored.saved : null, state: char && char.state ? char.state : null }, [buf]);
-      state.info = res.info; state.stats = res.stats; state.stats.openMs = Math.round(performance.now() - t0); state.log = res.log;
+      if (T) T.sheet({ look: /printer friendly/i.test(res.info.type) ? 'pf' : 'colorful' });
+    state.info = res.info; state.stats = res.stats; state.stats.openMs = Math.round(performance.now() - t0); state.log = res.log;
       state.content = res.content; state.saved = res.saved;
       // MPMB drops an add-on that fails at startup; keep what it kept
       if (stored && stored.saved && JSON.stringify(stored.saved) !== JSON.stringify(res.saved)) idbPut(state.sheetKey, { saved: res.saved, date: Date.now() });
@@ -1097,6 +1098,7 @@
   }
   function apply(snap) {
     state.snap.set(snap.name, snap);
+    if (snap.name === 'Color.Theme' || snap.name === 'Color.DragonHeads') sheetColors();
     const ix = (index && index.get(snap.name)) || {};
     const sel = (attr) => ix[attr] || [];
     for (const n of sel('data-opts')) {
@@ -1621,8 +1623,9 @@
   window.addEventListener('scroll', () => { if (spyQueued) return; spyQueued = true; requestAnimationFrame(() => { spyQueued = false; spy(); }); }, { passive: true });
 
   // ---------------------------------------------------------------- MPMB's menus, buttons and messages
-  // A menu item's name can carry its source after a tab: "High Elf\t   [SRD'24 85]"
-  const splitName = (n) => { const p = String(n).split(/\t+/); return [p[0].trim(), p.slice(1).join(' ').trim()]; };
+  // A menu item's name can carry its source after a tab: "High Elf\t   [SRD'24 85]". Acrobat's menus show "&&" as one
+  // "&" (MPMB writes "Visible D&&D logos").
+  const splitName = (n) => { const p = String(n).replace(/&&/g, '&').split(/\t+/); return [p[0].trim(), p.slice(1).join(' ').trim()]; };
   // features: a Choose feature menu (class or species), where greyed-out choices get an explanation
   function pickFromMenu(items, title, features) {
     const dlg = $('#menu');
@@ -2186,6 +2189,38 @@
   }
 
   // ---------------------------------------------------------------- sheet tab
+  // Looks (the script in index.html sets them before the page draws): the open sheet's design and colours, and the picker
+  const LOOKS = [['auto', 'Match my sheet'], ['colorful-white', 'Colorful, white'], ['colorful-dark', 'Colorful, dark'],
+    ['pf-white', 'Printer friendly, white'], ['pf-dark', 'Printer friendly, dark'], ['pf-black', 'Printer friendly, black (OLED screens)']];
+  const T = window.MPMBTheme;
+  function sheetColors() {
+    if (!T) return;
+    const name = (n) => { const s = state.snap.get(n); return s && s.exists ? String(s.value || '').trim().toLowerCase() : ''; };
+    const color = name('Color.Theme'), seal = name('Color.DragonHeads');
+    T.sheet({ color: T.COLORS[color] ? color : undefined, seal: T.COLORS[seal] ? seal : undefined });
+  }
+  function renderLooks() {
+    const box = $('#look-list');
+    if (!box || !T) return;
+    box.textContent = '';
+    const sheetLook = T.sheetLook() === 'pf' ? 'Printer friendly' : 'Colorful';
+    const swatch = { 'colorful-white': ['#ffffff', 'var(--sheet)'], 'colorful-dark': ['#17141a', 'var(--sheet)'], 'pf-white': ['#ffffff', '#6b6b6b'], 'pf-dark': ['#1a1a1a', '#4d4d4d'], 'pf-black': ['#000000', '#2a2a2a'] };
+    for (const [id, label] of LOOKS) {
+      const input = el('input', { type: 'radio', name: 'look', value: id });
+      input.checked = T.choice() === id;
+      const sw = swatch[id] || (T.sheetLook() === 'pf' ? swatch['pf-white'] : swatch['colorful-white']);
+      const kids = [input, el('span', { cls: 'look-sw', 'aria-hidden': 'true' }), el('span', { text: label })];
+      kids[1].append(el('i', { style: 'background:' + sw[0] }), el('i', { style: 'background:' + sw[1] }));
+      if (id === 'auto') kids.push(el('span', { cls: 'hint', text: sheetLook + ', as your sheet; light or dark as your device is' }));
+      box.append(el('label', { cls: 'look-opt' }, kids));
+    }
+  }
+  function wireLooks() {
+    const box = $('#look-list');
+    if (!box || !T) return;
+    box.addEventListener('change', (e) => { if (e.target.name === 'look') T.choose(e.target.value); });
+    renderLooks();
+  }
   const fmtS =(ms) => (ms >= 1000 ? (ms / 1000).toFixed(1) + ' s' : ms + ' ms');
   function renderFacts() {
     const i = state.info, s = state.stats;
@@ -2293,6 +2328,7 @@
     for (const s of snaps) apply(s);
     refreshDerived();
     renderFacts();
+    renderLooks();
     renderContent();
     setSaved('saved');
     $('#content-result').hidden = true;
@@ -2311,5 +2347,6 @@
   wireContent();
   wireSpells();
   wireClassAbility();
+  wireLooks();
   initStart();
 })();

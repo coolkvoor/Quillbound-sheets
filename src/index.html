@@ -4,20 +4,25 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap">
 <style>
 /* Layout: a character folio. One scrolling page of bands (Main, Combat, Features, Sheet),
-   cards flow 1 → 2 → 3 columns with the screen, and a bottom tab bar follows the scroll. */
+   cards flow 1 → 2 → 3 columns with the screen, and a bottom tab bar follows the scroll.
+   Looks, after MPMB's two sheet designs (html[data-look][data-tone], set by the script below; components under "looks"):
+   colorful (white, dark): paper, the sheet's colour (MPMB's Color.Theme) in brush strokes, black ink panels, grey skill
+   bars; pf, printer friendly (white, dark, black for OLED screens): black, white and greys, framed boxes, grey fields.
+   Without the script: colorful, light or dark as the device is. */
 :root {
-  --bg: #f3f2f7;        /* cool violet-grey ground */
-  --surface: #ffffff;
-  --ink: #1d1926;
-  --muted: #615a72;
-  --line: #dcd7e5;
-  --accent: #5a2a8e;    /* MPMB purple */
-  --accent-ink: #ffffff;
-  --accent-soft: #ece3f7;
-  --hp: #b0223b;
-  --good: #23784a;
-  --bad: #b0223b;
-  --warn: #9a6200;
+  --sheet: #642481;           /* the sheet's colour (Color.Theme), for strokes only: text uses the readable shades */
+  --sheet-pale: #decde5;      /* MPMB's 85% light shade of it */
+  --sheet-on-light: #642481;  /* the sheet's colour darkened just enough for text on white (5:1, the script works it out) */
+  --sheet-on-dark: #c49bd8;   /* ... lightened just enough for text on the dark surface */
+  --seal: #bd1822;            /* MPMB's red (Color.DragonHeads): the seal and the red slashes */
+  --bg: #ffffff; --surface: #ffffff; --ink: #161317; --muted: #5d5862; --line: #d4d1d6;
+  --accent: var(--sheet-on-light); --accent-ink: #ffffff; --accent-soft: color-mix(in srgb, var(--sheet) 10%, white);
+  --frame: #161317;           /* framed boxes and number boxes */
+  --field: transparent;       /* text field fill */
+  --btn: var(--surface); --btn-ink: var(--ink);
+  --panel: #141114; --panel-ink: #ffffff;   /* ink panels (ability scores, band titles, tab bar) */
+  --row-a: #d3d2d5; --row-b: #f4f4f5;       /* skill bars, light to dark as on the sheet */
+  --hp: #b0223b; --good: #23784a; --bad: #b0223b; --warn: #9a6200;
   --font-display: "Alegreya SC", "Iowan Old Style", Georgia, serif;
   --font-body: "Alegreya Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   --radius: 12px;
@@ -25,15 +30,49 @@
   --header-h: 56px;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --bg: #121016; --surface: #1c1922; --ink: #ece8f3; --muted: #a59eb5; --line: #2f2a39;
-    --accent: #b590f0; --accent-ink: #1b1027; --accent-soft: #2a2040; --hp: #f06b81; --good: #62c48e; --bad: #f06b81; --warn: #e3ab4d;
+  :root:not([data-theme="light"]):not([data-tone]) {
+    --bg: #17141a; --surface: #1f1b22; --ink: #ede9f0; --muted: #a8a1ad; --line: #36313b;
+    --accent: var(--sheet-on-dark); --accent-ink: #160f1a; --accent-soft: color-mix(in srgb, var(--sheet) 24%, #1f1b22);
+    --frame: #cfc9d3; --btn: var(--surface); --btn-ink: var(--ink);
+    --panel: #0b090c; --panel-ink: #f4f1f6; --row-a: #312d35; --row-b: #211e25;
+    --hp: #f06b81; --good: #62c48e; --bad: #f06b81; --warn: #e3ab4d;
     color-scheme: dark;
   }
 }
-:root[data-theme="dark"] {
-  --bg: #121016; --surface: #1c1922; --ink: #ece8f3; --muted: #a59eb5; --line: #2f2a39;
-  --accent: #b590f0; --accent-ink: #1b1027; --accent-soft: #2a2040; --hp: #f06b81; --good: #62c48e; --bad: #f06b81; --warn: #e3ab4d;
+:root[data-theme="dark"]:not([data-tone]),
+:root[data-look="colorful"][data-tone="dark"] {
+  --bg: #17141a; --surface: #1f1b22; --ink: #ede9f0; --muted: #a8a1ad; --line: #36313b;
+  --accent: var(--sheet-on-dark); --accent-ink: #160f1a; --accent-soft: color-mix(in srgb, var(--sheet) 24%, #1f1b22);
+  --frame: #cfc9d3; --btn: var(--surface); --btn-ink: var(--ink);
+  --panel: #0b090c; --panel-ink: #f4f1f6; --row-a: #312d35; --row-b: #211e25;
+  --hp: #f06b81; --good: #62c48e; --bad: #f06b81; --warn: #e3ab4d;
+  color-scheme: dark;
+}
+/* printer friendly: no colour, only ink; grey fields and grey buttons as on the sheet */
+:root[data-look="pf"] { --font-display: var(--font-body); }
+:root[data-look="pf"][data-tone="white"] {
+  --bg: #ffffff; --surface: #ffffff; --ink: #111111; --muted: #555555; --line: #c4c4c4;
+  --accent: #111111; --accent-ink: #ffffff; --accent-soft: #e6e6e6;
+  --frame: #111111; --field: #e6e6e6; --btn: #6b6b6b; --btn-ink: #ffffff;
+  --panel: #e6e6e6; --panel-ink: #111111; --row-a: #e4e4e4; --row-b: #f5f5f5;
+  --hp: #9e1c2c; --good: #23784a; --bad: #9e1c2c; --warn: #8a5800;
+  color-scheme: light;
+}
+:root[data-look="pf"][data-tone="dark"] {
+  --bg: #1a1a1a; --surface: #222222; --ink: #e8e8e8; --muted: #a3a3a3; --line: #3b3b3b;
+  --accent: #f0f0f0; --accent-ink: #111111; --accent-soft: #383838;
+  --frame: #c8c8c8; --field: #303030; --btn: #4d4d4d; --btn-ink: #ffffff;
+  --panel: #2e2e2e; --panel-ink: #f0f0f0; --row-a: #2d2d2d; --row-b: #262626;
+  --hp: #f06b81; --good: #62c48e; --bad: #f06b81; --warn: #e3ab4d;
+  color-scheme: dark;
+}
+/* black for OLED screens: true black almost everywhere, dim frames instead of grey areas, off-white text */
+:root[data-look="pf"][data-tone="black"] {
+  --bg: #000000; --surface: #000000; --ink: #e4e4e4; --muted: #9a9a9a; --line: #2c2c2c;
+  --accent: #f2f2f2; --accent-ink: #000000; --accent-soft: #262626;
+  --frame: #5c5c5c; --field: #161616; --btn: #2a2a2a; --btn-ink: #f2f2f2;
+  --panel: #0c0c0c; --panel-ink: #f2f2f2; --row-a: #111111; --row-b: #000000;
+  --hp: #f06b81; --good: #62c48e; --bad: #f06b81; --warn: #e3ab4d;
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -52,7 +91,7 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .brand { display: grid; gap: 6px; }
 .brand h1 { font-family: var(--font-display); font-size: 2.1rem; font-weight: 700; color: var(--accent); line-height: 1.05; }
 .brand p { margin: 0; color: var(--muted); }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; text-align: center; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--btn); color: var(--btn-ink); cursor: pointer; text-align: center; }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 .btn:active { transform: translateY(1px); }
 .btn[disabled], .btn.is-disabled { opacity: 0.5; cursor: default; }
@@ -322,8 +361,8 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .mods-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(7.5rem, 1fr)); gap: 6px 8px; }
 label.f.mod > span { text-transform: none; letter-spacing: 0; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 label.f.mod .in { min-height: 40px; color: #2a62c9; }
-:root[data-theme="dark"] label.f.mod .in { color: #8fb4ff; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) label.f.mod .in { color: #8fb4ff; } }
+:root[data-tone="dark"] label.f.mod .in, :root[data-tone="black"] label.f.mod .in, :root[data-theme="dark"]:not([data-tone]) label.f.mod .in { color: #8fb4ff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-tone]) label.f.mod .in { color: #8fb4ff; } }
 .atk-mods > * { flex: 1 1 6rem; }
 
 /* gear */
@@ -381,7 +420,7 @@ select.in { appearance: auto; }
 /* advantage / disadvantage marks */
 .ad { display: inline-flex; gap: 2px; flex: none; }
 .ad button { width: 26px; height: 26px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; }
-.ad button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.ad button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .skill .ad { margin-right: 6px; }
 .abi > .ad { gap: 8px; }
 .abi > .ad button { width: 34px; height: 28px; }
@@ -439,7 +478,166 @@ nav.tabs a[aria-current="true"] { color: var(--accent); }
 @media (max-width: 420px) { nav.tabs a { font-size: 0.76rem; letter-spacing: 0; } }
 nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
 @media (max-height: 460px) { :root { --tabbar-h: 48px; --header-h: 48px; } header.top { min-height: 48px; padding-block: 4px; } }
+/* ---------- looks ---------- */
+/* Colorful, after MPMB's colourful sheet: band titles on a black brush stroke streaked with the sheet's colour and a
+   red seal (the app's own shape, not the sheet's emblem); card titles with a red slash and a brush underline; ability
+   scores on black ink panels with a white modifier circle; grey skill bars; underlined text fields, square number boxes */
+[data-look="colorful"] .grid, [data-look="colorful"] .grid > .gcol { gap: 18px; }
+[data-look="colorful"] .card { background: transparent; border: 0; border-radius: 0; padding: 6px 2px 10px; }
+[data-look="colorful"] .card h3 { position: relative; padding: 0 0 9px 24px; font-size: 1.2rem; }
+[data-look="colorful"] .card h3::before { content: ""; position: absolute; left: 0; top: 0.12em; width: 15px; height: 1em; background: var(--seal);
+  clip-path: polygon(0 0, 100% 0, 100% 24%, 44% 100%, 8% 100%, 60% 26%, 0 26%); }
+[data-look="colorful"] .card h3::after, [data-look="colorful"] .panel-head::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: var(--sheet);
+  clip-path: polygon(0 45%, 5% 15%, 62% 0, 100% 40%, 97% 75%, 40% 100%, 3% 95%); }
+[data-look="colorful"] .panel-head { position: relative; border-bottom: 0; }
+[data-look="colorful"] .band-title { position: relative; width: fit-content; min-width: min(100%, 17rem); max-width: 100%; min-height: 50px; align-items: center;
+  margin: 12px 0 14px -16px; padding: 8px 64px 10px 62px; color: var(--panel-ink); letter-spacing: 0.04em;
+  background: linear-gradient(176deg, transparent 0 60%, var(--sheet) 61% 78%, transparent 79%), linear-gradient(90deg, #141114 0 62%, color-mix(in srgb, var(--sheet) 45%, #141114));
+  clip-path: polygon(0 4%, 55% 0, 82% 6%, 100% 22%, 90% 44%, 98% 64%, 86% 84%, 92% 100%, 0 96%); }
+[data-look="colorful"] .band-title::before { content: ""; position: absolute; left: 14px; top: 50%; width: 36px; height: 36px; margin-top: -18px; border-radius: 50%;
+  background: radial-gradient(circle, #fff 0 3px, transparent 3.5px), conic-gradient(from 45deg, var(--seal) 0 25%, color-mix(in srgb, var(--seal) 55%, black) 0 50%, var(--seal) 0 75%, color-mix(in srgb, var(--seal) 55%, black) 0);
+  box-shadow: 0 0 0 2px #f4f1f6, 0 0 0 4px var(--seal); }
+[data-look="colorful"] .band-title small { color: #d3cdd7; }
+[data-look="colorful"] header.top { border-bottom: 3px solid transparent; border-image: linear-gradient(90deg, var(--sheet), color-mix(in srgb, var(--sheet) 30%, transparent) 70%, transparent) 1; }
+[data-look="colorful"] .in { border: 0; border-bottom: 1.5px solid color-mix(in srgb, var(--ink) 65%, var(--bg)); border-radius: 0; background: transparent; padding-inline: 2px; }
+[data-look="colorful"] .in:focus { border-bottom-color: var(--accent); box-shadow: 0 2px 0 0 var(--accent); }
+[data-look="colorful"] .in[readonly] { border-bottom-style: dashed; }
+[data-look="colorful"] .in.num, [data-look="colorful"] .uses input, [data-look="colorful"] .stat input.lvl, [data-look="colorful"] .skill input.in-v {
+  border: 1.5px solid var(--frame); border-radius: 3px; background: var(--surface); }
+[data-look="colorful"] .in.num:focus { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+/* text boxes as ruled lines */
+[data-look="colorful"] textarea.in:not(.code) { line-height: 1.6em; padding: 0 2px; border-bottom: 0; background-attachment: local;
+  background-image: repeating-linear-gradient(transparent 0 calc(1.6em - 1px), color-mix(in srgb, var(--ink) 40%, var(--bg)) calc(1.6em - 1px) 1.6em); }
+[data-look="colorful"] .btn { border-radius: 4px; border: 1.5px solid color-mix(in srgb, var(--ink) 55%, var(--bg)); font-family: var(--font-display); font-weight: 700; letter-spacing: 0.03em; }
+[data-look="colorful"] .btn.primary { border-color: var(--accent); }
+[data-look="colorful"] .btn.danger { border-color: currentColor; }
+[data-look="colorful"] .stat { border: 2px solid var(--frame); border-radius: 3px; background: var(--surface); }
+[data-look="colorful"] .stat .k, [data-look="colorful"] .lbl, [data-look="colorful"] label.f > span:not(.hint), [data-look="colorful"] .f > .flabel, [data-look="colorful"] .gear-head {
+  font-family: var(--font-display); text-transform: none; font-size: 0.9rem; letter-spacing: 0.04em; }
+/* ability scores on ink panels: the panel has its own ink, so its dots and marks get light colours */
+[data-look="colorful"] .abi { --ink: var(--panel-ink); --muted: #bfb9c4; --line: #4b4550; --accent: var(--sheet-on-dark); --accent-ink: #160f1a; --surface: #141114;
+  color: var(--panel-ink); border: 0; border-radius: 0; padding: 10px 6px 12px;
+  background: linear-gradient(165deg, #141114 0 68%, color-mix(in srgb, var(--sheet) 45%, #141114));
+  clip-path: polygon(3% 2%, 34% 0, 72% 3%, 99% 0, 100% 38%, 97% 70%, 99% 100%, 58% 97%, 22% 100%, 1% 98%, 0 60%, 2% 30%); }
+[data-look="colorful"][data-tone="dark"] .abi { background: linear-gradient(165deg, #2c2631 0 62%, color-mix(in srgb, var(--sheet) 55%, #2c2631)); }
+[data-look="colorful"] .abi .k { color: var(--panel-ink); font-size: 1.15rem; }
+[data-look="colorful"] .abi .mod { display: grid; place-items: center; width: 2.1em; height: 2.1em; border-radius: 50%; background: #fff; color: #141114; font-size: 1.6rem; }
+[data-look="colorful"] .abi input { border: 0; border-radius: 2px; background: #fff; color: #141114; }
+/* skill bars: darker toward the right, alternate rows lighter; with two columns the rows pair up */
+[data-look="colorful"] .skill { border-bottom: 0; padding-inline: 2px 6px; background: linear-gradient(90deg, var(--row-b), color-mix(in srgb, var(--row-a) 45%, var(--row-b))); }
+[data-look="colorful"] .skill:nth-child(odd) { background: linear-gradient(90deg, var(--row-b), var(--row-a)); }
+@container (min-width: 520px) {
+  [data-look="colorful"] .skills.two .skill:nth-child(4n+2) { background: linear-gradient(90deg, var(--row-b), var(--row-a)); }
+  [data-look="colorful"] .skills.two .skill:nth-child(4n+3) { background: linear-gradient(90deg, var(--row-b), color-mix(in srgb, var(--row-a) 45%, var(--row-b))); }
+}
+[data-look="colorful"] nav.tabs { background: var(--panel); border-top: 3px solid var(--sheet); }
+[data-look="colorful"] nav.tabs a { color: #c4bec9; }
+[data-look="colorful"] nav.tabs a[aria-current="true"] { color: #ffffff; }
+[data-look="colorful"] nav.tabs a[aria-current="true"]::after { background: var(--sheet-pale); }
+[data-look="colorful"] .md-cluster, [data-look="colorful"] .md-list, [data-look="colorful"] .picker-show { border-color: color-mix(in srgb, var(--ink) 35%, var(--bg)); }
+
+/* Printer friendly, after MPMB's printer friendly sheet: framed boxes with corner marks, bold capital labels, grey
+   fields, grey buttons, oval ability scores; no colour */
+[data-look="pf"] .band-title { justify-content: center; text-transform: uppercase; letter-spacing: 0.12em; font-size: 1.1rem; font-weight: 800; color: var(--ink);
+  padding: 6px 0; border-block: 2px solid var(--frame); box-shadow: inset 0 -4px 0 -2px var(--bg), inset 0 4px 0 -2px var(--bg); }
+[data-look="pf"] .band-title small { text-transform: none; letter-spacing: 0; }
+[data-look="pf"] .grid, [data-look="pf"] .grid > .gcol { gap: 16px; }
+[data-look="pf"] .card { position: relative; border: 2px solid var(--frame); border-radius: 12px; background: var(--surface); }
+/* corner marks just outside the frame */
+[data-look="pf"] .card::before { content: ""; position: absolute; inset: -5px; pointer-events: none; --c: var(--frame);
+  background: linear-gradient(var(--c), var(--c)) top left / 16px 3px no-repeat, linear-gradient(var(--c), var(--c)) top left / 3px 16px no-repeat,
+    linear-gradient(var(--c), var(--c)) top right / 16px 3px no-repeat, linear-gradient(var(--c), var(--c)) top right / 3px 16px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom left / 16px 3px no-repeat, linear-gradient(var(--c), var(--c)) bottom left / 3px 16px no-repeat,
+    linear-gradient(var(--c), var(--c)) bottom right / 16px 3px no-repeat, linear-gradient(var(--c), var(--c)) bottom right / 3px 16px no-repeat; }
+[data-look="pf"] .card h3 { text-transform: uppercase; letter-spacing: 0.09em; font-size: 0.95rem; font-weight: 800; }
+[data-look="pf"] .card h3 > * { text-transform: none; letter-spacing: 0; }
+[data-look="pf"] .in, [data-look="pf"] .uses input, [data-look="pf"] .stat input.lvl, [data-look="pf"] .skill input.in-v { border: 0; border-radius: 4px; background: var(--field); }
+[data-look="pf"] .in:focus { box-shadow: 0 0 0 2px var(--ink); }
+[data-look="pf"] .in[readonly] { background: transparent; border: 1px dashed var(--line); }
+[data-look="pf"] .btn { border-radius: 4px; background: var(--btn); color: var(--btn-ink); border-color: var(--btn); font-weight: 700; }
+[data-look="pf"] .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+[data-look="pf"] .btn.danger { background: transparent; color: var(--bad); border-color: currentColor; }
+[data-look="pf"] .hp .btn, [data-look="pf"] .stepper .btn, [data-look="pf"] .btn.more { background: var(--surface); color: var(--ink); border: 2px solid var(--frame); }
+[data-look="pf"] .stat { border: 2px solid var(--frame); border-radius: 10px; background: var(--surface); }
+[data-look="pf"] .stat .k, [data-look="pf"] .lbl { color: var(--ink); font-weight: 800; letter-spacing: 0.07em; }
+[data-look="pf"] .abi { border: 2px solid var(--frame); border-radius: 12px 12px 22px 22px; background: var(--surface); }
+[data-look="pf"] .abi .k { color: var(--ink); font-weight: 800; letter-spacing: 0.1em; }
+[data-look="pf"] .abi input { border: 2px solid var(--frame); border-radius: 999px; background: var(--surface); }
+[data-look="pf"] .dot::before { border-color: var(--ink); }
+[data-look="pf"] .skill .a { text-transform: none; }
+[data-look="pf"] nav.tabs { border-top: 2px solid var(--frame); }
+[data-look="pf"] nav.tabs a { font-weight: 800; }
+@media (min-width: 421px) { [data-look="pf"] nav.tabs a { text-transform: uppercase; letter-spacing: 0.07em; font-size: 0.85rem; } }
+[data-look="pf"] .md-list li[aria-selected="true"], [data-look="pf"] .pk .pill[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+
+/* the look picker (Sheet tab) */
+.looks { display: grid; gap: 6px; }
+.look-opt { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 0 12px; align-items: center; min-height: 52px; padding: 4px 0; cursor: pointer; }
+.look-opt input { width: 22px; height: 22px; margin: 0 0 0 2px; accent-color: var(--accent); }
+.look-opt .hint { grid-column: 3; }
+.look-sw { width: 44px; height: 30px; border-radius: 6px; border: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+.look-sw i { display: block; }
 </style>
+<script>
+/* Looks, set before the page draws: html[data-look=colorful|pf][data-tone=white|dark|black] and the sheet's colours.
+   The choice (Sheet tab), the last sheet's design and colours are kept in localStorage. "Match my sheet" (auto) takes
+   the open sheet's design (MPMB's SheetType) and the device's light or dark. Colours are MPMB's own (ColorList, and
+   LightColorList's 85% shades); text gets the sheet's colour darkened or lightened just enough for 5:1 contrast or more. */
+window.MPMBTheme = (() => {
+  const KEY = 'mpmb-theme', root = document.documentElement;
+  const COLORS = { aqua: ['#1e71b7', '#c0dbf2'], blue: ['#00a6d4', '#bee8f4'], brown: ['#7a5d54', '#e0d5d2'], gray: ['#808080', '#d9d9d9'],
+    green: ['#046633', '#c0f2d9'], orange: ['#e84e0f', '#fccab6'], pink: ['#e8327c', '#fbb7d3'], purple: ['#642481', '#decde5'],
+    red: ['#bd1822', '#f2c0c3'], teal: ['#00a099', '#bff2f1'], yellow: ['#f39200', '#fce0b5'] };
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const hex = (c) => '#' + c.map((v) => Math.round(v).toString(16).padStart(2, '0')).join('');
+  const lum = (c) => { const l = c.map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2]; };
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  // the colour mixed toward `to` in small steps until it reads on bg (5:1; 5.3:1 on white, so it also reads on the
+  // sheet-tinted backgrounds, --accent-soft)
+  const readable = (main, bg, to, min) => {
+    const m = rgb(main), b = rgb(bg), t = rgb(to);
+    for (let i = 0; i <= 20; i++) { const c = m.map((v, k) => v + (t[k] - v) * i / 20); if (ratio(c, b) >= (min || 5)) return hex(c); }
+    return to;
+  };
+  let saved = {};
+  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { /* defaults */ }
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { /* this visit only */ } };
+  const deviceDark = () => { const t = root.getAttribute('data-theme'); return t === 'dark' || (t !== 'light' && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches); };
+  function apply() {
+    const choice = saved.choice || 'auto';
+    const look = choice === 'auto' ? (saved.look === 'pf' ? 'pf' : 'colorful') : choice.split('-')[0];
+    const tone = choice === 'auto' ? (deviceDark() ? 'dark' : 'white') : choice.split('-')[1];
+    root.setAttribute('data-look', look);
+    root.setAttribute('data-tone', tone);
+    const c = COLORS[saved.color] || COLORS.purple, s = root.style;
+    s.setProperty('--sheet', c[0]);
+    s.setProperty('--sheet-pale', c[1]);
+    s.setProperty('--sheet-on-light', readable(c[0], '#ffffff', '#000000', 5.3));
+    s.setProperty('--sheet-on-dark', readable(c[0], '#1f1b22', '#ffffff'));
+    s.setProperty('--seal', (COLORS[saved.seal] || COLORS.red)[0]);
+    // the browser's own bar (Chrome on Android) in the page's colour
+    let m = document.querySelector('meta[name="theme-color"]');
+    if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
+    m.content = getComputedStyle(root).getPropertyValue('--bg').trim() || '#ffffff';
+  }
+  apply();
+  const mq = window.matchMedia && matchMedia('(prefers-color-scheme: dark)');
+  if (mq && mq.addEventListener) mq.addEventListener('change', apply);
+  if (window.MutationObserver) new MutationObserver(apply).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+  return {
+    COLORS, ratio: (a, b) => ratio(rgb(a), rgb(b)), readable,
+    choice: () => saved.choice || 'auto',
+    sheetLook: () => (saved.look === 'pf' ? 'pf' : 'colorful'),
+    choose(choice) { saved.choice = choice; save(); apply(); },
+    // from the open sheet: its design (look) and MPMB's colour names (color: Color.Theme, seal: Color.DragonHeads)
+    sheet(o) {
+      let changed = false;
+      for (const k of ['look', 'color', 'seal']) if (o[k] !== undefined && saved[k] !== o[k]) { saved[k] = o[k]; changed = true; }
+      if (changed) { save(); apply(); }
+    },
+  };
+})();
+</script>
 
 <div id="start">
   <div class="start-card">
@@ -470,6 +668,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
     </div>
     <span class="chip" id="save-chip" title="Saved on this device">Saved</span>
     <span class="busy" id="busy" aria-hidden="true"></span>
+    <span hidden data-out="Color.Theme"></span><span hidden data-out="Color.DragonHeads"></span>
   </header>
 
   <main class="bands" id="bands">
@@ -789,6 +988,11 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
           <p class="note">The extra pages in your PDF, from MPMB's Set Pages Layout menu (it also has the sheet's colour, equipment and spell sheet options).</p>
           <ul class="list" id="page-list"></ul>
           <button class="btn" id="notes-clear-open" type="button" hidden>Clear out Notes pages…</button>
+        </div>
+        <div class="card" id="look">
+          <h3>Look</h3>
+          <p class="note">The app's look, after MPMB's two sheet designs. Colorful takes the sheet's colour (Set Pages Layout → colour). Kept on this device.</p>
+          <div class="looks" role="radiogroup" aria-label="Look" id="look-list"></div>
         </div>
         <div class="card" id="mpmb-settings">
           <h3>Sheet settings</h3>

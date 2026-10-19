@@ -18,6 +18,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 | Platform | Web app installed from Chrome; app stores later, if ever |
 | Scope | Play **and** build characters |
 | Rules | 2024 sheets first; 2014 sheets later (assumption) |
+| Looks | Five themes after MPMB's Colorful and Printer Friendly sheets + "Match my sheet"; no handwriting font; sheet art recreated in CSS, never shipped |
 
 ## Milestones
 
@@ -34,6 +35,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `src/engine.js`: the Acrobat stand-in. Field objects, events, `app`/`util`/doc APIs, AForm helpers, `toSource()`, templates/pages, logs.
 - `src/worker.js`: one sheet per Web Worker. Its own code sits in an IIFE because the global scope belongs to MPMB.
 - `src/app.js`, `src/index.html`: the screens. Fields are bound with `data-f` (input), `data-out` (formatted value), `data-rich` (MPMB rich text spans), `data-toggle` (check box), `data-items` (datalist).
+- Looks (themes, 2026-10-19): five, after MPMB's two sheet designs: Colorful white/dark and Printer friendly white/dark/black (OLED), plus "Match my sheet" (default: the sheet's design from `info.SheetType`, light or dark as the device is). `html[data-look=colorful|pf][data-tone=white|dark|black]`; colour tokens at the top of index.html's CSS, components under `/* looks */`. The inline script after the CSS (`window.MPMBTheme`) applies them before the page draws, from localStorage `mpmb-theme` (`choice`, the last sheet's `look`, `color`, `seal`). Colorful takes MPMB's `Color.Theme` (strokes: `--sheet`; text: `--sheet-on-light` / `--sheet-on-dark`, the colour darkened or lightened until it reads at 5.3:1 / 5:1, checked for all 11 colours) and `Color.DragonHeads` (`--seal`, the red seal and slashes), watched by hidden `data-out` spans in the header, so MPMB's Set Pages Layout → Color Theme options recolours the app. Picker: Sheet tab → Look (`renderLooks` in app.js). No handwriting font and none of MPMB's or WotC's art: brush strokes, seal and corner marks are CSS shapes.
 - `src/features.js`: reads MPMB's Class Features / Racial Traits text into features (`parse`) and spots text saved before the line-break fix (`staleClassText`). Used by the app (inlined before app.js in the builds) and `test/features.test.js`.
 - `src/selftest.js`: builds an Elf Wizard 3 and checks 19 results. Used by the app's Sheet tab and by `test/engine.test.js`.
 - `src/spells.js`: spells. `options()` runs MPMB's `AskUserSpellSheet` once with the dialogs' data captured (lists, counts, picks) and cancels at the last dialog; `choose()` writes the picks where those dialogs keep them (`CurrentSpells[caster].selectCa/selectSp/selectPrep/typeList`) and runs MPMB's `GenerateSpellSheet`; `sheet()` reads the spawned SSfront/SSmore pages back as rows; `tapRow()` presses a row's first-column button (prepared / used).
@@ -70,7 +72,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `node test/debug.js 'expr' ...`: runs the self-test steps, then evaluates expressions inside the sheet's realm.
 - `npx playwright install chromium` once on a new machine (the test falls back to Playwright's own Chromium).
 - Checking a screen in the Claude preview pane with the owner's sheet: `.claude/launch.json` (local, untracked) has a "sheet" server (`notes/sheet-serve.js`, gitignored) that serves `test/sheet.pdf` at http://localhost:8124/sheet.pdf only (its main address is a text page: the preview opens a tab there, and a PDF there made the pane offer a download each time). The page fetches it and puts it on `#file` with a DataTransfer. Never copy the sheet into `dist-single` (that folder is published). While the pane is hidden, dialog close events and resize events wait until it renders: reload at the size you want rather than resizing.
-- `node test/ui.test.js [phone-portrait|phone-landscape|tablet-portrait|tablet-landscape]`: Playwright at the real device sizes, with screenshots in `test/shots/`. Env: `SCHEME=dark`, `NOCDN=1`, `DIST=dist-single`, `URL=file:///…`.
+- `node test/ui.test.js [phone-portrait|phone-landscape|tablet-portrait|tablet-landscape]`: Playwright at the real device sizes, with screenshots in `test/shots/`. Env: `SCHEME=dark`, `NOCDN=1`, `DIST=dist-single` (the default `dist/` is only rebuilt by `tools/build.sh`), `URL=file:///…`, `LOOK=colorful-white|colorful-dark|pf-white|pf-dark|pf-black`, `FONTS=1` (load the Google fonts; blocked otherwise), `SHOTS=folder`.
 - `tools/build.sh` → `dist/` (multi-file). `node tools/build-single.js [version]` → `dist-single/index.html` (artifact page, pdf-lib from cdnjs) and `dist-single/MPMB-Sheet-App.html` (one downloadable file with pdf-lib bundled; the worker starts from a blob URL, or a data: URL when Chrome refuses blob workers on file:// pages).
 
 ## Acrobat fidelity: lessons learned (keep these true)
