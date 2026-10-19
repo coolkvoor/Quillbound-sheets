@@ -35,7 +35,7 @@
   // Safety net: MPMB's code can get stuck in a loop (its AddToNotes does with 3+ Notes pages), and then the engine never
   // answers. A request that runs past its limit calls onStuck (the app restarts the engine from the autosave).
   // The limits are far above normal (most requests take well under a second, opening a sheet ~10 s on a phone).
-  const SLOW_OPS = { open: 300, savePdf: 300, addContent: 300, removeContent: 300, setSources: 300, setUserScript: 300, chooseSpells: 180, selftest: 180 };
+  const SLOW_OPS = { open: 300, savePdf: 300, addContent: 300, removeContent: 300, setSources: 300, setUserScript: 300, chooseSpells: 180 };
   const LIMIT_S = 60;
   // MPMB's dialogs and questions: the worker waits (Atomics.wait) on memory shared with this page until the user has
   // answered (onAsk). Shared memory needs a cross-origin isolated page; without it dialogs keep their defaults.
@@ -1600,7 +1600,6 @@
     };
     $('#hp-minus').addEventListener('click', () => hpStep(-1));
     $('#hp-plus').addEventListener('click', () => hpStep(1));
-    $('#run-test').addEventListener('click', runSelfTest);
     $('#comp-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'AScomp' }); await refreshPages(); });
     $('#ws-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'WSfront' }); await refreshPages(); });
     $('#notes-clear-open').addEventListener('click', () => { if (state.worker) clearNotesPages(); });
@@ -2394,38 +2393,6 @@
     if (!items.length) box.append(el('div', { cls: 'muted', text: 'Nothing yet.' }));
     $('#msg-count').textContent = String(items.length);
   }
-  async function runSelfTest() {
-    const btn = $('#run-test'), out = $('#test-out');
-    btn.disabled = true;
-    out.textContent = '';
-    out.append(el('p', { cls: 'note', text: 'Opening a fresh copy of the sheet…' }));
-    const w = connect();
-    try {
-      const t0 = performance.now();
-      const opened = await w.call('open', { bytes: state.bytes.slice(0), fileName: state.fileName });
-      const openMs = Math.round(performance.now() - t0);
-      out.firstChild.textContent = 'Building the test character…';
-      const res = await w.call('selftest', {});
-      const passed = res.results.filter((r) => r.ok).length;
-      out.textContent = '';
-      const cls = res.timings.filter((x) => /^Class and Levels/.test(x.step))[0];
-      out.append(el('p', { cls: passed === res.results.length ? 'pass' : 'fail', text: passed + ' of ' + res.results.length + ' checks passed' }));
-      out.append(el('p', { cls: 'note', text: 'Opening ' + fmtS(openMs) + ' (reading ' + fmtS(opened.stats.loadMs) + ', starting MPMB ' + fmtS(opened.stats.startMs) + ') · choosing the class ' + fmtS(cls ? cls.ms : 0) + ' · all steps ' + fmtS(res.timings.reduce((a, b) => a + b.ms, 0)) }));
-      const list = el('div', { cls: 'results' });
-      for (const r of res.results) list.append(el('div', { cls: 'res' }, [el('span', { cls: 'lab', text: r.label }), el('span', { cls: r.ok ? 'pass' : 'fail', text: r.ok ? 'Pass' : 'Fail' }), el('span', { cls: 'val num', text: (r.value || '(empty)').replace(/[\r\n]+/g, ' ') + (r.ok ? '' : ' (expected ' + r.expected + ')') })]));
-      out.append(list);
-      if (res.errors.length) out.append(el('p', { cls: 'fail', text: res.errors.length + ' script errors: ' + res.errors.map((e) => e.where + ': ' + e.msg).join(' | ') }));
-      const report = ['MPMB Sheet App 0.1 self-test', passed + '/' + res.results.length + ' passed', 'Screen ' + window.innerWidth + 'x' + window.innerHeight + ' @' + Math.round((window.devicePixelRatio || 1) * 100) / 100, 'Open ' + openMs + 'ms (read ' + opened.stats.loadMs + 'ms, start ' + opened.stats.startMs + 'ms), class ' + (cls ? cls.ms : 0) + 'ms', navigator.userAgent]
-        .concat(res.results.filter((r) => !r.ok).map((r) => 'FAIL ' + r.label + ': ' + r.value)).concat(res.errors.map((e) => 'ERR ' + e.where + ': ' + e.msg)).join('\n');
-      const copy = el('button', { cls: 'btn', type: 'button', text: 'Copy results' });
-      copy.addEventListener('click', async () => { try { await navigator.clipboard.writeText(report); copy.textContent = 'Copied'; } catch (e) { const ta = el('textarea', { cls: 'in', rows: '6' }); ta.value = report; copy.replaceWith(ta); ta.select(); } });
-      out.append(copy);
-    } catch (e) {
-      out.textContent = '';
-      out.append(el('p', { cls: 'fail', text: friendlyError(e) }));
-    } finally { w.terminate(); btn.disabled = false; }
-  }
-
   // ---------------------------------------------------------------- go
   // Cards go into fixed columns, each into the shortest column so far, in reading order. They only move when the
   // number of columns changes (rotating, resizing), never because a card's content grows or folds.

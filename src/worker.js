@@ -4,7 +4,7 @@
 // In the single-file build everything is already bundled in front of this file
 if (!self.MPMBEngine) {
   try { importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'); } catch (e) { importScripts('vendor/pdf-lib.min.js'); }
-  importScripts('loader.js', 'engine.js', 'selftest.js', 'content.js', 'spells.js', 'appearance.js', 'writer.js', 'classes.js', 'abilities.js');
+  importScripts('loader.js', 'engine.js', 'content.js', 'spells.js', 'appearance.js', 'writer.js', 'classes.js', 'abilities.js');
 }
 // Everything below stays out of the global scope, which belongs to MPMB's code
 (function () {
@@ -293,18 +293,6 @@ const ops = {
   applyAbilities({ scores }) { return actionOp(() => MPMBAbilities.apply(engine, scores)); },
   tapSpellRow({ button }) { return spellOp(() => MPMBSpells.tapRow(engine, button)); },
   names({ pattern }) { const re = new RegExp(pattern); return engine.fieldNames().filter((n) => re.test(n)); },
-  selftest() {
-    const timings = [];
-    for (let i = 0; i < MPMBSelfTest.steps.length; i++) {
-      const [op, f, v] = MPMBSelfTest.steps[i];
-      const t = now();
-      engine[op](f, v);
-      timings.push({ step: f + ' = ' + v, ms: Math.round(now() - t) });
-    }
-    engine.drainChanges();
-    const results = MPMBSelfTest.evaluate((n) => { const s = engine.snapshot(n); return s.exists ? (Array.isArray(s.value) ? s.value.join(',') : s.value) : '(missing)'; });
-    return { results, timings, errors: engine.log.errors.slice(-20) };
-  },
 };
 
 self.onmessage = async (e) => {

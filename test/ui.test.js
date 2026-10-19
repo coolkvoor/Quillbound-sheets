@@ -1,4 +1,4 @@
-// Opens the app in Chromium at the phone and tablet sizes, loads the sheet, builds a character, runs the self-test.
+// Opens the app in Chromium at the phone and tablet sizes, loads the sheet, builds a character and checks it.
 const path = require('path'), fs = require('fs');
 const { chromium } = require('playwright-core');
 const { start } = require('./serve');
@@ -106,10 +106,7 @@ const DEVICES = {
     await page.screenshot({ path: path.join(OUT, name + '-3-features.png') });
     const tab = await page.$eval('[aria-current="true"]', (n) => n.dataset.tab);
     await page.click('[data-tab="sheetinfo"]'); await page.waitForTimeout(900);
-    await page.click('#run-test');
-    await page.waitForSelector('#test-out .pass, #test-out .fail', { timeout: 120000 });
-    const test = await page.$eval('#test-out', (n) => n.innerText.split('\n').slice(0, 3).join(' | '));
-    console.log(`[${name}] tab after jump: ${tab} | self-test: ${test}`);
+    console.log(`[${name}] tab after jump: ${tab}`);
     await page.screenshot({ path: path.join(OUT, name + '-4-sheet.png') });
     if (CONTENT) {
       // the content stays with the sheet: reload the app and reopen

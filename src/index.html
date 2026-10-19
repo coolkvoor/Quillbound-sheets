@@ -156,10 +156,6 @@ label.f > span.hint { text-transform: none; letter-spacing: 0; font-size: 0.85re
 .hd .hd-die input { width: 3rem; }
 .hd .hd-con { margin-right: auto; }
 .in.note { margin-top: 6px; font-size: 0.9rem; }
-.results { display: grid; gap: 0; }
-.res { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.res .lab { font-weight: 500; }
-.res .val { grid-column: 1 / -1; font-size: 0.88rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .stack { display: grid; gap: 10px; }
 
 /* abilities */
@@ -458,8 +454,6 @@ details.more summary { cursor: pointer; padding: 10px 0; min-height: 44px; color
 .coins input { width: 100%; text-align: center; min-height: 42px; }
 
 /* sheet tab */
-.pass { color: var(--good); font-weight: 700; }
-.fail { color: var(--bad); font-weight: 700; }
 .log { display: grid; gap: 6px; font-size: 0.9rem; max-height: 22rem; overflow: auto; }
 .log div { border-left: 3px solid var(--line); padding-left: 8px; overflow-wrap: anywhere; }
 .log div.err { border-color: var(--bad); }
@@ -1041,12 +1035,6 @@ window.MPMBTheme = (() => {
             <button class="btn" type="button" data-bookmark="Functions/Text Options" data-title="Text options">Text options</button>
             <button class="btn" type="button" data-bookmark="Functions|Auto/Manual" data-title="Automation">Automation on/off</button>
           </div>
-        </div>
-        <div class="card">
-          <h3>Self-test</h3>
-          <p class="note">Builds a level 3 Elf Wizard on a fresh copy of your sheet and checks MPMB's results. Your own character isn't touched.</p>
-          <button class="btn primary" id="run-test" type="button">Run self-test</button>
-          <div id="test-out"></div>
         </div>
         <div class="card">
           <h3>Character</h3>
