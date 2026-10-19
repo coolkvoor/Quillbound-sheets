@@ -26,7 +26,8 @@ function page(worker) {
   p += '\n<script type="text/plain" id="mpmb-worker-src">\n' + worker + '\n</script>\n'
     + '<script>window.MPMB_WORKER_URL = URL.createObjectURL(new Blob([document.getElementById("mpmb-worker-src").textContent], { type: "text/javascript" }));</script>\n'
     + '<script>\n' + app + '\n</script>\n';
-  return p.replace(/Version 0\.1 test build/g, 'Version ' + VERSION + ' test build');
+  // the start screen says which build this is (the same as Sheet > This sheet > App)
+  return p.replace(/Version 0\.1 test build/g, 'Version ' + VERSION + ' test build, built ' + BUILT);
 }
 const out = path.join(R, 'dist-single');
 fs.mkdirSync(out, { recursive: true });
