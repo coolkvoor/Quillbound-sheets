@@ -14,8 +14,10 @@ function start(port) {
       if (!f.startsWith(DIST) || !fs.existsSync(f)) { res.writeHead(404); res.end('not found'); return; }
       let body = fs.readFileSync(f);
       if (p === '/index.html') body = SKELETON(body.toString());
-      // never cached, so a reload always gets the build on disk
-      res.writeHead(200, { 'content-type': TYPES[path.extname(f)] || 'application/octet-stream', 'cache-control': 'no-store' });
+      // never cached, so a reload always gets the build on disk. Cross-origin isolated (COOP + COEP), so the page can share
+      // memory with the engine worker and MPMB's dialogs wait for the user (NOISOLATE=1 serves it like the artifact host)
+      const isolate = process.env.NOISOLATE !== '1' ? { 'cross-origin-opener-policy': 'same-origin', 'cross-origin-embedder-policy': 'credentialless' } : {};
+      res.writeHead(200, Object.assign({ 'content-type': TYPES[path.extname(f)] || 'application/octet-stream', 'cache-control': 'no-store' }, isolate));
       res.end(body);
     });
     srv.listen(port || 0, () => resolve(srv));

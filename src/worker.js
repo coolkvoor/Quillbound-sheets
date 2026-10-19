@@ -16,6 +16,25 @@ const evalGlobal = (code) => (0, eval)(code);
 const now = () => performance.now();
 
 function progress(text) { postMessage({ type: 'progress', text }); }
+
+// MPMB's dialogs and questions shown to the user. Acrobat stops MPMB's code until the user answers; here the worker
+// waits with Atomics.wait on memory it shares with the page, which writes the answer there (app.js, answerAsk).
+// Shared memory needs a cross-origin isolated page (COOP/COEP headers); without it there is no channel and dialogs
+// are answered with their defaults, as before.
+let chan = null;
+function ask(req) {
+  if (!chan) return null;
+  Atomics.store(chan.flag, 0, 0);
+  postMessage({ type: 'ask', req });
+  Atomics.wait(chan.flag, 0, 0);
+  const len = Atomics.load(chan.flag, 1);
+  if (!len) return null;
+  const copy = new Uint8Array(len);
+  copy.set(chan.bytes.subarray(0, len));
+  try { return JSON.parse(new TextDecoder().decode(copy)); } catch (e) { return null; }
+}
+// requests a person started (typing, tapping, the app's own screens): their dialogs are shown to the user
+const ASKS_USER = new Set(['commit', 'toggle', 'press', 'tap', 'shootAmmo', 'addPage', 'applyClasses', 'applyAbilities', 'chooseSpells', 'removeSpells', 'tapSpellRow']);
 function changesFor(names) {
   const out = [];
   for (let i = 0; i < names.length; i++) if (watched.has(names[i])) out.push(engine.snapshot(names[i]));
@@ -81,6 +100,12 @@ const ops = {
   toggle({ name, widget }) { const t = now(); const r = engine.toggle(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   press({ name, widget }) { const t = now(); const r = engine.press(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   log() { return logSummary(); },
+  // the shared memory for answers (see ask): [0] answered flag, [1] answer length, then the answer as UTF-8 JSON
+  channel({ sab }) {
+    if (!sab || typeof Atomics === 'undefined') return { ok: false };
+    chan = { flag: new Int32Array(sab, 0, 2), bytes: new Uint8Array(sab, 8) };
+    return { ok: true };
+  },
   exportState() { return engine.exportState(); },
   // Spend one piece of ammunition the way the sheet does: tick the next box (MPMB counts down); if the boxes aren't
   // shown (MPMB draws different ones per kind of ammunition), lower the amount instead. To restock, type the amount.
@@ -197,8 +222,11 @@ self.onmessage = async (e) => {
   const { id, op, args } = e.data || {};
   try {
     if (!ops[op]) throw new Error('Unknown request: ' + op);
-    if (op !== 'open' && !engine) throw new Error('No sheet loaded');
-    const result = await ops[op](args || {});
+    if (op !== 'open' && op !== 'channel' && !engine) throw new Error('No sheet loaded');
+    const user = chan && engine && ASKS_USER.has(op);
+    if (user) engine.interactive(ask);
+    let result;
+    try { result = await ops[op](args || {}); } finally { if (user) engine.interactive(null); }
     postMessage({ id, ok: true, result });
   } catch (err) {
     postMessage({ id, ok: false, error: err && err.message ? err.message : String(err) });

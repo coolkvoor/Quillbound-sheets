@@ -461,6 +461,9 @@
     // changes anything, so the No run has no effect.
     const alertAnswers = [];    // 4 (Yes) / 3 (No) / 2 (Cancel), used in order
     let askQuestions = false, lastQuestion = null;
+    // A user at the screen (engine.interactive(fn)): dialogs and questions without a queued answer are shown to the user.
+    // fn(request) is synchronous (the worker waits for the app with Atomics.wait) and returns the user's reply, or null.
+    let interact = null, dialogSeq = 0;
     function menuTree(arr) {
       const out = [];
       for (let i = 0; i < arr.length; i++) {
@@ -544,6 +547,7 @@
         const question = type === 2 || type === 3;
         let answer = question ? 4 : 1;   // Yes / OK
         if (question && alertAnswers.length) answer = alertAnswers.shift();
+        else if (question && interact && !askQuestions) { const r = interact({ kind: 'question', title: o.cTitle ? String(o.cTitle) : '', msg: String(o.cMsg === undefined ? '' : o.cMsg), type }); answer = r && r.yes ? 4 : r && r.cancel && type === 3 ? 2 : 3; }
         else if (question && askQuestions) { answer = 3; if (!lastQuestion) lastQuestion = { title: o.cTitle ? String(o.cTitle) : '', msg: String(o.cMsg === undefined ? '' : o.cMsg), type }; }
         push(log.alerts, { title: o.cTitle ? String(o.cTitle) : '', msg: String(o.cMsg === undefined ? '' : o.cMsg), type, question, t: Date.now() });
         if (o.oCheckbox) o.oCheckbox.bAfterValue = false;
@@ -551,7 +555,8 @@
         return answer;
       },
       execDialog(d) {
-        // Without a queued answer: the defaults the dialog loads itself (as if the user pressed OK).
+        // Without a queued answer: the defaults the dialog loads itself (as if the user pressed OK), or, with a user at
+        // the screen (interact), the dialog itself, shown by the app and run the way Acrobat runs it.
         // A queued answer for this dialog name replays what a user would do: set values, press buttons, then OK.
         const desc = (d && d.description) || {};
         const entry = { name: String(desc.name || 'Dialog'), title: firstText(desc), answered: 'defaults', t: Date.now() };
@@ -560,6 +565,8 @@
         for (let i = 0; i < dialogAnswers.length; i++) if (dialogAnswers[i].name === entry.name) { plan = dialogAnswers.splice(i, 1)[0]; break; }
         if (!plan && standingAnswers[entry.name]) plan = standingAnswers[entry.name];
         if (plan) entry.answered = 'app';
+        const user = !plan && interact ? interact : null;
+        if (user) entry.answered = 'user';
         // Acrobat's rules per element type: a text box loaded with a list ({name: -1, chosen: 1}) becomes a drop-down
         // whose store() gives the chosen name as text; list boxes give their list object back (a fresh copy each time)
         const els = elementTypes(desc);
@@ -572,10 +579,14 @@
           if (ty === 'edit_text') values[k] = '';
           else if (ty === 'check_box' || ty === 'radio') values[k] = false;
         }
+        const lists = {};   // a drop-down text box's items, for the app to show
         const setValue = (k, v) => {
-          if (types[k] === 'edit_text' && v && typeof v === 'object') { let chosen = ''; for (const n of Object.keys(v)) if (Number(v[n]) > 0) chosen = n; values[k] = chosen; }
+          if (types[k] === 'edit_text' && v && typeof v === 'object') { let chosen = ''; for (const n of Object.keys(v)) if (Number(v[n]) > 0) chosen = n; values[k] = chosen; lists[k] = copyPlain(v); }
           else values[k] = v;
         };
+        // what the dialog's handlers change besides values, for the app: enabled, shown, red text, focus
+        const enabled = {}, shown = {}, red = {};
+        let focus = null;
         let ended = null;
         const el = new Proxy({}, {
           get(_, p) {
@@ -584,28 +595,68 @@
             if (p === 'insertEntryInList') return (o) => { if (o) for (const k of Object.keys(o)) values[k] = Object.assign(values[k] && typeof values[k] === 'object' ? values[k] : {}, o[k]); };
             if (p === 'removeAllEntriesFromList') return (k) => { values[k] = {}; };
             if (p === 'end') return (r) => { ended = r === undefined ? 'ok' : r; };
+            if (p === 'enable') return (o) => { if (o) for (const k of Object.keys(o)) enabled[k] = !!o[k]; };
+            if (p === 'visible') return (o) => { if (o) for (const k of Object.keys(o)) shown[k] = !!o[k]; };
+            if (p === 'setForeColorRed') return (k) => { red[k] = true; };
+            if (p === 'setForeColorBlack') return (k) => { delete red[k]; };
+            if (p === 'focus') return (k) => { focus = k; };
             if (typeof p === 'symbol') return undefined;
             return function () { return undefined; };
           },
         });
+        // one of the dialog's handlers; an error in it is logged and the dialog stays open
+        const handler = (name) => {
+          if (typeof d[name] !== 'function') return false;
+          try { d[name](el); } catch (e) { logError('dialog:' + entry.name + ':' + name, e); }
+          return true;
+        };
         try {
           if (typeof d.initialize === 'function') d.initialize(el);
           if (plan && plan.capture) entry.data = dialogData(d);
           // A dialog that only shows text (a read-only, multi-line box, like MPMB's ShowDialog): keep the text for the app
-          const shown = [];
-          for (const k of Object.keys(els)) if (els[k].type === 'edit_text' && els[k].readonly && els[k].multiline && typeof values[k] === 'string' && values[k].trim()) shown.push(values[k]);
-          if (shown.length) entry.text = shown.join('\n\n').slice(0, 20000);
-          const steps = plan ? plan.steps || [] : [];
-          for (let i = 0; i < steps.length && ended === null; i++) {
-            const s = steps[i];
-            if (s.set) for (const k in s.set) setValue(k, s.set[k]);
-            if (s.end) { ended = s.end; break; }
-            if (s.pick && !pickItem(values[s.pick.id], s.pick.item)) { logError('dialog:' + entry.name, new Error('no item "' + s.pick.item + '" in ' + s.pick.id)); ended = 'cancel'; break; }
-            if (s.press && typeof d[s.press] === 'function') d[s.press](el);
-          }
-          if (ended === null || ended === 'ok') {
-            if (typeof d.validate === 'function') d.validate(el);
-            if (typeof d.commit === 'function') d.commit(el);
+          const text = [];
+          for (const k of Object.keys(els)) if (els[k].type === 'edit_text' && els[k].readonly && els[k].multiline && typeof values[k] === 'string' && values[k].trim()) text.push(values[k]);
+          if (text.length && !user) entry.text = text.join('\n\n').slice(0, 20000);
+          if (user) {
+            // Acrobat's buttons: OK runs the "ok" handler, then validate (false keeps the dialog open), commit, and ends
+            // with "ok"; Cancel ends with "cancel"; Other runs the "other" handler, which ends the dialog itself
+            // (without one it ends with "other"). Any other element runs its handler after the user changed it.
+            const id = ++dialogSeq;
+            let first = true;
+            while (ended === null) {
+              const reply = user({ kind: 'dialog', id, name: entry.name, desc: first ? plainDesc(desc) : undefined, values: plainValues(values, types), lists: copyPlain(lists), enabled: Object.assign({}, enabled), shown: Object.assign({}, shown), red: Object.keys(red), focus });
+              first = false;
+              focus = null;
+              if (!reply) { ended = 'cancel'; break; }
+              if (reply.set) for (const k of Object.keys(reply.set)) if (types[k]) setValue(k, reply.set[k]);
+              if (reply.pick) for (const k of Object.keys(reply.pick)) if (types[k]) pickItem(values[k], reply.pick[k]);
+              const b = reply.press;
+              if (b === 'ok') {
+                handler('ok');
+                if (ended !== null) break;
+                let valid = true;
+                if (typeof d.validate === 'function') { try { valid = d.validate(el) !== false; } catch (e) { logError('dialog:' + entry.name + ':validate', e); } }
+                if (!valid) continue;
+                if (typeof d.commit === 'function') d.commit(el);
+                if (ended === null) ended = 'ok';
+              } else if (b === 'cancel') { handler('cancel'); ended = 'cancel'; }
+              else if (b === 'other') { if (!handler('other')) ended = 'other'; }
+              else if (b && types[b]) handler(b);
+            }
+            entry.result = ended;
+          } else {
+            const steps = plan ? plan.steps || [] : [];
+            for (let i = 0; i < steps.length && ended === null; i++) {
+              const s = steps[i];
+              if (s.set) for (const k in s.set) setValue(k, s.set[k]);
+              if (s.end) { ended = s.end; break; }
+              if (s.pick && !pickItem(values[s.pick.id], s.pick.item)) { logError('dialog:' + entry.name, new Error('no item "' + s.pick.item + '" in ' + s.pick.id)); ended = 'cancel'; break; }
+              if (s.press && typeof d[s.press] === 'function') d[s.press](el);
+            }
+            if (ended === null || ended === 'ok') {
+              if (typeof d.validate === 'function') d.validate(el);
+              if (typeof d.commit === 'function') d.commit(el);
+            }
           }
           if (typeof d.destroy === 'function') d.destroy(el);
         } catch (e) { logError('dialog:' + entry.name, e); }
@@ -657,6 +708,27 @@
       const o = {};
       for (const k of Object.keys(v)) o[k] = copyPlain(v[k]);
       return o;
+    }
+    // A dialog's description for the app: its elements as plain data (no handlers)
+    function plainDesc(desc) {
+      const keep = ['type', 'item_id', 'name', 'elements', 'align_children', 'alignment', 'font', 'bold', 'italic', 'char_width', 'char_height', 'width', 'height',
+        'multiline', 'readonly', 'password', 'PopupEdit', 'SpinEdit', 'group_id', 'ok_name', 'cancel_name', 'other_name', 'wrap_name'];
+      const walk = (e) => {
+        if (!e || typeof e !== 'object') return null;
+        const o = {};
+        for (const k of keep) {
+          if (e[k] === undefined) continue;
+          if (k === 'elements') { o.elements = []; if (Array.isArray(e.elements)) for (let i = 0; i < e.elements.length; i++) { const c = walk(e.elements[i]); if (c) o.elements.push(c); } }
+          else if (typeof e[k] !== 'function' && typeof e[k] !== 'object') o[k] = e[k];
+        }
+        return o;
+      };
+      return walk(desc);
+    }
+    function plainValues(values, types) {
+      const out = {};
+      for (const k of Object.keys(values)) { const v = values[k]; if (v === undefined || typeof v === 'function' || types[k] === 'image') continue; out[k] = copyPlain(v); }
+      try { return JSON.parse(JSON.stringify(out)); } catch (e) { return {}; }
     }
     // The dialog object's own data (lists, counts, selections) as JSON, for screens that show the choices themselves
     function dialogData(d) {
@@ -1084,6 +1156,8 @@
       queueAnswer(yes) { alertAnswers.push(yes ? 4 : 3); },
       askQuestions(on) { askQuestions = !!on; },
       takeQuestion() { const q = lastQuestion; lastQuestion = null; return q; },
+      // a user at the screen: fn(request) → reply, synchronous (see execDialog); null turns it off
+      interactive(fn) { interact = typeof fn === 'function' ? fn : null; },
       clearQueues() { fileQueue.length = 0; dialogAnswers.length = 0; menuAnswers.length = 0; lastMenu = null; alertAnswers.length = 0; lastQuestion = null; },
       runBookmark(path) {
         let node = { children: g.bookmarkRoot.children };
