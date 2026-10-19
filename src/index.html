@@ -165,6 +165,8 @@ label.f > span.hint { text-transform: none; letter-spacing: 0; font-size: 0.85re
 .abi .mod { font-size: 1.9rem; font-weight: 700; line-height: 1; }
 .abi input { width: 4.2rem; max-width: 100%; min-height: 40px; text-align: center; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 1rem; }
 .save { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; color: var(--muted); min-height: 32px; }
+/* in a narrow ability panel the save line wraps under its dot rather than spilling out */
+.abi .save { flex-wrap: wrap; justify-content: center; row-gap: 0; max-width: 100%; }
 
 /* toggles: proficiency dots, check boxes */
 .dot { width: 44px; height: 44px; flex: none; display: inline-grid; place-items: center; border: 0; background: transparent; cursor: pointer; padding: 0; border-radius: 50%; }
