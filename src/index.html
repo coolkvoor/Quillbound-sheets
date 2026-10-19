@@ -410,6 +410,10 @@ details.more-bg summary { cursor: pointer; color: var(--accent); min-height: 40p
 .cp-row .lvl .in { width: 3.4rem; text-align: center; }
 .cp-row .sub-note { grid-column: 1 / -1; }
 select.in { appearance: auto; }
+/* the drop-down list itself: Chrome on Android draws it from the options, so they get the page's colours (with a see-through box
+   the list came out light text on white in the dark looks) */
+select { background-color: var(--surface); }
+select option, select optgroup { background-color: var(--surface); color: var(--ink); }
 .stepper { display: inline-flex; align-items: center; gap: 4px; }
 .stepper .btn { min-width: 44px; min-height: 44px; padding: 0; font-size: 1.3rem; }
 .stepper .in { width: 3.6rem; text-align: center; }
