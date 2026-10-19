@@ -18,11 +18,16 @@ const BUILT = (() => {
   const zone = p.timeZoneName === 'GMT+2' ? 'CEST' : p.timeZoneName === 'GMT+1' ? 'CET' : p.timeZoneName;
   return p.year + '-' + p.month + '-' + p.day + ' ' + p.hour + ':' + p.minute + ' ' + zone;
 })();
-const app = read('src/features.js') + '\n;\n' + read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Version ' + VERSION + ', built ' + BUILT) + ';');
+// the page's own scripts, in the order index.html loads them (features.js, ui-core.js, ui-*.js, app.js last)
+const PAGE_SCRIPTS = Array.from(read('src/index.html').matchAll(/<script src="([\w.-]+\.js)"><\/script>/g), (m) => m[1]);
+if (PAGE_SCRIPTS[PAGE_SCRIPTS.length - 1] !== 'app.js') throw new Error('src/index.html must load app.js last');
+const app = PAGE_SCRIPTS.map((f) => (f !== 'app.js' ? read('src/' + f)
+  : read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Version ' + VERSION + ', built ' + BUILT) + ';'))).join('\n;\n');
 if (app.indexOf('built ' + BUILT) === -1) throw new Error('APP_BUILD marker not found in src/app.js');
 function page(worker) {
   for (const bad of ['</script', '<!--']) if (worker.includes(bad) || app.includes(bad)) throw new Error('bundle contains ' + bad);
-  let p = read('src/index.html').replace('<script src="features.js"></script>', '').replace('<script src="app.js"></script>', '');
+  let p = read('src/index.html');
+  for (const f of PAGE_SCRIPTS) p = p.replace('<script src="' + f + '"></script>', '');
   p += '\n<script type="text/plain" id="mpmb-worker-src">\n' + worker + '\n</script>\n'
     + '<script>window.MPMB_WORKER_URL = URL.createObjectURL(new Blob([document.getElementById("mpmb-worker-src").textContent], { type: "text/javascript" }));</script>\n'
     + '<script>\n' + app + '\n</script>\n';
