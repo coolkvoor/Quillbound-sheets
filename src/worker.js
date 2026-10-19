@@ -4,7 +4,7 @@
 // In the single-file build everything is already bundled in front of this file
 if (!self.MPMBEngine) {
   try { importScripts('https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js'); } catch (e) { importScripts('vendor/pdf-lib.min.js'); }
-  importScripts('loader.js', 'engine.js', 'selftest.js', 'content.js', 'spells.js', 'writer.js', 'classes.js', 'abilities.js');
+  importScripts('loader.js', 'engine.js', 'selftest.js', 'content.js', 'spells.js', 'appearance.js', 'writer.js', 'classes.js', 'abilities.js');
 }
 // Everything below stays out of the global scope, which belongs to MPMB's code
 (function () {
@@ -217,7 +217,12 @@ const ops = {
   // The character written into the sheet's own PDF (writer.js); the bytes go back to the app to offer as a download
   async savePdf() {
     const t = now();
-    const r = await MPMBWriter.write(sheetBytes, engine.exportState(), self.PDFLib, progress);
+    const st = engine.exportState();
+    // what the changed fields show (their Format scripts: bold feature names, "+2"), for the writer to draw, and the
+    // line spacing MPMB gives its rich text fields
+    st.look = engine.appearanceData(Object.keys(st.fields));
+    try { st.lookLineHeight = Number(engine.evalExpr('CurrentVars.linespacing !== undefined ? CurrentVars.linespacing : typePF ? 11 : 10')) || 0; } catch (e) { st.lookLineHeight = 0; }
+    const r = await MPMBWriter.write(sheetBytes, st, self.PDFLib, progress);
     return { bytes: r.bytes, report: r.report, ms: Math.round(now() - t) };
   },
   // A button's picture, for the app to show: a picture the user picked as it is ({ img }), or the icon from the PDF as

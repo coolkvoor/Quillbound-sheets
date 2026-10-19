@@ -5,7 +5,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const PDFLib = require('pdf-lib');
 const SRC = path.join(__dirname, '..', 'src');
 const { load } = require(path.join(SRC, 'loader.js'));
-const { write, REDRAW_SCRIPT } = require(path.join(SRC, 'writer.js'));
+const { write } = require(path.join(SRC, 'writer.js'));
 const selftest = require(path.join(SRC, 'selftest.js'));
 const content = require(path.join(SRC, 'content.js'));
 const spells = require(path.join(SRC, 'spells.js'));
@@ -42,6 +42,9 @@ const check = (label, ok, detail) => { if (!ok) failed++; console.log(ok ? 'PASS
   for (const k of KEYS) want[k] = String(e.snapshot(k).value);
   const sheet1 = spells.sheet(e);
   const st = e.exportState();
+  // what the fields show, as the worker gives it when saving
+  st.look = e.appearanceData(Object.keys(st.fields));
+  st.lookLineHeight = Number(e.evalExpr('CurrentVars.linespacing !== undefined ? CurrentVars.linespacing : typePF ? 11 : 10'));
 
   let t = Date.now();
   const res = await write(new Uint8Array(bytes), st, PDFLib);
@@ -52,21 +55,31 @@ const check = (label, ok, detail) => { if (!ok) failed++; console.log(ok ? 'PASS
 
   t = Date.now();
   const m2 = await load(res.bytes, PDFLib);
-  check('read back: the loader reads it', m2.docScripts.length === 28 && m2.pageCount === 7, m2.pageCount + ' pages, ' + m2.fieldOrder.length + ' fields, ' + (Date.now() - t) + ' ms');
-  // Acrobat redraws the fields before MPMB's scripts are loaded: the app's last document script redraws MPMB's
-  // formatted fields once (feature texts, "+2"), then marks the PDF done
-  const redraw = m2.docScripts[m2.docScripts.length - 1];
-  check('redraw script: after MPMB\'s scripts', redraw.name === REDRAW_SCRIPT && m2.docScripts.slice(0, -1).every((s) => s.name < redraw.name), m2.docScripts.map((s) => s.name).slice(-2).join(', '));
-  check('redraw script: the PDF asks for it', m2.info.MPMBSheetAppRedraw === 'yes', m2.info.MPMBSheetAppRedraw);
-  const touched = [];
-  const fakeDoc = { info: { MPMBSheetAppRedraw: 'yes' }, getField: (n) => (m2.fields[n] ? { type: m2.fields[n].type === 'Tx' ? 'text' : 'other', set password(v) { touched.push(n); } } : null) };
-  vm.runInNewContext('(function () {' + redraw.code + '}).call(doc)', { doc: fakeDoc });
-  check('redraw script: redraws the formatted fields', touched.indexOf('Class Features') !== -1 && touched.indexOf('Acr') !== -1 && fakeDoc.info.MPMBSheetAppRedraw === 'done', touched.length + ' fields, flag ' + fakeDoc.info.MPMBSheetAppRedraw);
-  touched.length = 0;
-  vm.runInNewContext('(function () {' + redraw.code + '}).call(doc)', { doc: fakeDoc });
-  check('redraw script: only once', touched.length === 0);
-  const again = await load((await write(res.bytes, e.exportState(), PDFLib)).bytes, PDFLib);
-  check('saving again keeps one redraw script', again.docScripts.filter((s) => s.name === REDRAW_SCRIPT).length === 1 && again.docScripts.length === 28, again.docScripts.length + ' scripts');
+  check('read back: the loader reads it', m2.docScripts.length === 27 && m2.pageCount === 7, m2.pageCount + ' pages, ' + m2.fieldOrder.length + ' fields, ' + (Date.now() - t) + ' ms');
+  // how the fields look in the saved PDF: drawn by the writer from what MPMB's Format scripts show (appearance.js),
+  // so Acrobat shows bold feature names and "+2" when the file opens, not MPMB's markup
+  const out = await PDFLib.PDFDocument.load(res.bytes, { ignoreEncryption: true, updateMetadata: false });
+  const octx = out.context, L = (o) => (o instanceof PDFLib.PDFRef ? octx.lookup(o) : o), N = PDFLib.PDFName.of;
+  check('appearances: viewers aren\'t asked to redraw', !L(out.catalog.get(N('AcroForm'))).get(N('NeedAppearances')) && m2.docScripts.length === 27);
+  const apOf = (name) => {
+    const w = out.getForm().getField(name).acroField.getWidgets()[0];
+    const ap = L(L(w.dict.get(N('AP'))).get(N('N')));
+    const content = Buffer.from(PDFLib.decodePDFRawStream(ap).decode()).toString('latin1');
+    const fonts = L(L(ap.dict.get(N('Resources'))).get(N('Font')));
+    const texts = [];
+    content.replace(/<([0-9a-f]*)> Tj/g, (m, h) => { texts.push(Buffer.from(h, 'hex').toString('latin1')); return m; });
+    return { content, text: texts.join(''), fonts: fonts.values().map((f) => String(L(f).get(N('BaseFont')))), font: (k) => L(fonts.get(N(k))) };
+  };
+  const cf = apOf('Class Features');
+  check('Class Features: no markup in what is drawn', cf.text.length > 200 && !/#|\*\*/.test(cf.text), JSON.stringify(cf.text.slice(0, 90)));
+  check('Class Features: feature names in the bold font', cf.fonts.indexOf('/SegoePrint,Bold') !== -1, cf.fonts.join(' '));
+  check('Class Features: the sheet\'s colour on the names', /0\.392 0\.141 0\.506 rg/.test(cf.content));
+  // MPMB's diamonds (◆): none of the sheet's fonts has one (Acrobat takes it from a system font), so they're drawn
+  const diamonds = (cf.content.match(/ l h f/g) || []).length;
+  check('Class Features: MPMB\'s diamonds (◆) drawn', diamonds >= 4 && !/\?/.test(cf.text.replace(/\?\s*$/, '')), diamonds + ' diamonds');
+  const shownAs = (n) => String(e.snapshot(n).display);
+  check('skills show what MPMB shows ("+2")', ['Acr', 'Arc', 'Int Mod'].every((n) => apOf(n).text === shownAs(n)) && /^\+/.test(apOf('Acr').text), ['Acr', 'Arc', 'Int Mod'].map((n) => n + ' ' + apOf(n).text).join(', '));
+  check('a name as typed', apOf('PC Name').text === 'Ilvara', apOf('PC Name').text);
   const e2 = newEngine(JSON.stringify(m2));
   check('read back: MPMB starts without errors', e2.log.errors.length === 0, e2.log.errors.slice(0, 4).map((x) => x.where + ': ' + x.msg).join(' | '));
   const diffs = KEYS.filter((k) => String(e2.snapshot(k).value) !== want[k]);

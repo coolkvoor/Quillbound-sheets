@@ -1199,6 +1199,22 @@
       if (ic && ic.img) return { img: ic.img, size };
       return { field: ic ? ic.name : rec.name, size };
     }
+    // What text fields and combo boxes show, as their Format scripts make it (text, and spans for rich text), for the
+    // writer to draw into the PDF; a combo box shows the picked item's name
+    function appearanceData(names) {
+      const out = {};
+      for (let i = 0; i < names.length; i++) {
+        const rec = recs.get(names[i]);
+        if (!rec) continue;
+        const k = kind(rec);
+        if (k !== 'text' && k !== 'combobox') continue;
+        const f = formatted(rec);
+        let text = f.text;
+        if (k === 'combobox' && !rec.scripts.F) { const it = itemsOf(rec), x = fieldObj(rec).currentValueIndices; if (typeof x === 'number' && it[x]) text = it[x][0]; }
+        out[names[i]] = { text: text === undefined || text === null ? '' : String(text), spans: f.spans || null };
+      }
+      return out;
+    }
     function drainChanges() { const out = Array.from(dirty); dirty.clear(); return out; }
     function evalExpr(code) { return runGlobal(code, 'expr'); }
     // Field values as if they had been saved in the PDF; call before start()
@@ -1265,7 +1281,7 @@
       queueFile(text) { fileQueue.push(String(text)); },
       queueIcon(icon) { iconQueue.push({ __icon: true, img: icon }); },
       takeIconWanted() { const n = iconWanted; iconWanted = null; return n; },
-      iconInfo,
+      iconInfo, appearanceData,
       queueDialog(answer) { dialogAnswers.push(answer); },
       setStandingAnswer(name, answer) { if (answer) standingAnswers[name] = Object.assign({ name }, answer); else delete standingAnswers[name]; },
       queueMenu(ret) { menuAnswers.push(ret === undefined ? null : ret); },

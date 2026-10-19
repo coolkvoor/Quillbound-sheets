@@ -5,11 +5,14 @@
  * - writes values, the field changes scripts made (hidden, read-only, tooltips, submitName, list items, scripts,
  *   captions, icons, colours, positions), the calculation order and the document info
  * - puts pictures the user picked (portrait, symbol) in as button icons, with an appearance that draws them
- * - asks viewers to redraw the fields (NeedAppearances), since the app doesn't draw appearance streams
+ * - draws how the changed fields look (appearance.js), from what MPMB's Format scripts show (state.look, given by the
+ *   engine when saving: bold feature names, "+2"); Acrobat shows these when the file opens. Without state.look it
+ *   asks viewers to redraw the fields instead (NeedAppearances), which in Acrobat leaves MPMB's formatting out.
  * Works in a Web Worker and Node. */
 (function (root) {
   'use strict';
-  const FF = { readonly: 1 << 0, required: 1 << 1, multiline: 1 << 12, pushbutton: 1 << 16, combo: 1 << 17, edit: 1 << 18, multiSelect: 1 << 21, richText: 1 << 25 };
+  const FF = { readonly: 1 << 0, required: 1 << 1, multiline: 1 << 12, password: 1 << 13, pushbutton: 1 << 16, combo: 1 << 17, edit: 1 << 18, multiSelect: 1 << 21, comb: 1 << 24, richText: 1 << 25 };
+  const Appearance = typeof module !== 'undefined' && module.exports ? require('./appearance.js') : root.MPMBAppearance;
   const AF = { hidden: 2, print: 4, noView: 32 };
   const FIELD_KEYS = ['FT', 'Ff', 'V', 'DV', 'Opt', 'DA', 'Q', 'MaxLen', 'TU', 'TM', 'TI', 'RV', 'DS'];
   const FIELD_EVENTS = { K: 1, F: 1, V: 1, C: 1 };
@@ -18,10 +21,11 @@
   async function write(bytes, state, PDFLib, onProgress) {
     const { PDFDocument, PDFName, PDFDict, PDFArray, PDFString, PDFHexString, PDFNumber, PDFRef, PDFPage, PDFPageLeaf, PDFBool } = PDFLib;
     const progress = onProgress || (() => {});
-    const report = { spawned: 0, deleted: 0, fields: 0, skipped: [] };
+    const report = { spawned: 0, deleted: 0, fields: 0, drawn: 0, skipped: [] };
     progress('Reading the PDF');
     const doc = await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false, throwOnInvalidObject: false });
     const ctx = doc.context;
+    const looks = state.look ? Appearance.create(PDFLib, doc) : null;   // field appearances (appearance.js)
     const N = (k) => PDFName.of(k);
     const deref = (o) => (o instanceof PDFRef ? ctx.lookup(o) : o);
     const get = (d, k) => (d && d.get ? deref(d.get(N(k))) : undefined);
@@ -263,6 +267,8 @@
         let col = (/(?:[\d.]+\s+){0,4}[gk]$|(?:[\d.]+\s+){3}rg$/.exec(da.trim()) || ['0 g'])[0];
         if (Array.isArray(p.textColor)) { const tc = p.textColor; col = tc[0] === 'G' ? tc[1] + ' g' : tc[0] === 'RGB' ? tc.slice(1).join(' ') + ' rg' : tc[0] === 'CMYK' ? tc.slice(1).join(' ') + ' k' : '0 g'; }
         f.dict.set(N('DA'), PDFString.of('/' + font + ' ' + size + ' Tf ' + col));
+        // a widget's own DA would win over the field's
+        for (const wr of f.widgets) { const ww = deref(wr); if (ww && ww !== f.dict) ww.delete(N('DA')); }
       }
       // scripts attached with setAction: field events on the field, widget events on each widget
       if (c.s) {
@@ -272,6 +278,11 @@
       }
       // widgets: how each one looks, its position and its scripts
       const ws = c.w || [];
+      // what the field shows, to draw (when its value, list or text style changed)
+      const shown = looks && state.look[name];
+      const redraw = !!shown && (c.v !== undefined || !!c.i || p.richValue !== undefined || p.valueIndex !== undefined || p.textSize !== undefined
+        || p.textFont !== undefined || p.textColor !== undefined || p.alignment !== undefined || p.multiline !== undefined);
+      const multiline = p.multiline !== undefined ? !!p.multiline : !!(ff & FF.multiline);
       for (let i = 0; i < f.widgets.length; i++) {
         const w = deref(f.widgets[i]);
         if (!w) continue;
@@ -307,6 +318,24 @@
             w.set(N('AP'), ctx.obj({ N: iconAppearance(icon, rect) }));
           }
         }
+        // how the field looks (appearance.js); a push button whose caption changed shows the new caption
+        const caption = looks && wp.caption !== undefined && !wp.icon && ft === 'Btn' && (ff & FF.pushbutton);
+        if ((redraw && !(ff & (FF.password | FF.comb))) || caption) {
+          const rect = (c.r && c.r[i] ? c.r[i].map(Number) : null) || nums(get(w, 'Rect')) || [0, 0, 0, 0];
+          const q = deref(w.get(N('Q'))) || deref(inh(f.dict, 'Q'));
+          const wmk = get(w, 'MK'), bs = get(w, 'BS'), bw = bs instanceof PDFDict ? deref(bs.get(N('W'))) : null;
+          const ap = looks.draw({
+            W: Math.abs(rect[2] - rect[0]), H: Math.abs(rect[3] - rect[1]),
+            da: strOf(w.get(N('DA'))) || strOf(inh(f.dict, 'DA')),
+            q: caption ? 1 : q instanceof PDFNumber ? q.asNumber() : 0,
+            multiline: caption ? false : multiline,
+            text: caption ? wp.caption : shown.text, spans: caption ? null : shown.spans,
+            lineHeight: !caption && (ff & FF.richText) ? state.lookLineHeight || 0 : 0,
+            mk: wmk instanceof PDFDict ? { bg: wmk.get(N('BG')), bc: wmk.get(N('BC')), bw: bw instanceof PDFNumber ? bw.asNumber() : wmk.get(N('BC')) ? 1 : 0 } : null,
+          });
+          w.set(N('AP'), ctx.obj({ N: ap }));
+          report.drawn++;
+        }
         if (c.r && c.r[i]) w.set(N('Rect'), ctx.obj(c.r[i].map(Number)));
         if (ws[i] && ws[i].s) {
           const aa = ctx.obj({});
@@ -328,51 +357,19 @@
       let arr = get(js, 'Names'); if (!(arr instanceof PDFArray)) { arr = ctx.obj([]); js.set(N('Names'), arr); }
       for (const k of Object.keys(state.docScripts)) { arr.push(text(k)); arr.push(ctx.register(jsAction(state.docScripts[k]))); }
     }
-    // the app doesn't draw field appearances: viewers redraw them from the values
-    acro.set(N('NeedAppearances'), PDFBool.True);
-    // Acrobat does that redraw before MPMB's scripts are loaded, so MPMB's Format scripts don't run: feature texts
-    // showed their markup ("#◆ Spellcasting#", "**Druid**") and numbers lost their "+". A last document script
-    // (REDRAW_SCRIPT, after MPMB's in name order) redraws every field with a Format script once MPMB is loaded, the
-    // way MPMB's own redoFieldFormatIfColored does (password = false), and marks the PDF done in its document info, so
-    // after a save in Acrobat it doesn't run again. Saving again from the app replaces it.
-    const formattedNames = [];
-    for (const [name, f] of index) {
-      const c = state.fields && state.fields[name];
-      const aa = get(f.dict, 'AA');
-      if (c && c.s ? c.s.F : aa instanceof PDFDict && has(aa, 'F')) formattedNames.push(name);
-    }
+    // field appearances: drawn above when the engine gave what the fields show; otherwise viewers redraw them
+    if (looks) acro.delete(N('NeedAppearances')); else acro.set(N('NeedAppearances'), PDFBool.True);
+    // a script and flag an earlier version of the app added (a redraw in Acrobat that didn't work): taken out again
     {
-      let js = get(names, 'JavaScript');
-      if (!(js instanceof PDFDict)) { js = ctx.obj({ Names: [] }); names.set(N('JavaScript'), ctx.register(js)); }
-      let arr = get(js, 'Names'); if (!(arr instanceof PDFArray)) { arr = ctx.obj([]); js.set(N('Names'), arr); }
-      const action = ctx.register(jsAction(redrawScript(formattedNames)));
-      let at = -1;
-      for (let i = 0; i + 1 < arr.size(); i += 2) if (strOf(arr.get(i)) === REDRAW_SCRIPT) at = i;
-      if (at !== -1) arr.set(at + 1, action); else { arr.push(text(REDRAW_SCRIPT)); arr.push(action); }
-      if (infoDict) infoDict.set(N(REDRAW_FLAG), text('yes'));
+      const js = get(names, 'JavaScript'), arr = get(js, 'Names');
+      if (arr instanceof PDFArray) for (let i = arr.size() - 2; i >= 0; i -= 2) if (strOf(arr.get(i)) === 'zzMPMBSheetApp') { arr.remove(i + 1); arr.remove(i); }
+      if (infoDict) infoDict.delete(N('MPMBSheetAppRedraw'));
     }
-
     progress('Saving the PDF');
     const out = await doc.save({ useObjectStreams: true, updateFieldAppearances: false });
     return { bytes: out, report };
   }
 
-  // The document script that redraws MPMB's formatted fields in Acrobat (see write); the app's engine doesn't run it
-  const REDRAW_SCRIPT = 'zzMPMBSheetApp', REDRAW_FLAG = 'MPMBSheetAppRedraw';
-  function redrawScript(fieldNames) {
-    return '// Added by the MPMB Sheet App when it saved this PDF. The app asks viewers to redraw the fields, and Acrobat\n'
-      + '// does that before MPMB\'s scripts are loaded, without MPMB\'s formatting (bold feature names, "+2"). This redraws\n'
-      + '// the formatted fields once MPMB is loaded (as MPMB\'s redoFieldFormatIfColored does) and then marks the PDF done.\n'
-      + '(function (doc) {\n'
-      + '\tvar flag = "' + REDRAW_FLAG + '";\n'
-      + '\tif (!doc.info || doc.info[flag] !== "yes") return;\n'
-      + '\tvar names = ' + JSON.stringify(fieldNames) + ';\n'
-      + '\tfor (var i = 0; i < names.length; i++) {\n'
-      + '\t\ttry { var f = doc.getField(names[i]); if (f && f.type === "text") f.password = false; } catch (e) {}\n'
-      + '\t}\n'
-      + '\ttry { doc.info[flag] = "done"; } catch (e) {}\n'
-      + '})(this);\n';
-  }
   // How an icon (a form with bbox and matrix) is fitted into a W×H button: in proportion and centred, Acrobat's
   // default. Returns the matrix [s, 0, 0, s, tx, ty] for drawing the form. Also used to show pictures in the app.
   function iconFit(bbox, matrix, W, H) {
@@ -411,7 +408,7 @@
     page.pushOperators(P.pushGraphicsState(), P.concatTransformationMatrix(f[0], f[1], f[2], f[3], f[4], f[5]), P.drawObject(key), P.popGraphicsState());
     return out.save();
   }
-  const api = { write, iconFit, iconPdf, REDRAW_SCRIPT };
+  const api = { write, iconFit, iconPdf };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MPMBWriter = api;
 })(typeof self !== 'undefined' ? self : this);
