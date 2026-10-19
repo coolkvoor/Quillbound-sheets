@@ -2093,6 +2093,7 @@
     dl.textContent = '';
     const add = (k, v) => { dl.append(el('dt', { text: k }), el('dd', { text: v })); };
     add('App', APP_BUILD);
+    add('Dialogs', state.worker && state.worker.asks ? 'MPMB’s dialogs are shown to you' : 'Answered with their defaults (this page isn’t cross-origin isolated)');
     add('File', state.fileName + ' (' + (s.bytes / 1048576).toFixed(1) + ' MB)');
     add('Sheet', 'MPMB v' + i.version + ', ' + i.type);
     add('Contents', s.pages + ' pages, ' + s.templates + ' extra page templates, ' + s.fields.toLocaleString('en') + ' fields, ' + s.scripts + ' scripts');
@@ -2212,5 +2213,7 @@
   wireContent();
   wireSpells();
   wireClassAbility();
+  // whether this page can show MPMB's dialogs (cross-origin isolated: shared memory with the engine worker)
+  if (canAsk()) $('#start-dialogs').textContent = 'MPMB’s dialogs and questions are shown to you, as in Acrobat.';
   initStart();
 })();
