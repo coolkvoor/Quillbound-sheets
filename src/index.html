@@ -603,6 +603,7 @@ window.MPMBTheme = (() => {
   try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { /* defaults */ }
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) { /* this visit only */ } };
   const deviceDark = () => { const t = root.getAttribute('data-theme'); return t === 'dark' || (t !== 'light' && !!window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches); };
+  const listeners = [];
   function apply() {
     const choice = saved.choice || 'auto';
     const look = choice === 'auto' ? (saved.look === 'pf' ? 'pf' : 'colorful') : choice.split('-')[0];
@@ -619,6 +620,7 @@ window.MPMBTheme = (() => {
     let m = document.querySelector('meta[name="theme-color"]');
     if (!m) { m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
     m.content = getComputedStyle(root).getPropertyValue('--bg').trim() || '#ffffff';
+    for (const f of listeners) f();
   }
   apply();
   const mq = window.matchMedia && matchMedia('(prefers-color-scheme: dark)');
@@ -629,6 +631,8 @@ window.MPMBTheme = (() => {
     choice: () => saved.choice || 'auto',
     sheetLook: () => (saved.look === 'pf' ? 'pf' : 'colorful'),
     choose(choice) { saved.choice = choice; save(); apply(); },
+    // after every change of look (also the device turning dark or light under "Match my sheet")
+    onChange(f) { listeners.push(f); },
     // from the open sheet: its design (look) and MPMB's colour names (color: Color.Theme, seal: Color.DragonHeads)
     sheet(o) {
       let changed = false;

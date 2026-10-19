@@ -2202,23 +2202,28 @@
   function renderLooks() {
     const box = $('#look-list');
     if (!box || !T) return;
+    const hadFocus = box.contains(document.activeElement);
     box.textContent = '';
-    const sheetLook = T.sheetLook() === 'pf' ? 'Printer friendly' : 'Colorful';
     const swatch = { 'colorful-white': ['#ffffff', 'var(--sheet)'], 'colorful-dark': ['#17141a', 'var(--sheet)'], 'pf-white': ['#ffffff', '#6b6b6b'], 'pf-dark': ['#1a1a1a', '#4d4d4d'], 'pf-black': ['#000000', '#2a2a2a'] };
+    // "Match my sheet" shows the look it uses now (the sheet's design, the device's light or dark)
+    const root = document.documentElement, now = root.getAttribute('data-look') + '-' + root.getAttribute('data-tone');
+    const nowName = (LOOKS.find((l) => l[0] === now) || [now, now])[1];
     for (const [id, label] of LOOKS) {
       const input = el('input', { type: 'radio', name: 'look', value: id });
       input.checked = T.choice() === id;
-      const sw = swatch[id] || (T.sheetLook() === 'pf' ? swatch['pf-white'] : swatch['colorful-white']);
+      const sw = swatch[id] || swatch[now] || swatch['colorful-white'];
       const kids = [input, el('span', { cls: 'look-sw', 'aria-hidden': 'true' }), el('span', { text: label })];
       kids[1].append(el('i', { style: 'background:' + sw[0] }), el('i', { style: 'background:' + sw[1] }));
-      if (id === 'auto') kids.push(el('span', { cls: 'hint', text: sheetLook + ', as your sheet; light or dark as your device is' }));
+      if (id === 'auto') kids.push(el('span', { cls: 'hint', text: 'Now: ' + nowName + ' (your sheet’s design; light or dark as your device is)' }));
       box.append(el('label', { cls: 'look-opt' }, kids));
     }
+    if (hadFocus) { const c = $('input[name=look]:checked', box); if (c) c.focus(); }
   }
   function wireLooks() {
     const box = $('#look-list');
     if (!box || !T) return;
     box.addEventListener('change', (e) => { if (e.target.name === 'look') T.choose(e.target.value); });
+    T.onChange(renderLooks);
     renderLooks();
   }
   const fmtS =(ms) => (ms >= 1000 ? (ms / 1000).toFixed(1) + ' s' : ms + ' ms');
