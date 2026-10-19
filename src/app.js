@@ -359,7 +359,7 @@
       wireWorker(w);
       const res = await w.call('open', { bytes: buf, fileName: name, saved: stored && stored.saved ? stored.saved : null, state: char && char.state ? char.state : null }, [buf]);
       if (T) T.sheet({ look: /printer friendly/i.test(res.info.type) ? 'pf' : 'colorful' });
-    state.info = res.info; state.stats = res.stats; state.stats.openMs = Math.round(performance.now() - t0); state.log = res.log;
+      state.info = res.info; state.stats = res.stats; state.stats.openMs = Math.round(performance.now() - t0); state.log = res.log;
       state.content = res.content; state.saved = res.saved;
       // MPMB drops an add-on that fails at startup; keep what it kept
       if (stored && stored.saved && JSON.stringify(stored.saved) !== JSON.stringify(res.saved)) idbPut(state.sheetKey, { saved: res.saved, date: Date.now() });
