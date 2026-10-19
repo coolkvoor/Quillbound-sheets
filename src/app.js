@@ -514,15 +514,22 @@
         el('div', { cls: 'row atk-mods', 'data-vis': 'BlueText.' + p + 'To Hit Bonus', hidden: '' }, [
           modInput('BlueText.' + p + 'To Hit Bonus', 'To hit +'),
           modInput('BlueText.' + p + 'Damage Bonus', 'Damage +'),
+          modInput('BlueText.' + p + 'Damage Die', 'Damage die'),
+          modInput('BlueText.' + p + 'Weight', 'Weight'),
         ]),
       ]));
     }
   }
   const modInput = (field, label) => el('label', { cls: 'f mod' }, [el('span', { text: label }), el('input', { cls: 'in num', 'data-f': field, id: 'f-mod-' + field.replace(/\W+/g, '-'), autocomplete: 'off', inputmode: 'text' })]);
+  const MOD_SWITCHES = [['Jack of All Trades', 'Jack of All Trades'], ['Remarkable Athlete', 'Remarkable Athlete'], ['Proficiency Bonus Dice', 'Proficiency dice'], ['BlueText.Players Make All Rolls', 'Players make all rolls']];
   function buildMods() {
     const box = $('#mods');
     box.textContent = '';
     const group = (title, items) => box.append(el('div', { cls: 'mods-group' }, [el('span', { cls: 'lbl', text: title }), el('div', { cls: 'mods-grid' }, items.map(([f, l]) => modInput(f, l)))]));
+    // MPMB's optional rules and class features that change its calculations (tick boxes in the modifier area)
+    box.append(el('div', { cls: 'mods-group' }, [el('span', { cls: 'lbl', text: 'Options' }), el('div', { cls: 'toggles' }, MOD_SWITCHES.map(([f, l]) =>
+      el('span', { cls: 'tg', 'data-vis': f, hidden: '' }, [el('button', { cls: 'dot sm', type: 'button', 'data-toggle': f, 'aria-pressed': 'false', 'aria-label': l }), el('span', { text: l })])))]));
+    group('Weight', [['AC Armor Weight', 'Armor'], ['AC Shield Weight', 'Shield']]);
     group('General', [['Proficiency Bonus Modifier', 'Proficiency'], ['All Skills Bonus', 'All skills'], ['All ST Bonus', 'All saves'], ['Passive Perception Bonus', 'Passive Perc.'], ['Spell DC 1 Bonus', 'Spell DC']]);
     group('Saving throws', ABILITIES.map(([k, long]) => [k + ' ST Bonus', long]));
     group('Skills', SKILLS.map(([f, name]) => [f + ' Bonus', name]));
@@ -746,7 +753,7 @@
         el('button', { type: 'button', 'data-toggle': U + 'Initiative.Adv', 'aria-pressed': 'false', 'aria-label': 'Initiative: advantage', title: 'Advantage', text: 'A' }),
         el('button', { type: 'button', 'data-toggle': U + 'Initiative.Dis', 'aria-pressed': 'false', 'aria-label': 'Initiative: disadvantage', title: 'Disadvantage', text: 'D' }),
       ])]),
-      el('div', { cls: 'row' }, [cInput(U + 'AC', 'Armor Class'), cInput(U + 'Speed', 'Speed')]),
+      el('div', { cls: 'row' }, [cInput(U + 'AC', 'Armor Class'), cInput(U + 'Speed', 'Speed'), cInput(U + 'Combat.Init.Bonus', 'Initiative bonus', { cls: 'in num', inputmode: 'text' })]),
       cInput(U + 'Senses', 'Senses'),
       abis,
     ]));
@@ -801,6 +808,11 @@
           el('span', { cls: 'tg' }, [el('button', { cls: 'dot sm', type: 'button', 'data-toggle': p + 'Proficiency', 'aria-pressed': 'false', 'aria-label': 'Attack ' + i + ' proficiency' }), el('span', { text: 'Proficient' })]),
           el('label', { cls: 'f inline' }, [el('span', { text: 'Ability' }), cSelect(p + 'Mod', 'Attack ' + i + ' ability')]),
         ]),
+        el('div', { cls: 'row atk-mods', 'data-vis': P + 'BlueText.Comp.Use.Attack.' + i + '.To Hit Bonus', hidden: '' }, [
+          modInput(P + 'BlueText.Comp.Use.Attack.' + i + '.To Hit Bonus', 'To hit +'),
+          modInput(P + 'BlueText.Comp.Use.Attack.' + i + '.Damage Bonus', 'Damage +'),
+          modInput(P + 'BlueText.Comp.Use.Attack.' + i + '.Damage Die', 'Damage die'),
+        ]),
       ]));
     }
     grid.append(card('Attacks', [el('div', { cls: 'row-ad' }, [el('label', { cls: 'f inline' }, [el('span', { text: 'Attacks per action' }), el('input', { cls: 'in num', 'data-f': U + 'Attack.perAction', id: fid(U + 'Attack.perAction'), inputmode: 'numeric', autocomplete: 'off' })])]), atks], { 'data-span': '2' }));
@@ -810,6 +822,16 @@
       el('details', { cls: 'more' }, [el('summary', { text: 'Edit ' + label.toLowerCase() }), el('textarea', { cls: 'in', rows: '6', 'data-f': field, id: fid(field), 'aria-label': label })]),
     ]);
     grid.append(card('Traits and features', [richBox(U + 'Traits', 'Traits'), richBox(U + 'Features', 'Features')]));
+    // MPMB's modifier ("blue text") fields for the companion, shown when MPMB shows them (Functions → Modifiers)
+    const B = P + 'BlueText.Comp.Use.';
+    const mgroup = (title, items) => el('div', { cls: 'mods-group' }, [el('span', { cls: 'lbl', text: title }), el('div', { cls: 'mods-grid' }, items.map(([f, l]) => modInput(f, l)))]);
+    grid.append(card('Modifiers', [
+      el('p', { cls: 'hint', text: 'MPMB adds these to its own calculations for the companion. Type a number, or an ability such as Wis.' }),
+      el('span', { cls: 'tg' }, [el('button', { cls: 'dot sm', type: 'button', 'data-toggle': B + 'Proficiency Bonus Dice', 'aria-pressed': 'false', 'aria-label': 'Proficiency dice' }), el('span', { text: 'Proficiency dice' })]),
+      mgroup('General', [[B + 'Skills.All.Bonus', 'All skills'], [B + 'Ability.All.ST.Bonus', 'All saves'], [B + 'Skills.Perc.Pass.Bonus', 'Passive Perc.']]),
+      mgroup('Saving throws', ABILITIES.map(([k, long]) => [B + 'Ability.' + k + '.ST.Bonus', long])),
+      mgroup('Skills', SKILLS.map(([f, name]) => [B + 'Skills.' + f + '.Bonus', name])),
+    ], { 'data-span': '2', 'data-vis': B + 'Skills.Acr.Bonus', hidden: '' }));
     // equipment (MPMB can hide this section: Options → Change visible sections)
     const gear = el('div', {}, [el('div', { cls: 'gear-head' }, [el('span', { text: 'Item' }), el('span', { text: 'Amount' }), el('span', { text: 'Weight' }), el('span')])]);
     for (let i = 1; i <= COMP_GEAR; i++) {
@@ -1027,6 +1049,34 @@
       s.textContent = prof.length ? '(' + prof.join(', ') + ')' : '';
     }
     if (changed.length) layoutGrids(true, changed.map((pg) => pg.querySelector('.grid')));
+  }
+
+  // ---------------------------------------------------------------- notes pages
+  // MPMB's Notes pages (template ASnotes; the PDF as distributed has one): two columns each, and the page's Options
+  // button (lines on or off per column, add a page, remove this one)
+  let notesPrefixes = null;
+  async function syncNotes(list) {
+    const p = (list || []).filter((x) => x.key === 'ASnotes')[0];
+    const prefixes = p ? p.prefixes : [];
+    $('#notes-add').hidden = prefixes.length > 0;
+    if (notesPrefixes && JSON.stringify(prefixes) === JSON.stringify(notesPrefixes)) return;
+    notesPrefixes = prefixes.slice();
+    const box = $('#notes-pages');
+    box.textContent = '';
+    prefixes.forEach((P, i) => {
+      const n = prefixes.length > 1 ? ' ' + (i + 1) : '';
+      box.append(el('div', { cls: 'stack', 'data-notespage': P }, [
+        el('div', { cls: 'row' }, [el('span', { cls: 'lbl grow', text: 'Notes page' + n }),
+          el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Notes.Options', 'data-title': 'Notes page' + n, 'data-pages': '1' }, [document.createTextNode('Options')])]),
+        el('label', { cls: 'f' }, [el('span', { text: 'Left column' }), el('textarea', { cls: 'in', rows: '6', 'data-f': P + 'Notes.Left', id: fid(P + 'Notes.Left') })]),
+        el('label', { cls: 'f' }, [el('span', { text: 'Right column' }), el('textarea', { cls: 'in', rows: '6', 'data-f': P + 'Notes.Right', id: fid(P + 'Notes.Right') })]),
+      ]));
+    });
+    buildIndex();
+    const names = new Set();
+    for (const nd of $$(BOUND.map((a) => '#notes-pages [' + a + ']').join(','))) for (const a of BOUND) if (nd.hasAttribute(a)) names.add(nd.getAttribute(a));
+    if (names.size) { const snaps = await state.worker.call('watch', { names: Array.from(names) }); for (const s of snaps) apply(s); }
+    refreshDerived();
   }
 
   // ---------------------------------------------------------------- adventure logsheet pages
@@ -1356,6 +1406,9 @@
     refreshCompanions(v);
     refreshWildShapes(v);
     refreshLogs(v);
+    // the overflow page's proficiencies: when MPMB put something there or the page is shown
+    const over = (state.pages || []).filter((p) => p.key === 'ASoverflow')[0];
+    $('#more-profs').hidden = v('MoreProficiencies') === '' && !(over && over.shown) && document.activeElement !== $('#f-more-profs');
     renderLog();
   }
 
@@ -1697,6 +1750,7 @@
     $('#hp-minus').addEventListener('click', () => hpStep(-1));
     $('#hp-plus').addEventListener('click', () => hpStep(1));
     $('#comp-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'AScomp' }); await refreshPages(); });
+    $('#notes-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'ASnotes' }); await refreshPages(); });
     $('#ws-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'WSfront' }); await refreshPages(); });
     $('#notes-clear-open').addEventListener('click', () => { if (state.worker) clearNotesPages(); });
     $('#stuck-ok').addEventListener('click', () => $('#stuck').close());
@@ -1986,6 +2040,7 @@
     await syncCompanions(list);
     await syncWildShapes(list);
     await syncLogs(list);
+    await syncNotes(list);
   }
 
   // ---------------------------------------------------------------- spells

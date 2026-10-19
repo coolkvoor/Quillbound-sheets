@@ -926,10 +926,8 @@ window.MPMBTheme = (() => {
         <div class="card">
           <h3>Notes</h3>
           <label class="f"><span>Notes</span><textarea class="in" rows="6" data-f="Extra.Notes" id="f-notes"></textarea></label>
-          <div class="stack" data-vis="P5.ASnotes.Notes.Left">
-            <label class="f"><span>Notes page, left</span><textarea class="in" rows="6" data-f="P5.ASnotes.Notes.Left" id="f-notes-l"></textarea></label>
-            <label class="f"><span>Notes page, right</span><textarea class="in" rows="6" data-f="P5.ASnotes.Notes.Right" id="f-notes-r"></textarea></label>
-          </div>
+          <div id="notes-pages"></div>
+          <button class="btn sm" id="notes-add" type="button" hidden>Add a notes page</button>
         </div>
         <div class="card">
           <h3>Proficiencies</h3>
@@ -942,6 +940,7 @@ window.MPMBTheme = (() => {
             <input class="in grow" data-f="Proficiency Armor Other Description" id="f-armor-other" autocomplete="off" placeholder="Other armor" aria-label="Other armor proficiencies"></div>
           <div class="stack"><span class="lbl">Tools</span><div class="plines" id="tools"></div></div>
           <div class="stack"><span class="lbl">Languages</span><div class="plines" id="languages"></div></div>
+          <label class="f" id="more-profs" hidden><span>More proficiencies</span><textarea class="in" rows="3" data-f="MoreProficiencies" id="f-more-profs"></textarea><span class="hint">From the overflow page: languages and tools that didn't fit in the lines above.</span></label>
           <p class="hint">MPMB fills these in from your species, class, background and feats. Type in the empty box to add one; clear a box to remove it.</p>
         </div>
         <div class="card">
