@@ -64,6 +64,21 @@ check('reaction used this round', e.snapshot('Reaction Used This Round').checked
 const sizes = e.snapshot('Size Category').items, small = sizes.findIndex((it) => it[0] === 'Small');
 e.commit('Size Category', sizes[small][1], small);
 check('size: Small picked', e.snapshot('Size Category').index === small, JSON.stringify(e.snapshot('Size Category').index));
+// second page: lifestyle cost, other armor, carrying capacity (Str 8: 15 × 8), and the location column with its
+// weight per location (MPMB's Equipment menu shows the column)
+e.commit('Lifestyle', 'Modest');
+check('lifestyle: MPMB\'s daily cost', val('Lifestyle daily cost') === '1 gp', val('Lifestyle daily cost'));
+e.toggle('Proficiency Armor Other');
+e.commit('Proficiency Armor Other Description', 'Hide armor only');
+check('other armor proficiency', e.snapshot('Proficiency Armor Other').checked && val('Proficiency Armor Other Description') === 'Hide armor only');
+check('carrying capacity', /^120\b/.test(e.snapshot('Weight Carrying Capacity.Field').display), e.snapshot('Weight Carrying Capacity.Field').display);
+check('location column hidden at first', e.snapshot('Adventuring Gear Location.Row 1').hidden);
+e.clearQueues(); e.queueMenu('location2'); e.press('Equipment.menu', 0); e.clearQueues();
+check('location column shown by the Equipment menu', !e.snapshot('Adventuring Gear Location.Row 1').hidden && !e.snapshot('Adventuring Gear Location.SubtotalName 1').hidden);
+e.commit('Adventuring Gear Row 3', 'Torch'); e.commit('Adventuring Gear Amount 3', '5'); e.commit('Adventuring Gear Location.Row 3', 'Backpack');
+e.commit('Adventuring Gear Location.SubtotalName 1', 'Backpack');
+check('weight per location', val('Adventuring Gear Location.Subtotal 1') === '5', val('Adventuring Gear Location.Subtotal 1'));
+// (a second sheet in this realm takes over MPMB's globals: checks on e go above)
 const saved = e.exportState();
 const e2 = evalGlobal('MPMBEngine.createEngine(JSON.parse(__modelJSON), __host, { fileName: "sheet.pdf" })');
 e2.importState(JSON.parse(JSON.stringify(saved)));

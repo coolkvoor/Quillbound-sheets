@@ -659,15 +659,17 @@
       ]));
     }
   }
-  // gear lists: page 2's equipment ("Adventuring Gear …") and page 3's extra equipment ("Extra.Gear …")
+  // gear lists: page 2's equipment ("Adventuring Gear …") and page 3's extra equipment ("Extra.Gear …"), with MPMB's
+  // location column (where it's carried) when its Equipment menu shows it, and the weight per location
   function buildGear() {
     const list = (boxSel, p, btn, count, key, idp) => {
       const box = $(boxSel);
       box.textContent = '';
-      box.append(el('div', { cls: 'gear-head' }, [el('span', { text: 'Item' }), el('span', { text: 'Amount' }), el('span', { text: 'Weight' }), el('span')]));
+      box.append(el('div', { cls: 'gear-head' }, [el('span', { text: 'Item' }), el('span', { cls: 'gloc', text: 'Where' }), el('span', { text: 'Amount' }), el('span', { text: 'Weight' }), el('span')]));
       for (let i = 1; i <= count; i++) {
         box.append(el('div', { cls: 'gear-row', ['data-' + key]: String(i) }, [
           el('input', { cls: 'in', 'data-f': p + 'Row ' + i, id: 'f-' + idp + i, autocomplete: 'off', placeholder: 'Add an item', 'aria-label': 'Item ' + i }),
+          el('input', { cls: 'in gloc', 'data-f': p + 'Location.Row ' + i, id: 'f-' + idp + 'l' + i, autocomplete: 'off', 'aria-label': 'Item ' + i + ': where it is carried', placeholder: 'Where' }),
           el('input', { cls: 'in num', 'data-f': p + 'Amount ' + i, id: 'f-' + idp + 'n' + i, inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Amount' }),
           el('input', { cls: 'in num', 'data-f': p + 'Weight ' + i, id: 'f-' + idp + 'w' + i, inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Weight' }),
           lineMenu(btn + i, 'Item ' + i),
@@ -676,6 +678,14 @@
     };
     list('#gear-list', 'Adventuring Gear ', 'Adventuring Gear Button ', GEAR, 'gear', 'gear');
     list('#xgear-list', 'Extra.Gear ', 'Extra.Gear Button ', XGEAR, 'xgear', 'xgear');
+    for (const [boxSel, p, idp] of [['#gear-loc', 'Adventuring Gear ', 'gear'], ['#xgear-loc', 'Extra.Gear ', 'xgear']]) {
+      const box = $(boxSel);
+      box.textContent = '';
+      for (let n = 1; n <= 6; n++) box.append(el('div', { cls: 'loc-row' }, [
+        el('input', { cls: 'in', 'data-f': p + 'Location.SubtotalName ' + n, id: 'f-' + idp + 'ln' + n, autocomplete: 'off', placeholder: 'Location', 'aria-label': 'Location ' + n }),
+        el('b', { cls: 'num', 'data-out': p + 'Location.Subtotal ' + n }),
+      ]));
+    }
   }
 
   // ---------------------------------------------------------------- companion pages
@@ -1158,6 +1168,15 @@
     const lvl = v('Character Level');
     if (lvl) bits.push('Level ' + lvl);
     $('#hdr-line').textContent = bits.length ? bits.join(' · ') : 'Choose a species and class to begin';
+    // the location column in the gear lists, while MPMB shows it
+    for (const [boxSel, p] of [['#gear-list', 'Adventuring Gear '], ['#xgear-list', 'Extra.Gear ']]) {
+      const s = state.snap.get(p + 'Location.Row 1');
+      const on = !!(s && s.exists && !s.hidden);
+      for (const r of $$(boxSel + ' .gear-row, ' + boxSel + ' .gear-head')) r.classList.toggle('loc', on);
+    }
+    // Background extra: only when the background has options (MPMB fills its list) or it holds something
+    const bx = state.snap.get('Background Extra');
+    $('#bg-extra').hidden = !(bx && bx.exists && ((bx.items || []).some((it) => String(it[0]).trim()) || String(bx.value === null || bx.value === undefined ? '' : bx.value).trim()));
     // skills: proficiency / expertise dots
     for (const b of $$('[data-skill]')) {
       const f = b.dataset.skill;

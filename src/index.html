@@ -371,6 +371,19 @@ label.f.mod .in { min-height: 40px; color: #2a62c9; }
 .mi .sub { display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; font-size: 0.9rem; }
 .gear-row { display: grid; grid-template-columns: minmax(0, 1fr) 4rem 4.4rem auto; gap: 6px; align-items: center; padding: 3px 0; }
 .gear-row .in { min-height: 42px; }
+.gear-row.loc, .gear-head.loc { grid-template-columns: minmax(0, 1fr) 4.6rem 3.4rem 4rem auto; }
+.gear-head.loc { grid-template-columns: minmax(0, 1fr) 4.6rem 3.4rem 4rem 44px; }
+.gear-row:not(.loc) .gloc, .gear-head:not(.loc) .gloc { display: none; }
+/* a narrow card: the location goes on a second line under the item */
+@container (max-width: 480px) {
+  .gear-row.loc { grid-template-columns: minmax(0, 1fr) 3.4rem 4rem auto; row-gap: 4px; }
+  .gear-row.loc .gloc { grid-column: 1; grid-row: 2; min-height: 36px; font-size: 0.9rem; }
+  .gear-row.loc .gloc::placeholder { font-size: 0.85rem; }
+  .gear-head.loc { grid-template-columns: minmax(0, 1fr) 3.4rem 4rem 44px; }
+  .gear-head.loc .gloc { display: none; }
+}
+.loc-row { display: grid; grid-template-columns: minmax(0, 1fr) 5rem; gap: 6px; align-items: center; padding: 3px 0; }
+.loc-row b { text-align: right; }
 .gear-head { display: grid; grid-template-columns: minmax(0, 1fr) 4rem 4.4rem 44px; gap: 6px; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
 
 /* class features and species traits as a list */
@@ -699,6 +712,7 @@ window.MPMBTheme = (() => {
             <div class="line"><input class="in" data-f="Class and Levels" id="f-class" autocomplete="off" placeholder="e.g. Wizard 3, or Fighter 2 Rogue 1" aria-label="Class and levels"><button class="btn" id="class-open" type="button">Change</button></div>
             <span class="hint">Use Change to pick a class, subclass and level, level up, or multiclass. Typing works too.</span></div>
           <label class="f"><span>Background</span><input class="in" data-f="Background" id="f-bg" list="dl-bg" autocomplete="off" placeholder="Pick or type a background"><datalist id="dl-bg" data-items="Background"></datalist></label>
+          <label class="f" id="bg-extra"><span>Background extra</span><input class="in" data-f="Background Extra" id="f-bg-extra" list="dl-bg-extra" autocomplete="off" placeholder="Pick or type"><datalist id="dl-bg-extra" data-items="Background Extra"></datalist></label>
           <div class="row xp">
             <label class="f"><span>Experience</span><input class="in num" data-f="Total Experience" id="f-xp" inputmode="numeric" autocomplete="off"></label>
             <div class="f"><span class="flabel">Add XP</span><div class="line"><input class="in num" data-f="Add Experience" id="f-addxp" inputmode="numeric" autocomplete="off" aria-label="Experience to add"><button class="btn" type="button" data-mpmb="Add Experience Button" data-title="Add experience">Add</button></div></div>
@@ -909,6 +923,8 @@ window.MPMBTheme = (() => {
             <span class="lbl">Weapons</span><div class="toggles" id="prof-weapons"></div>
           </div>
           <div class="hint" data-out="Proficiency Weapon Other Description"></div>
+          <div class="row-ad"><span class="tg"><button class="dot sm" type="button" data-toggle="Proficiency Armor Other" aria-pressed="false" aria-label="Other armor proficiency"></button><span>Other armor</span></span>
+            <input class="in grow" data-f="Proficiency Armor Other Description" id="f-armor-other" autocomplete="off" placeholder="Other armor" aria-label="Other armor proficiencies"></div>
           <div class="stack"><span class="lbl">Tools</span><div class="plines" id="tools"></div></div>
           <div class="stack"><span class="lbl">Languages</span><div class="plines" id="languages"></div></div>
           <p class="hint">MPMB fills these in from your species, class, background and feats. Type in the empty box to add one; clear a box to remove it.</p>
@@ -958,23 +974,32 @@ window.MPMBTheme = (() => {
           <h3>Equipment <button class="btn sm" type="button" data-mpmb="Equipment.menu" data-title="Add equipment">Add gear</button></h3>
           <p class="hint">Type an item; MPMB fills in its weight. The menu adds packs and starting gear.</p>
           <div id="gear-list"></div>
+          <div class="stack loc-totals" data-vis="Adventuring Gear Location.SubtotalName 1" hidden><span class="lbl">Weight by location</span><div id="gear-loc"></div>
+            <p class="hint">Name a location (as in the LOC column) to add up the weight carried there. The Add gear menu shows or hides the location column.</p></div>
         </div>
         <div class="card span-2">
           <h3>Extra equipment <span class="chip">page 3</span></h3>
-          <p class="hint">More room for gear, as on the sheet's third page. Weight: <b class="num" id="xgear-weight">–</b> (by default MPMB doesn't add this to the weight you carry: it counts coins and the Equipment list. The sheet's Weight options can change that; the app doesn't have them yet).</p>
+          <p class="hint">More room for gear, as on the sheet's third page. Weight: <b class="num" id="xgear-weight">–</b> (by default MPMB doesn't add this to the weight you carry: it counts coins and the Equipment list; What counts, under Coins and weight, changes that).</p>
           <div id="xgear-list"></div>
+          <div class="stack loc-totals" data-vis="Extra.Gear Location.SubtotalName 1" hidden><span class="lbl">Weight by location</span><div id="xgear-loc"></div></div>
           <label class="f"><span>Other holdings</span><textarea class="in" rows="4" data-f="Extra.Other Holdings" id="f-holdings" placeholder="Property, investments, things kept elsewhere"></textarea></label>
         </div>
         <div class="card">
-          <h3>Coins and weight</h3>
+          <h3>Coins and weight <button class="btn sm" type="button" data-mpmb="Weight Carried Button" data-title="What counts">What counts</button></h3>
           <div class="coins" id="coins"></div>
           <div class="stats">
             <div class="stat"><span class="k">Carried</span><span class="v num small" data-out="Weight Carried">–</span></div>
-            <div class="stat"><span class="k">Encumbered</span><span class="v num small" data-out="Weight Encumbered">–</span></div>
-            <div class="stat"><span class="k">Heavily</span><span class="v num small" data-out="Weight Heavily Encumbered">–</span></div>
+            <div class="stat" data-vis="Weight Carrying Capacity.Field"><span class="k">Capacity</span><span class="v num small" data-out="Weight Carrying Capacity.Field">–</span></div>
+            <div class="stat" data-vis="Weight Encumbered"><span class="k">Encumbered</span><span class="v num small" data-out="Weight Encumbered">–</span></div>
+            <div class="stat" data-vis="Weight Heavily Encumbered" hidden><span class="k">Heavily</span><span class="v num small" data-out="Weight Heavily Encumbered">–</span></div>
             <div class="stat"><span class="k">Push / lift</span><span class="v num small" data-out="Weight Push/Drag/Lift">–</span></div>
           </div>
-          <label class="f"><span>Lifestyle</span><input class="in" data-f="Lifestyle" id="f-lifestyle" list="dl-life" autocomplete="off"><datalist id="dl-life" data-items="Lifestyle"></datalist></label>
+          <label class="f mod" data-vis="Carrying Capacity Multiplier" hidden><span>Carrying capacity multiplier</span><input class="in num" data-f="Carrying Capacity Multiplier" id="f-carry-mult" autocomplete="off"></label>
+          <p class="hint">What counts: MPMB's choices for what adds to the weight you carry (armor, weapons, coins, the extra equipment page, magic items) and whether encumbrance is used.</p>
+          <div class="row">
+            <label class="f"><span>Lifestyle</span><input class="in" data-f="Lifestyle" id="f-lifestyle" list="dl-life" autocomplete="off"><datalist id="dl-life" data-items="Lifestyle"></datalist></label>
+            <div class="f"><span class="flabel">Cost per day</span><span data-out="Lifestyle daily cost"></span></div>
+          </div>
         </div>
       </div>
     </section>
