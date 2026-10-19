@@ -4,6 +4,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 
 - Design doc (decisions, milestones, risks): https://claude.ai/code/artifact/DESIGN-DOC
 - The test build is published as a private Claude artifact (0.2 since 2026-10-12): https://claude.ai/artifact/ARTIFACT. Publish `dist-single/index.html` (`node tools/build-single.js 0.2`); it loads pdf-lib from cdnjs so the page holds only this app's code.
+- Code: private GitHub repo https://github.com/OWNER/mpmb-sheet-app (branch `master`, pushed with the `gh` login of the owner's account OWNER). Hosting with real dialogs: Cloudflare Pages from that repo (build `node tools/build-single.js 0.2`, output `dist-site`, which holds the full page and `_headers` with COOP/COEP), behind Cloudflare Access so only the owner can open it. Being set up 2026-10-19.
 - Test devices: the phone (6.3", 1220×2656, about 393×852 CSS px at 3.1×) and the tablet (10.9", 1440×2304, about 800×1280 at 1.8×). Chrome on Android.
 
 ## Decisions (settled with the owner)
