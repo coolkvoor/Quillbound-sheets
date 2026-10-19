@@ -33,8 +33,11 @@ function ask(req) {
   copy.set(chan.bytes.subarray(0, len));
   try { return JSON.parse(new TextDecoder().decode(copy)); } catch (e) { return null; }
 }
-// requests a person started (typing, tapping, the app's own screens): their dialogs are shown to the user
-const ASKS_USER = new Set(['commit', 'toggle', 'press', 'tap', 'shootAmmo', 'addPage', 'applyClasses', 'applyAbilities', 'chooseSpells', 'removeSpells', 'tapSpellRow']);
+// requests a person started (typing, tapping, the app's own screens): their dialogs are shown to the user, with
+// the channel (waiting here) or by restart and replay (op run)
+const USER_OPS = new Set(['commit', 'toggle', 'press', 'tap', 'shootAmmo', 'addPage', 'applyClasses', 'applyAbilities', 'chooseSpells', 'removeSpells', 'tapSpellRow']);
+const ASKS_USER = USER_OPS;
+let spareName = '';
 function changesFor(names) {
   const out = [];
   for (let i = 0; i < names.length; i++) if (watched.has(names[i])) out.push(engine.snapshot(names[i]));
@@ -55,6 +58,35 @@ function spellOp(fn) {
   const r = fn();
   return { alerts: r.alerts, errors: r.errors, sheet: r.sheet, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
 }
+// MPMB started on a sheet model, with the saved character (state) or the add-on content (saved) put back first
+function startEngine(model, fileName, saved, state) {
+  engine = MPMBEngine.createEngine(model, { global: self, evalGlobal }, { fileName });
+  const restoredChar = state ? engine.importState(state) : false;
+  if (!restoredChar && saved) engine.preset(saved);
+  // MPMB asks whether to raise the level when the XP total reaches a new one; the app asks the user itself
+  // (Level up opens the class screen), so MPMB's question is answered "not now"
+  engine.setStandingAnswer('EXPERIENCE POINTS DIALOG', { steps: [{ end: 'cancel' }] });
+  const startMs = engine.start();
+  // A saved PDF keeps the dropdowns MPMB filled; the app starts from the PDF as distributed (some lists empty, such as
+  // magic items), so MPMB rebuilds them: Source Material → Apply. With saved content this also restores it.
+  const restored = MPMBContent.restore(engine);
+  engine.drainChanges();
+  stateNow = null;
+  return { restoredChar, startMs, restored };
+}
+
+// Restart and replay (replay.js has the same loop for the Node tests): a change a person makes runs with
+// engine.stopForUser on (op run). A dialog or yes/no question nobody can answer stops it; the dialog stays open in
+// this copy (stoppedStep runs its handlers as the user changes it) and the app gets the state from before the change.
+// The app then starts a fresh copy from that state (a second worker: prepare, then startFrom) and runs the change
+// again there with the user's answers; that copy becomes the live one.
+let modelJSON = null;   // the sheet model as read from the PDF, for fresh copies
+let stateNow = null;    // engine.exportState() while nothing has changed since (the autosave asks for it too)
+let stopped = null;     // the dialog or question the last run stopped at
+function currentState() { return stateNow || (stateNow = engine.exportState()); }
+// requests that only read: the saved state stays valid
+const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'pageList', 'xpInfo', 'notesText', 'toolNames', 'spellSheet', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare']);
+
 function logSummary() {
   const l = engine.log;
   return { alerts: l.alerts.slice(-40), dialogs: l.dialogs.slice(-40), menus: l.menus.slice(-20), errors: l.errors.slice(-40), unsupported: Object.assign({}, l.unsupported), urls: l.urls.slice(-10) };
@@ -71,18 +103,10 @@ const ops = {
     const loadMs = Math.round(now() - t0);
     const names = model.docScripts.map((s) => s.name);
     if (names.indexOf('Startup') === -1 || !model.info.SheetVersion) throw new Error('NOT_MPMB');
+    // the sheet as read, before MPMB changes anything: what a fresh copy starts from (replay, see run)
+    modelJSON = JSON.stringify(model);
     progress(state ? 'Starting MPMB’s scripts with your character' : saved ? 'Starting MPMB’s scripts and your add-on content' : 'Starting MPMB’s scripts');
-    engine = MPMBEngine.createEngine(model, { global: self, evalGlobal }, { fileName });
-    const restoredChar = state ? engine.importState(state) : false;
-    if (!restoredChar && saved) engine.preset(saved);
-    // MPMB asks whether to raise the level when the XP total reaches a new one; the app asks the user itself
-    // (Level up opens the class screen), so MPMB's question is answered "not now"
-    engine.setStandingAnswer('EXPERIENCE POINTS DIALOG', { steps: [{ end: 'cancel' }] });
-    const startMs = engine.start();
-    // A saved PDF keeps the dropdowns MPMB filled; the app starts from the PDF as distributed (some lists empty, such as
-    // magic items), so MPMB rebuilds them: Source Material → Apply. With saved content this also restores it.
-    const restored = MPMBContent.restore(engine);
-    engine.drainChanges();
+    const { restoredChar, startMs, restored } = startEngine(model, fileName, saved, state);
     return {
       info: { title: model.info.Title || '', version: model.info.SheetVersion || '', type: model.info.SheetType || '', author: model.info.Author || '' },
       stats: { bytes: model.stats.bytes, loadMs, startMs, fields: model.fieldOrder.length, scripts: model.docScripts.length, pages: model.pageCount, templates: model.templates.length },
@@ -100,13 +124,58 @@ const ops = {
   toggle({ name, widget }) { const t = now(); const r = engine.toggle(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   press({ name, widget }) { const t = now(); const r = engine.press(name, widget); return { r, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() }; },
   log() { return logSummary(); },
+  // ---- restart and replay (see startEngine)
+  modelJSON() { return modelJSON; },
+  // a spare copy, made ready in advance: the sheet model and the PDF, MPMB not started yet
+  prepare({ model, bytes, fileName }) {
+    try { evalGlobal('1+1'); } catch (e) { throw new Error('EVAL_BLOCKED'); }
+    modelJSON = model; sheetBytes = new Uint8Array(bytes); spareName = fileName;
+    return { ok: true };
+  },
+  // start MPMB in the spare from a saved state (the character before the change), watching the app's fields
+  startFrom({ state, watch }) {
+    if (!modelJSON) throw new Error('not prepared');
+    const t = now();
+    startEngine(JSON.parse(modelJSON), spareName, null, state);
+    watched = new Set(watch || []);
+    return { ms: Math.round(now() - t) };
+  },
+  // a change a person makes (op + args, as the app would send it), with the user's answers so far (replay.js's
+  // answers). Stops at a dialog or question nobody can answer: { stopped, before } (the dialog's first request, or
+  // the question), with the state from before the change for the fresh copy.
+  async run({ op, args, answers }) {
+    if (!USER_OPS.has(op)) throw new Error('Not a user change: ' + op);
+    const before = currentState();
+    engine.setReplay(answers || []);
+    engine.stopForUser(true);
+    let result, failed = null;
+    try { result = await ops[op](args || {}); } catch (e) { if (!(e && e.mpmbStop)) failed = e; }
+    finally { engine.stopForUser(false); engine.setReplay([]); }
+    const s = engine.takeStopped();
+    if (s) {
+      stopped = s;
+      engine.drainChanges();
+      return { stopped: s.kind === 'dialog' ? s.request() : { kind: 'question', title: s.title, msg: s.msg, type: s.type }, before };
+    }
+    if (failed) throw failed;
+    return result;
+  },
+  // the user changed the stopped dialog: MPMB's handler runs in this copy; the dialog as it is now, or how it ended
+  stoppedStep({ reply }) {
+    if (!stopped || stopped.kind !== 'dialog') throw new Error('No dialog is open');
+    const ended = stopped.step(reply || null);
+    if (ended === null) return { ended: null, request: stopped.request() };
+    stopped.finish();
+    stopped = null;
+    return { ended };
+  },
   // the shared memory for answers (see ask): [0] answered flag, [1] answer length, then the answer as UTF-8 JSON
   channel({ sab }) {
     if (!sab || typeof Atomics === 'undefined') return { ok: false };
     chan = { flag: new Int32Array(sab, 0, 2), bytes: new Uint8Array(sab, 8) };
     return { ok: true };
   },
-  exportState() { return engine.exportState(); },
+  exportState() { return currentState(); },
   // Spend one piece of ammunition the way the sheet does: tick the next box (MPMB counts down); if the boxes aren't
   // shown (MPMB draws different ones per kind of ammunition), lower the amount instead. To restock, type the amount.
   shootAmmo({ side }) {
@@ -222,11 +291,11 @@ self.onmessage = async (e) => {
   const { id, op, args } = e.data || {};
   try {
     if (!ops[op]) throw new Error('Unknown request: ' + op);
-    if (op !== 'open' && op !== 'channel' && !engine) throw new Error('No sheet loaded');
+    if (op !== 'open' && op !== 'channel' && op !== 'prepare' && op !== 'startFrom' && !engine) throw new Error('No sheet loaded');
     const user = chan && engine && ASKS_USER.has(op);
     if (user) engine.interactive(ask);
     let result;
-    try { result = await ops[op](args || {}); } finally { if (user) engine.interactive(null); }
+    try { result = await ops[op](args || {}); } finally { if (user) engine.interactive(null); if (!READS.has(op)) stateNow = null; }
     postMessage({ id, ok: true, result });
   } catch (err) {
     postMessage({ id, ok: false, error: err && err.message ? err.message : String(err) });

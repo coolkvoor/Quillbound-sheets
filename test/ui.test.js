@@ -54,7 +54,20 @@ const DEVICES = {
       await page.screenshot({ path: path.join(OUT, name + '-0-content.png') });
     }
     // build a character through the screen
-    const commit = async (sel, val) => { await page.fill(sel, val); await page.press(sel, 'Enter'); await idle(); };
+    // MPMB's dialogs and questions wait for the user: answer them as a player taking what MPMB offers (OK, Yes)
+    const asked = [];
+    const settle = async () => {
+      for (let i = 0; i < 20; i++) {
+        await page.waitForFunction(() => !document.querySelector('#busy').classList.contains('on') || document.querySelector('#mdlg').open || document.querySelector('#ask').open, null, { timeout: 60000 });
+        await page.waitForTimeout(150);
+        const open = await page.evaluate(() => (document.querySelector('#mdlg').open ? 'mdlg' : document.querySelector('#ask').open ? 'ask' : ''));
+        if (!open) { if (!(await page.evaluate(() => document.querySelector('#busy').classList.contains('on')))) return; continue; }
+        if (open === 'ask') { asked.push('question'); await page.click('#ask-yes'); continue; }
+        asked.push(await page.$eval('#mdlg-title', (n) => n.textContent));
+        await page.evaluate(() => { const b = Array.from(document.querySelectorAll('#mdlg-foot button')); (b.find((x) => /^(OK|Close|Apply)$/i.test(x.textContent.trim())) || b[b.length - 1]).click(); });
+      }
+    };
+    const commit = async (sel, val) => { await page.fill(sel, val); await page.press(sel, 'Enter'); await settle(); };
     await commit('#f-name', 'Ilvara');
     for (const [k, v] of [['Str', '8'], ['Dex', '14'], ['Con', '14'], ['Int', '16'], ['Wis', '12'], ['Cha', '10']]) await commit('#f-abi-' + k, v);
     await commit('#f-race', 'Elf');
@@ -63,7 +76,7 @@ const DEVICES = {
     const classMs = Date.now() - tc;
     await commit('#f-class', 'Wizard 4');
     const lvl4 = await page.evaluate(() => ({ level: document.querySelector('[data-out="Character Level"]').textContent, header: document.querySelector('#hdr-line').textContent, cf: document.querySelector('[data-rich="Class Features"]').textContent.slice(0, 40), slots2: '' }));
-    console.log(`[${name}] after level-up:`, JSON.stringify(lvl4));
+    console.log(`[${name}] after level-up:`, JSON.stringify(lvl4), '| MPMB asked: ' + (asked.join(', ') || 'nothing'));
     await commit('#f-armor', 'Unarmored');
     await commit('#f-atk1', 'Quarterstaff');
     await commit('#f-atk2', 'Fire Bolt');

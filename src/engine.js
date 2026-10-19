@@ -79,7 +79,11 @@
         })),
         obj: null, widgetObjs: [],
       };
-      if (Array.isArray(def.index) && def.index.length === 1 && Number.isInteger(Number(def.index[0]))) rec.props.valueIndex = Number(def.index[0]);
+      // the PDF's picked index (/I), kept only where it tells more than the value: a later item sharing its export value
+      if (Array.isArray(def.index) && def.index.length === 1) {
+        const it = itemsOf(rec), k = Number(def.index[0]);
+        if (it[k] && it[k][1] === rec.value && it.findIndex((x) => x[1] === it[k][1]) !== k) rec.props.valueIndex = k;
+      }
       return markBaseline(rec);
     }
     // What a field looked like when it was created, so a saved state only holds what changed since
@@ -313,9 +317,10 @@
       if (Array.isArray(v) && rec.def.ff & FF.multiSelect) { scriptSetValue(rec, v.map((i) => (it[i] ? it[i][1] : '')).filter(Boolean)); return; }
       const idx = Number(Array.isArray(v) ? v[0] : v);
       scriptSetValue(rec, it[idx] ? it[idx][1] : '');
-      // remembered only where the export value alone doesn't tell which item it is
-      const shared = it[idx] && it.some((x, i) => i !== idx && x[1] === it[idx][1]);
-      if (shared && rec.value === it[idx][1]) rec.props.valueIndex = idx; else delete rec.props.valueIndex;
+      // remembered only where the export value alone doesn't tell which item it is: an item after the first one
+      // with the same export value (reading back finds the first one by itself)
+      const first = it[idx] ? it.findIndex((x) => x[1] === it[idx][1]) : -1;
+      if (first !== -1 && first !== idx && rec.value === it[idx][1]) rec.props.valueIndex = idx; else delete rec.props.valueIndex;
       markDirty(rec);
     });
     accessor('exportValues', function () { return exportsOf(this[R]); }, function (v) { this[R].props.exportValues = v; });

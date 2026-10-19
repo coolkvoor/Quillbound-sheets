@@ -341,6 +341,8 @@
     $('#loading-text').textContent = 'Reading the PDF';
     $('#loading-sub').textContent = name + ' · ' + (buf.byteLength / 1048576).toFixed(1) + ' MB';
     if (state.worker) state.worker.terminate();
+    dropSpare();
+    state.modelJSON = null;
     state.snap.clear();
     state.bytes = buf.slice(0);
     state.fileName = name;
@@ -354,10 +356,7 @@
     try {
       w = connect();
       state.worker = w;
-      w.onProgress = (t) => { $('#loading-text').textContent = t; };
-      w.onStuck = (op) => recoverFromStuck(op);
-      w.onAsk = (req) => (req.kind === 'question' ? askYesNo(req).then((yes) => ({ yes })) : req.kind === 'dialog' ? mpmbDialog.show(req) : null);
-      w.onIdle = () => mpmbDialog.idle();
+      wireWorker(w);
       const res = await w.call('open', { bytes: buf, fileName: name, saved: stored && stored.saved ? stored.saved : null, state: char && char.state ? char.state : null }, [buf]);
       state.info = res.info; state.stats = res.stats; state.stats.openMs = Math.round(performance.now() - t0); state.log = res.log;
       state.content = res.content; state.saved = res.saved;
@@ -365,6 +364,9 @@
       if (stored && stored.saved && JSON.stringify(stored.saved) !== JSON.stringify(res.saved)) idbPut(state.sheetKey, { saved: res.saved, date: Date.now() });
       if (remember) idbPut('last', { name, blob: new Blob([state.bytes], { type: 'application/pdf' }), date: Date.now() });
       await showSheet();
+      // without a page that can wait (cross-origin isolated), MPMB's dialogs work by restart and replay: get the sheet
+      // model for fresh copies and make a spare one ready in the background
+      if (!w.asks) w.call('modelJSON', {}).then((m) => { if (state.worker === w) { state.modelJSON = m; setTimeout(makeSpare, 1500); } }, () => {});
     } catch (e) {
       if (w) w.terminate();
       state.worker = null;
@@ -1244,6 +1246,8 @@
     saveTimer = 0;
     if (!state.worker || !state.charKey) return;
     if (saving) { saveAgain = true; return; }
+    // in the middle of a change with a dialog open, the live copy holds a half-made change: save after it
+    if (state.changing) { saveTimer = setTimeout(saveNow, 700); return; }
     saving = true;
     try {
       const st = await state.worker.call('exportState', {});
@@ -1438,10 +1442,90 @@
 
   // ---------------------------------------------------------------- talking to MPMB
   function setBusy(d) { state.busy += d; $('#busy').classList.toggle('on', state.busy > 0); }
+  function wireWorker(w) {
+    w.onProgress = (t) => { $('#loading-text').textContent = t; };
+    w.onStuck = (op) => recoverFromStuck(op);
+    w.onAsk = (req) => (req.kind === 'question' ? askYesNo(req).then((yes) => ({ yes })) : req.kind === 'dialog' ? mpmbDialog.show(req) : null);
+    // a request finished: a dialog its handlers ended is over (on a waiting page); during a replayed change the
+    // stopped dialog's own requests finish while it stays open, and userChange closes it
+    w.onIdle = () => { if (!state.changing) mpmbDialog.idle(); };
+  }
+
+  // ---- MPMB's dialogs by restart and replay (worker.js op run; replay.js has the same loop for the Node tests)
+  // A change a person makes runs with stopping on. If MPMB opens a dialog (or asks a yes/no question) nobody can
+  // answer, it stops there; the dialog is shown and every change the user makes in it runs MPMB's handler in the
+  // stopped copy. Then a fresh copy starts from the character as it was before the change and makes the change again
+  // with the user's answers, and becomes the live copy. On a page that can wait (cross-origin isolated) the worker asks
+  // the user directly instead (onAsk).
+  const USER_OPS = new Set(['commit', 'toggle', 'press', 'tap', 'shootAmmo', 'addPage', 'applyClasses', 'applyAbilities', 'chooseSpells', 'removeSpells', 'tapSpellRow']);
+  // a spare copy: a worker with the sheet model and the PDF, MPMB not started until it is needed
+  function makeSpare() {
+    if (state.spare || !state.modelJSON || !state.worker || state.worker.asks) return;
+    const w = connect();
+    wireWorker(w);
+    state.spare = { w, ready: w.call('prepare', { model: state.modelJSON, bytes: state.bytes.slice(0), fileName: state.fileName }) };
+    state.spare.ready.catch(() => { if (state.spare && state.spare.w === w) state.spare = null; w.terminate(); });
+  }
+  function dropSpare() { if (state.spare) { state.spare.w.terminate(); state.spare = null; } }
+  async function freshCopy(before) {
+    if (!state.modelJSON) state.modelJSON = await state.worker.call('modelJSON', {});
+    makeSpare();
+    const sp = state.spare;
+    state.spare = null;
+    await sp.ready;
+    await sp.w.call('startFrom', { state: before, watch: Array.from(state.snap.keys()) });
+    setTimeout(makeSpare, 1000);
+    return sp.w;
+  }
+  async function userChange(op, args) {
+    let w = state.worker, before = null;
+    const answers = [];
+    state.changing = true;
+    try {
+      for (let round = 0; round <= 12; round++) {
+        const res = await w.call('run', { op, args, answers });
+        if (!res || !res.stopped) {
+          if (w !== state.worker) {
+            // the copy that made the change is the live one now; the screen catches up with all of it
+            const old = state.worker;
+            state.worker = w;
+            old.terminate();
+            const snaps = await w.call('watch', { names: Array.from(state.snap.keys()) });
+            for (const s of snaps) apply(s);
+          }
+          return res;
+        }
+        if (!before) before = res.before;
+        setBusy(-1);
+        try {
+          if (res.stopped.kind === 'question') {
+            answers.push({ kind: 'question', yes: await askYesNo(res.stopped) });
+          } else {
+            // the stopped dialog, live: MPMB's handlers run in that copy as the user changes it
+            const replies = [];
+            let req = res.stopped;
+            for (;;) {
+              const reply = await mpmbDialog.show(req);
+              replies.push(reply);
+              const st = await w.call('stoppedStep', { reply });
+              if (st.ended !== null) break;
+              req = st.request;
+            }
+            mpmbDialog.idle();
+            answers.push({ kind: 'dialog', name: res.stopped.name, replies });
+          }
+        } finally { setBusy(1); }
+        const next = await freshCopy(before);
+        if (w !== state.worker) w.terminate();
+        w = next;
+      }
+      throw new Error('MPMB kept asking: more than 12 dialogs in one change');
+    } finally { state.changing = false; }
+  }
   async function send(op, args) {
     setBusy(1);
     try {
-      const res = await state.worker.call(op, args);
+      const res = await (USER_OPS.has(op) && state.worker && !state.worker.asks ? userChange(op, args) : state.worker.call(op, args));
       for (const s of res.changes || []) apply(s);
       if (res.log) state.log = res.log;
       refreshDerived();
@@ -2093,7 +2177,7 @@
     dl.textContent = '';
     const add = (k, v) => { dl.append(el('dt', { text: k }), el('dd', { text: v })); };
     add('App', APP_BUILD);
-    add('Dialogs', state.worker && state.worker.asks ? 'MPMB’s dialogs are shown to you' : 'Answered with their defaults (this page isn’t cross-origin isolated)');
+    add('Dialogs', state.worker && state.worker.asks ? 'Shown to you; MPMB waits for your answer' : 'Shown to you; MPMB makes the change again with your answer (restart and replay)');
     add('File', state.fileName + ' (' + (s.bytes / 1048576).toFixed(1) + ' MB)');
     add('Sheet', 'MPMB v' + i.version + ', ' + i.type);
     add('Contents', s.pages + ' pages, ' + s.templates + ' extra page templates, ' + s.fields.toLocaleString('en') + ' fields, ' + s.scripts + ' scripts');
@@ -2182,9 +2266,6 @@
   if (window.ResizeObserver) new ResizeObserver(() => layoutGrids(false)).observe(document.documentElement);
 
   async function showSheet() {
-    // MPMB's settings dialogs need the user at the screen (a cross-origin isolated page)
-    $('#mpmb-settings-off').hidden = state.worker.asks;
-    for (const b of $$('#mpmb-settings-btns .btn')) b.disabled = !state.worker.asks;
     buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildDefense(); buildCoins(); buildMagicItems(); buildGear(); buildMods(); buildConditions(); buildAmmo();
     state.spellOpts = null; state.sheet = null;
     compPrefixes = []; $('#comp-list').textContent = '';
@@ -2213,7 +2294,5 @@
   wireContent();
   wireSpells();
   wireClassAbility();
-  // whether this page can show MPMB's dialogs (cross-origin isolated: shared memory with the engine worker)
-  if (canAsk()) $('#start-dialogs').textContent = 'MPMB’s dialogs and questions are shown to you, as in Acrobat.';
   initStart();
 })();
