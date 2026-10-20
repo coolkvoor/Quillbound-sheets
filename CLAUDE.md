@@ -1,9 +1,12 @@
 # MPMB Sheet App: project notes for Claude Code
 
+> **How changes reach the owner: `git push` to `master`. Do NOT republish the Claude artifact.**
+> Cloudflare Pages rebuilds https://mpmb-sheet-app.pages.dev/ on every push to `master`, and that is where the owner tests. The old test-build artifact (ARTIFACT) is retired: republishing it from a new session makes Claude read the whole live page first (~575 KB, ~270k tokens, ~10% of the owner's session limit), which is the cost Cloudflare was set up to avoid. Never publish, read or update that artifact unless the owner asks for it in that session. At the end of a change: run the tests, commit, push (ask the owner before pushing if he hasn't said to), and tell him the site redeploys from the push.
+
 A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) character sheet PDF** and runs MPMB's own scripts in a stand-in for Adobe Acrobat. Users can play and build characters on a phone or tablet, with all D&D logic coming from MPMB's code inside their PDF.
 
 - Design doc (decisions, milestones, risks): https://claude.ai/code/artifact/DESIGN-DOC
-- The test build is published as a private Claude artifact (0.2 since 2026-10-12; version 52 on 2026-10-20 adds the 2014 sheets to Text Options, Adventurers League, notes pages, modifiers, Honor/Sanity and Import from another sheet; version 53 the Settings panel in the top bar): https://claude.ai/artifact/ARTIFACT. Publish `dist-single/index.html` (`node tools/build-single.js 0.2`); it loads pdf-lib from cdnjs so the page holds only this app's code.
+- Old test build (retired 2026-10-20, last version 53): private Claude artifact https://claude.ai/artifact/ARTIFACT. Don't republish it unless the owner asks (see the note at the top); `dist-single/index.html` is what it was published from.
 - Code: private GitHub repo https://github.com/OWNER/mpmb-sheet-app (branch `master`, pushed with the `gh` login of the owner's account OWNER). Hosting with real dialogs: Cloudflare Pages from that repo (build `node tools/build-single.js 0.2`, output `dist-site`, which holds the full page and `_headers` with COOP/COEP), behind Cloudflare Access so only the owner can open it. Live since 2026-10-20 at https://mpmb-sheet-app.pages.dev/ (cross-origin isolated, so MPMB waits for dialogs; every push to `master` redeploys). Access app "MPMB Sheet App" (team TEAM) needs the bare hostname `mpmb-sheet-app.pages.dev` as well as `*.mpmb-sheet-app.pages.dev`, or the login says "Unable to find your Access application". The Cloudflare connector's tools can't manage Pages or Access: use the dashboard.
 - Test devices: the phone (6.3", 1220×2656, about 393×852 CSS px at 3.1×) and the tablet (10.9", 1440×2304, about 800×1280 at 1.8×). Chrome on Android.
 
