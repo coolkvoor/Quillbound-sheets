@@ -138,6 +138,12 @@ label.f > span.hint { text-transform: none; letter-spacing: 0; font-size: 0.85re
 .in:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px var(--accent-soft); }
 .in[readonly] { background: transparent; border-style: dashed; }
 .in.num { text-align: center; }
+/* text boxes grow with their text (no drag handle: dragging wider spilled over the next card); browsers without
+   field-sizing keep their rows and may only be made taller */
+textarea.in { resize: vertical; }
+@supports (field-sizing: content) {
+  textarea.in:not(.code) { field-sizing: content; resize: none; min-height: calc(3lh + 18px); max-height: 75vh; }
+}
 .hint { font-size: 0.85rem; color: var(--muted); }
 .row { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; }
 .row > * { flex: 1 1 8rem; min-width: 0; }
