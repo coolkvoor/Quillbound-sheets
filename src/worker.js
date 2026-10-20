@@ -86,7 +86,7 @@ let stateNow = null;    // engine.exportState() while nothing has changed since 
 let stopped = null;     // the dialog or question the last run stopped at
 function currentState() { return stateNow || (stateNow = engine.exportState()); }
 // requests that only read: the saved state stays valid
-const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'pageList', 'xpInfo', 'notesText', 'toolNames', 'spellSheet', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare', 'iconImage']);
+const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'parseModel', 'pageList', 'xpInfo', 'notesText', 'toolNames', 'spellSheet', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare', 'iconImage']);
 
 function logSummary() {
   const l = engine.log;
@@ -127,6 +127,14 @@ const ops = {
   log() { return logSummary(); },
   // ---- restart and replay (see startEngine)
   modelJSON() { return modelJSON; },
+  // another MPMB sheet read into a sheet model (as JSON), for MPMB's Direct Import (ui-import.js): the page runs both
+  // sheets side by side, as Acrobat opens the sheet to import from as a second document
+  async parseModel({ bytes }) {
+    const model = await MPMBLoader.load(new Uint8Array(bytes), self.PDFLib);
+    const names = model.docScripts.map((s) => s.name);
+    if (names.indexOf('Startup') === -1 || !model.info.SheetVersion) throw new Error('NOT_MPMB');
+    return JSON.stringify(model);
+  },
   // a spare copy, made ready in advance: the sheet model and the PDF, MPMB not started yet
   prepare({ model, bytes, fileName }) {
     try { evalGlobal('1+1'); } catch (e) { throw new Error('EVAL_BLOCKED'); }

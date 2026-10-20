@@ -10,7 +10,7 @@
   const {
     applyClasses, applyAbilities, showIcon, refreshCompanions, refreshWildShapes, refreshLogs, kb, mpmbDialog,
     spellsSoon, pickPicture, syncCompanions, syncWildShapes, syncLogs, syncNotes, iconCache, renderCasters,
-    renderSpellList, renderContent, refreshSpells, wireContent, wireSpells, wireClassAbility, clearPageCards
+    renderSpellList, renderContent, refreshSpells, wireContent, wireSpells, wireClassAbility, clearPageCards, wireImport
   } = U;
   const APP_BUILD = 'development build';   // tools/build-single.js puts the version and build time here
 
@@ -26,7 +26,7 @@
   // Safety net: MPMB's code can get stuck in a loop (its AddToNotes does with 3+ Notes pages), and then the engine never
   // answers. A request that runs past its limit calls onStuck (the app restarts the engine from the autosave).
   // The limits are far above normal (most requests take well under a second, opening a sheet ~10 s on a phone).
-  const SLOW_OPS = { open: 300, savePdf: 300, addContent: 300, removeContent: 300, setSources: 300, setUserScript: 300, chooseSpells: 180 };
+  const SLOW_OPS = { open: 300, parseModel: 300, savePdf: 300, addContent: 300, removeContent: 300, setSources: 300, setUserScript: 300, chooseSpells: 180 };
   const LIMIT_S = 60;
   // MPMB's dialogs and questions: the worker waits (Atomics.wait) on memory shared with this page until the user has
   // answered (onAsk). Shared memory needs a cross-origin isolated page; without it dialogs keep their defaults.
@@ -1282,10 +1282,11 @@
   // what the other screen files use from here
   Object.assign(U, {
     send, lineMenu, modInput, buildIndex, apply, layoutGrids, refreshDerived, showNotice, toast, shown,
-    inlineMarkup, goTo, setBusy, idbPut, saveSoon, fmtS
+    inlineMarkup, goTo, setBusy, idbPut, saveSoon, fmtS, openSheet, askYesNo, stopAutosave: () => { clearTimeout(saveTimer); saveTimer = 0; }
   });
   wireEvents();
   wireContent();
+  wireImport();
   wireSpells();
   wireClassAbility();
   wireLooks();

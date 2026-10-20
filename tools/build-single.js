@@ -7,6 +7,8 @@ const read = (p) => fs.readFileSync(path.join(R, p), 'utf8');
 const VERSION = process.argv[2] || '0.2';
 const PDFLIB_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
 const own = [read('src/loader.js'), read('src/engine.js'), read('src/content.js'), read('src/spells.js'), read('src/appearance.js'), read('src/writer.js'), read('src/classes.js'), read('src/abilities.js'), read('src/worker.js')];
+// the engine and content code once more, for the two frames MPMB's Direct Import runs in (ui-import.js)
+const realm = [read('src/engine.js'), read('src/content.js')].join('\n;\n');
 const workerCdn = ['importScripts(' + JSON.stringify(PDFLIB_CDN) + ');'].concat(own).join('\n;\n');
 // the publisher rejects raw U+FFFD characters; they only occur inside pdf-lib's string literals
 const workerBundled = [read('node_modules/pdf-lib/dist/pdf-lib.min.js').replace(/\uFFFD/g, '\\ufffd')].concat(own).join('\n;\n');
@@ -25,10 +27,11 @@ const app = PAGE_SCRIPTS.map((f) => (f !== 'app.js' ? read('src/' + f)
   : read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Version ' + VERSION + ', built ' + BUILT) + ';'))).join('\n;\n');
 if (app.indexOf('built ' + BUILT) === -1) throw new Error('APP_BUILD marker not found in src/app.js');
 function page(worker) {
-  for (const bad of ['</script', '<!--']) if (worker.includes(bad) || app.includes(bad)) throw new Error('bundle contains ' + bad);
+  for (const bad of ['</script', '<!--']) if (worker.includes(bad) || app.includes(bad) || realm.includes(bad)) throw new Error('bundle contains ' + bad);
   let p = read('src/index.html');
   for (const f of PAGE_SCRIPTS) p = p.replace('<script src="' + f + '"></script>', '');
   p += '\n<script type="text/plain" id="mpmb-worker-src">\n' + worker + '\n</script>\n'
+    + '<script type="text/plain" id="mpmb-realm-src">\n' + realm + '\n</script>\n'
     + '<script>window.MPMB_WORKER_URL = URL.createObjectURL(new Blob([document.getElementById("mpmb-worker-src").textContent], { type: "text/javascript" }));</script>\n'
     + '<script>\n' + app + '\n</script>\n';
   // the start screen says which build this is (the same as Sheet > This sheet > App)

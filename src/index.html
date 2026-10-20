@@ -1097,6 +1097,9 @@ window.MPMBTheme = (() => {
           <button class="btn primary" id="save-pdf" type="button">Download PDF</button>
           <p class="note" id="save-pdf-status" role="status" aria-live="polite" hidden></p>
           <button class="btn" id="new-char" type="button">Start a new character</button>
+          <button class="btn" id="import-char" type="button">Import from another sheet…</button>
+          <input type="file" id="import-file" accept="application/pdf,.pdf" hidden>
+          <p class="note" id="import-status" role="status" aria-live="polite" hidden></p>
         </div>
         <div class="card">
           <h3>This sheet</h3>
@@ -1259,4 +1262,5 @@ window.MPMBTheme = (() => {
 <script src="ui-pictures.js"></script>
 <script src="ui-spells.js"></script>
 <script src="ui-content.js"></script>
+<script src="ui-import.js"></script>
 <script src="app.js"></script>
