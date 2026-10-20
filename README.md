@@ -1,16 +1,44 @@
 # Quillbound Sheets
 
-Works with MPMB character sheets (not made by MPMB). Phone-first web app that opens an MPMB 2024 character sheet PDF and runs the sheet's own scripts in a stand-in for Acrobat.
+A phone-first app for **MPMB character sheets** (MorePurpleMoreBetter's D&D 5e Character Record Sheets). Open your sheet's PDF and play or build your character on a phone or tablet. All the rules and automation come from MPMB's own scripts inside your PDF, run in a stand-in for Adobe Acrobat. Not made by MPMB.
 
-- `src/loader.js` reads the PDF (pdf-lib): scripts, fields, calculation order, templates, bookmarks.
-- `src/engine.js` the Acrobat stand-in (fields, events, app/util/doc APIs) that MPMB's code runs against.
-- `src/worker.js` runs one sheet per Web Worker (MPMB changes built-in prototypes, so it gets its own realm).
-- `src/app.js`, `src/index.html` the screens.
-- `src/selftest.js` the Elf Wizard 3 check, used by the app and `test/engine.test.js`.
+**Open the app: https://quillbound-sheets.pages.dev/**
 
-Build: `tools/build.sh` → `dist/`. Tests: put an MPMB sheet at `test/sheet.pdf`, run `node test/loader.test.js` (writes `test/model.json`), `node test/engine.test.js`, `node test/ui.test.js`.
+## What you need
 
-No MPMB code or book content is included; users bring their own sheet.
+- **Your own MPMB character sheet PDF**, from MPMB's site (https://flapkan.com). The 2024 sheets (v24) work, and so do the 2014 sheets (v14). The app contains no MPMB code and no book content.
+- **Chrome** (or another Chromium browser, such as Edge) on Android or a computer. Other browsers are not tested yet.
+
+## Using it
+
+1. Open https://quillbound-sheets.pages.dev/ and pick your sheet's PDF.
+2. Fill in and play your character. MPMB's menus and dialogs appear as the app's own panels.
+3. Your character is **saved automatically on this device** in the browser. Nothing is uploaded: your sheet and character never leave the device.
+4. **Sheet → Download PDF** writes your character into the PDF, which opens and works in Adobe Acrobat as well. Use it to keep a copy, or to move a character to another device.
+5. For automatic copies, use **Settings (⚙) → Backups** and pick a folder. The app then writes your character's PDF there regularly.
+
+## Install it as an app
+
+Installing puts Quillbound on your home screen. It then opens in its own window without the browser bar, opens your last character straight away, and **works without a connection** once it has been opened.
+
+- **Android (Chrome):** open the site, then tap the ⋮ menu → **Install app** (or **Add to home screen**). When Chrome offers it, the app also shows **Settings (⚙) → Install**.
+- **Computer (Chrome or Edge):** click the install icon at the right of the address bar, or ⋮ menu → **Cast, save and share → Install page as app**.
+- **iPhone and iPad:** not tested yet. In Safari, Share → **Add to Home Screen** may work.
+
+**Updates** arrive by themselves. When a new version is out while the app is open, a bar offers **Reload**; your character is saved first.
+
+## The one-file version
+
+Each [release](https://github.com/coolkvoor/Quillbound-sheets/releases) has `Quillbound-Sheets.html`: the whole app in one file that you can keep on a device and open in Chrome without the website. It's a **backup**: it works fully offline, but it can't let MPMB pause for your answers, so it uses "restart and replay" for MPMB's dialogs (the same result, with a short extra moment per dialog). Its characters are kept separately from the web app's; move one with Download PDF.
+
+## Developing
+
+- `npm install`, then put an MPMB sheet PDF at `test/sheet.pdf` (never commit it).
+- `npm start` builds the app and serves it at http://localhost:8123.
+- `npm test` runs the tests (they need `test/sheet.pdf`).
+- `node tools/build-single.js` builds `dist-site/` (the website, as Cloudflare Pages builds it) and `dist-single/` (the one-file version).
+
+The code: `src/loader.js` reads the PDF (pdf-lib); `src/engine.js` is the Acrobat stand-in MPMB's code runs against; `src/worker.js` runs one sheet per Web Worker (MPMB changes built-in prototypes, so it gets its own realm); `src/writer.js` and `src/appearance.js` save the character back into the PDF; `src/index.html`, `src/app.js` and `src/ui-*.js` are the screens; `src/pwa/` is the installable app (manifest, service worker, icons).
 
 ## Licence
 
