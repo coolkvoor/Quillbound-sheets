@@ -21,7 +21,7 @@ function start(port) {
     const srv = http.createServer((req, res) => {
       let p = decodeURIComponent(req.url.split('?')[0]);
       if (p === '/') p = '/index.html';
-      // SERVE_SHEET=1: the owner's sheet at /__sheet.pdf for checks in the browser (the site's CSP blocks other ports)
+      // SERVE_SHEET=1: test/sheet.pdf at /__sheet.pdf for checks in the browser (the site's CSP blocks other ports)
       if (p === '/__sheet.pdf' && process.env.SERVE_SHEET === '1') { res.writeHead(200, { 'content-type': 'application/pdf', 'cache-control': 'no-store' }); res.end(fs.readFileSync(path.join(__dirname, 'sheet.pdf'))); return; }
       const f = path.join(DIST, p);
       if (!f.startsWith(DIST) || !fs.existsSync(f)) { res.writeHead(404); res.end('not found'); return; }
