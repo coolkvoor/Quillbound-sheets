@@ -69,6 +69,15 @@
       ]));
     }
     if (c.sources.length <= 1) box.append(el('p', { cls: 'note', text: 'Add a content file to choose from more books.' }));
+    // single items: one button per kind, as in MPMB's Source Selection dialog, with how many are left out
+    const kinds = $('#excl-kinds');
+    kinds.textContent = '';
+    for (const [type, label] of EXCL_KINDS) {
+      const n = (c.excluded && c.excluded[type]) || 0;
+      const b = el('button', { cls: 'btn sm', type: 'button', 'data-excl': type, title: n ? n + ' left out' : 'All in use' }, [el('span', { text: label })]);
+      if (n) b.append(el('span', { cls: 'chip', text: n + ' out' }));
+      kinds.append(b);
+    }
     const used = inUse(c);
     $('#sources-chip').textContent = used.length + ' of ' + c.sources.length + ' in use';
     // the line in the Character card
@@ -77,8 +86,26 @@
     $('#content-hint-link').textContent = onlySRD ? 'Add books' : 'Change';
   }
 
+  // MPMB's buttons in Source Selection, in its order and with its names
+  const EXCL_KINDS = [['class', 'Classes/Archetypes'], ['race', 'Player Species'], ['background', 'Backgrounds'], ['background feature', 'Background Features'],
+    ['weapon', 'Weapons/Attacks'], ['ammo', 'Ammunition'], ['magic item', 'Magic Items'], ['armor', 'Armor'], ['spell', 'Spells/Psionics'], ['feat', 'Feats'],
+    ['companion', 'Companion Options'], ['creature', 'Creatures']];
+  // MPMB's selection dialog for one kind, answered by the user (a user change: MPMB waits, or restart and replay)
+  async function excludeOp(type) {
+    contentBusy(true);
+    const res = await U.send('excludeItems', { type });
+    contentBusy(false);
+    if (!res) { showResult('err', 'Something went wrong; see Settings → Messages from MPMB.'); return; }
+    state.content = res.content; state.saved = res.saved;
+    idbPut(state.sheetKey, { saved: res.saved, date: Date.now() });
+    renderContent();
+    const errs = (res.errors || []).map((e) => 'Script error: ' + e);
+    if (errs.length) showResult('err', 'MPMB reported a problem.', errs);
+    else if (res.changed) showResult('ok', 'Done: MPMB updated its lists.');
+    else $('#content-result').hidden = true;
+  }
   function contentBusy(on) {
-    for (const n of $$('#content-file, #paste-open, #paste-save, #paste-cancel, #content-files button, [data-source]')) n.disabled = on;
+    for (const n of $$('#content-file, #paste-open, #paste-save, #paste-cancel, #content-files button, [data-source], [data-excl]')) n.disabled = on;
     $('label[for="content-file"]').classList.toggle('is-disabled', on);
   }
   function showResult(kind, title, msgs) {
@@ -145,6 +172,10 @@
       const text = $('#paste-text').value;
       if (!text.trim()) { if (state.content && state.content.userScript) contentOp('setUserScript', { text: '' }, { removed: 'the pasted script' }); $('#paste-box').hidden = true; return; }
       contentOp('setUserScript', { text }, { working: 'Running your script…' });
+    });
+    $('#excl-kinds').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-excl]');
+      if (b && state.worker && !b.disabled) excludeOp(b.dataset.excl);
     });
     $('#source-list').addEventListener('change', (e) => {
       if (!e.target.matches('[data-source]') || !state.content) return;

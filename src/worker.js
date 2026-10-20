@@ -36,7 +36,7 @@ function ask(req) {
 }
 // requests a person started (typing, tapping, the app's own screens): their dialogs are shown to the user, with
 // the channel (waiting here) or by restart and replay (op run)
-const USER_OPS = new Set(['commit', 'toggle', 'press', 'tap', 'shootAmmo', 'addPage', 'applyClasses', 'applyAbilities', 'chooseSpells', 'removeSpells', 'tapSpellRow']);
+const USER_OPS = new Set(['commit', 'toggle', 'press', 'tap', 'shootAmmo', 'addPage', 'applyClasses', 'applyAbilities', 'chooseSpells', 'removeSpells', 'tapSpellRow', 'excludeItems']);
 const ASKS_USER = USER_OPS;
 let spareName = '';
 function changesFor(names) {
@@ -268,6 +268,8 @@ const ops = {
   removeContent({ key }) { return contentOp(() => MPMBContent.removeFile(engine, key)); },
   setUserScript({ text }) { return contentOp(() => MPMBContent.setUserScript(engine, text)); },
   setSources({ excluded }) { return contentOp(() => MPMBContent.setSources(engine, excluded)); },
+  // single items of one kind: MPMB's selection dialog for it, answered by the user, then Source Selection → Apply
+  excludeItems({ type }) { let changed = false; const r = contentOp(() => { const x = MPMBContent.excludeItems(engine, type); changed = x.changed; return x; }); r.changed = changed; return r; },
   // A tap on one of MPMB's buttons (or a bookmark) that may open menus. answers: the menu choices so far, in order.
   // If the action opens a menu nobody answered yet, it comes back as `menu` and the app asks the user, then taps again.
   // A yes/no question MPMB asks on the way comes back as `question` (answered No this time); the app asks the user and

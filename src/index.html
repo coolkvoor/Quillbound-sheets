@@ -240,6 +240,10 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .src .abbr { color: var(--muted); font-size: 0.85rem; margin-left: 4px; }
 .src .hint { grid-column: 2; }
 .src.off .n { color: var(--muted); }
+.src-sub { margin-top: 16px; }
+.excl-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
+.excl-kinds .btn { min-height: 48px; text-align: left; justify-content: space-between; gap: 6px; }
+.excl-kinds .chip { flex: none; }
 #content-hint { margin: 0; }
 
 /* MPMB buttons, menus and pop-up panels */
@@ -1091,6 +1095,9 @@ window.MPMBTheme = (() => {
           <h3>Sources <span class="chip" id="sources-chip">1 in use</span></h3>
           <p class="note">Choose which books MPMB's automation uses. Content from books you switch off doesn't appear in the lists.</p>
           <div id="source-list"></div>
+          <div class="src-group src-sub">Single items</div>
+          <p class="note">Leave out single classes, spells, feats and so on from the books in use, with MPMB's own selection dialog.</p>
+          <div class="excl-kinds" id="excl-kinds"></div>
         </div>
         <div class="card" id="pages">
           <h3>Pages <button class="btn sm" type="button" data-bookmark="Functions/Set Pages Layout" data-title="Pages and layout" data-pages="1">Change</button></h3>

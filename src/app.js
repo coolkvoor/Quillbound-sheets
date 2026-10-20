@@ -871,7 +871,7 @@
   // stopped copy. Then a fresh copy starts from the character as it was before the change and makes the change again
   // with the user's answers, and becomes the live copy. On a page that can wait (cross-origin isolated) the worker asks
   // the user directly instead (onAsk).
-  const USER_OPS = new Set(['commit', 'toggle', 'press', 'tap', 'shootAmmo', 'addPage', 'applyClasses', 'applyAbilities', 'chooseSpells', 'removeSpells', 'tapSpellRow']);
+  const USER_OPS = new Set(['commit', 'toggle', 'press', 'tap', 'shootAmmo', 'addPage', 'applyClasses', 'applyAbilities', 'chooseSpells', 'removeSpells', 'tapSpellRow', 'excludeItems']);
   // a spare copy: a worker with the sheet model and the PDF, MPMB not started until it is needed
   function makeSpare() {
     if (state.spare || !state.modelJSON || !state.worker || state.worker.asks) return;

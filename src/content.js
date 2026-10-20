@@ -46,7 +46,8 @@
     return JSON.stringify({ files: files, userScript: String(What('User Script')).length, sources: sources });
   } + ')()';
 
-  function info(engine) { return JSON.parse(engine.evalExpr(INFO)); }
+  // the content, plus how many items of each kind are excluded by hand (see excludeItems)
+  function info(engine) { const r = JSON.parse(engine.evalExpr(INFO)); r.excluded = exclusions(engine); return r; }
 
   // Run one MPMB action with prepared answers; report the alerts it raised and the new content state
   function run(engine, code, label, prepare) {
@@ -103,6 +104,29 @@
     return run(engine, 'resourceDecisionDialog();', 'content:sources', () => engine.queueDialog({ name: SOURCES_DIALOG, steps }));
   }
 
+  // Excluding single items of one kind (the buttons under "Exclude elements of the sourcebooks" in MPMB's Source
+  // Selection dialog). Those buttons open MPMB's selection dialog for the kind from inside Source Selection, which
+  // restart and replay can't do (a dialog inside a dialog). The app opens that selection dialog by itself (the user
+  // answers it, in either dialog mode), then presses Source Selection's Apply for the user, which is what the buttons
+  // and then Apply do in Acrobat: the dialog sets CurrentSources[<kind>Excl], Apply stores it and rebuilds the lists.
+  const KINDS = { class: 'classExcl', race: 'racesExcl', feat: 'featsExcl', 'magic item': 'magicitemExcl', spell: 'spellsExcl', background: 'backgrExcl', 'background feature': 'backFeaExcl', creature: 'creaExcl', companion: 'compExcl', weapon: 'weapExcl', armor: 'armorExcl', ammo: 'ammoExcl' };
+  function excludeItems(engine, type) {
+    if (!KINDS[type]) throw new Error('Unknown kind: ' + type);
+    const seq = engine.logSeq;
+    const was = engine.evalExpr('CurrentSources.toSource()');
+    engine.action('resourceSelectionDialog(' + JSON.stringify(type) + ')', 'content:exclude');
+    // stopped for the user (restart and replay): this copy is thrown away, so don't apply here
+    const changed = !engine.hasStopped && engine.evalExpr('CurrentSources.toSource()') !== was;
+    const r = changed ? run(engine, 'resourceDecisionDialog();', 'content:sources', () => engine.queueDialog({ name: SOURCES_DIALOG, steps: [] })) : { content: null };
+    const alerts = engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ title: a.title, msg: a.msg }));
+    const errors = engine.log.errors.filter((e) => e.seq > seq).map((e) => e.where + ': ' + e.msg);
+    return { alerts, errors, changed, content: r.content || info(engine) };
+  }
+  // how many items of each kind are excluded by hand (CurrentSources), for the app's Sources card
+  function exclusions(engine) {
+    return JSON.parse(engine.evalExpr('JSON.stringify((function (k) { var o = {}; for (var t in k) o[t] = CurrentSources[k[t]] ? CurrentSources[k[t]].length : 0; return o; })(' + JSON.stringify(KINDS) + '))'));
+  }
+
   // The values to keep with the sheet, and putting them back: preset before start(), then restore() after it
   function state(engine) {
     const out = {};
@@ -114,7 +138,7 @@
     return run(engine, 'resourceDecisionDialog(false, false, true);', 'content:restore', () => engine.queueDialog({ name: SOURCES_DIALOG, steps: [] }));
   }
 
-  const api = { STATE_FIELDS, LINKS, info, addFile, removeFile, setUserScript, setSources, state, restore };
+  const api = { STATE_FIELDS, LINKS, KINDS, info, addFile, removeFile, setUserScript, setSources, excludeItems, state, restore };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MPMBContent = api;
 })(typeof self !== 'undefined' ? self : this);

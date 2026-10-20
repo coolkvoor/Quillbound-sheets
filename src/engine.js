@@ -1335,6 +1335,7 @@
       // stopping for the user (see STOP): on/off; what the run stopped at (and clears it); the answers for a replay
       stopForUser(on) { stopForUser = !!on; if (on) stopped = null; },
       takeStopped() { const s = stopped; stopped = null; return s; },
+      get hasStopped() { return !!stopped; },
       setReplay(list) { replayQueue = (list || []).slice(); },
       clearQueues() { iconQueue.length = 0; iconWanted = null; fileQueue.length = 0; dialogAnswers.length = 0; menuAnswers.length = 0; lastMenu = null; alertAnswers.length = 0; lastQuestion = null; },
       runBookmark(path) {
