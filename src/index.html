@@ -1160,6 +1160,16 @@ window.MPMBTheme = (() => {
       <p class="note">Put the app on your home screen. It opens on its own, without the browser bar, and works without a connection once opened.</p>
       <button class="btn primary" id="install-app" type="button">Install the app</button>
     </div>
+    <div class="card" id="backup-card">
+      <h3>Backups</h3>
+      <p class="note" id="storage-kept"></p>
+      <p class="note" id="backup-state" role="status" aria-live="polite"></p>
+      <button class="btn primary" id="backup-pick" type="button">Choose a backup folder</button>
+      <button class="btn" id="backup-allow" type="button" hidden>Allow backups again</button>
+      <button class="btn" id="backup-now" type="button" hidden>Back up now</button>
+      <button class="btn" id="backup-stop" type="button" hidden>Stop backing up</button>
+      <p class="note">A backup is the character written into your sheet's PDF, as Download PDF makes it: open it in the app (Open another sheet) or in Acrobat.</p>
+    </div>
     <div class="card">
       <h3>About</h3>
       <dl class="kv" id="sheet-facts"></dl>
@@ -1295,4 +1305,5 @@ window.MPMBTheme = (() => {
 <script src="ui-spells.js"></script>
 <script src="ui-content.js"></script>
 <script src="ui-import.js"></script>
+<script src="ui-backup.js"></script>
 <script src="app.js"></script>

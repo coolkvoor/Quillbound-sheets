@@ -11,7 +11,8 @@
   // MPMB's own icons and pictures added in Acrobat come as a one-page PDF (worker iconImage), drawn with pdf.js
   const iconCache = new Map();   // icon key -> object URL ('' when it can't be shown)
   let pdfjsP = null;
-  const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  // the site serves pdf.js itself (MPMB_PDFJS, build-single.js); the other builds load it from cdnjs
+  const PDFJS = window.MPMB_PDFJS ? new URL(window.MPMB_PDFJS, location.href).href : 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
   // The downloadable file carries pdf.js itself (build-single.js), so pictures show without a connection
   function bundledPdfjs() {
     const lib = document.getElementById('mpmb-pdfjs-src'), wsrc = document.getElementById('mpmb-pdfjs-worker-src');

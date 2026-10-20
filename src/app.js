@@ -175,6 +175,7 @@
       if (stored && stored.saved && JSON.stringify(stored.saved) !== JSON.stringify(res.saved)) idbPut(state.sheetKey, { saved: res.saved, date: Date.now() });
       if (remember) idbPut('last', { name, blob: new Blob([state.bytes], { type: 'application/pdf' }), date: Date.now() });
       await showSheet();
+      U.backupOnOpen();
       // without a page that can wait (cross-origin isolated), MPMB's dialogs work by restart and replay: get the sheet
       // model for fresh copies and make a spare one ready in the background
       if (!w.asks) w.call('modelJSON', {}).then((m) => { if (state.worker === w) { state.modelJSON = m; setTimeout(makeSpare, 1500); } }, () => {});
@@ -810,6 +811,7 @@
       await idbPut(state.charKey, { state: st, date: Date.now(), name });
       state.savedAt = Date.now();
       setSaved('saved');
+      U.backupAfterSave();
     } catch (e) { setSaved('error'); }
     finally { saving = false; if (saveAgain) { saveAgain = false; saveSoon(); } }
   }
@@ -832,20 +834,19 @@
     setBusy(1);
     try {
       const res = await state.worker.call('savePdf', {});
-      const who = shown(state.snap.get('PC Name')).trim();
-      const base = state.fileName.replace(/\.pdf$/i, '');
-      const filename = ((who ? who + ' - ' : '') + base).replace(/[\\/:*?"<>|]+/g, ' ').slice(0, 180) + '.pdf';
+      const filename = U.pdfFileName();
       const blob = new Blob([res.bytes], { type: 'application/pdf' });
       // in a Claude artifact the viewer confirms the save; elsewhere a normal download
       const dl = window.claude && window.claude.use ? await window.claude.use('downloads').catch(() => null) : null;
       if (dl) {
-        try { await dl.save({ filename, data: blob }); status.textContent = 'Saved ' + filename + ' (' + kb(blob.size) + ').'; }
+        try { await dl.save({ filename, data: blob }); status.textContent = 'Saved ' + filename + ' (' + kb(blob.size) + ').'; U.noteBackup('download', filename); }
         catch (e) { status.textContent = e && e.code === 'declined' ? 'Download cancelled.' : 'The download didn’t work here (' + ((e && e.code) || e) + ').'; }
       } else {
         const a = el('a', { href: URL.createObjectURL(blob), download: filename });
         document.body.append(a); a.click(); a.remove();
         setTimeout(() => URL.revokeObjectURL(a.href), 60000);
         status.textContent = 'Downloaded ' + filename + ' (' + kb(blob.size) + ', written in ' + fmtS(res.ms) + ').';
+        U.noteBackup('download', filename);
       }
       if (res.report.skipped.length) status.textContent += ' Some parts couldn’t be written: ' + res.report.skipped.slice(0, 3).join('; ') + '.';
     } catch (e) {
@@ -1014,7 +1015,7 @@
       openSheet(state.bytes.slice(0), state.fileName, false);
     });
     $('#open-other').addEventListener('click', () => { $('#sheet').hidden = true; $('#start').hidden = false; $('#loading').hidden = true; $('#start-actions').hidden = false; initStart(); });
-    $('#settings-open').addEventListener('click', () => { if (state.info) renderFacts(); renderLog(); $('#settings').showModal(); });
+    $('#settings-open').addEventListener('click', () => { if (state.info) renderFacts(); renderLog(); U.renderBackup(); $('#settings').showModal(); });
     $('#settings-close').addEventListener('click', () => $('#settings').close());
   }
 
@@ -1353,7 +1354,7 @@
   // what the other screen files use from here
   Object.assign(U, {
     send, lineMenu, modInput, buildIndex, apply, layoutGrids, refreshDerived, showNotice, toast, shown,
-    inlineMarkup, goTo, setBusy, idbPut, saveSoon, fmtS, openSheet, askYesNo, stopAutosave: () => { clearTimeout(saveTimer); saveTimer = 0; }
+    inlineMarkup, goTo, setBusy, idbGet, idbPut, idbDel, saveSoon, fmtS, openSheet, askYesNo, stopAutosave: () => { clearTimeout(saveTimer); saveTimer = 0; }
   });
   wireEvents();
   wireContent();
@@ -1363,5 +1364,6 @@
   wireLooks();
   wireDialogMode();
   wireInstall();
+  U.wireBackup();
   initStart(true);
 })();

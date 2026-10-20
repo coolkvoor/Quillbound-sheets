@@ -4,6 +4,7 @@
 // fixed versions: kept here once fetched. A response the site's login (Cloudflare Access) answers with a redirect
 // goes back to the browser as it is, and is never kept.
 // The kept page keeps its COOP/COEP headers, so offline the page is still cross-origin isolated (MPMB waits for dialogs).
+// The build adds pdf.js and the font files to OWN (build-single.js).
 const CACHE = 'mpmb-app-1';
 const OWN = ['./', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon.svg', 'apple-touch-icon.png'];
 const NETWORK_WAIT_MS = 6000;

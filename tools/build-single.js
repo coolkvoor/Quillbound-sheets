@@ -61,9 +61,48 @@ const PWA = ['manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-
 const pwaHead = '<link rel="manifest" href="manifest.webmanifest" crossorigin="use-credentials">'
   + '<meta name="theme-color" content="#141114"><link rel="icon" href="icon.svg" type="image/svg+xml">'
   + '<link rel="apple-touch-icon" href="apple-touch-icon.png"><script>window.MPMB_SW = "sw.js";</script>';
-const sitePage = full.replace('</head>', pwaHead + '</head>');
-if (sitePage === full) throw new Error('no </head> in the full page');
+// The site contacts no other address: pdf.js and the two fonts (SIL Open Font License, from the @fontsource packages)
+// are served from the site itself, and the security headers below only allow the site's own address.
+fs.mkdirSync(path.join(site, 'pdfjs'), { recursive: true });
+fs.mkdirSync(path.join(site, 'fonts'), { recursive: true });
+fs.copyFileSync(path.join(R, 'node_modules/pdfjs-dist/build/pdf.min.js'), path.join(site, 'pdfjs/pdf.min.js'));
+fs.copyFileSync(path.join(R, 'node_modules/pdfjs-dist/build/pdf.worker.min.js'), path.join(site, 'pdfjs/pdf.worker.min.js'));
+const FONTS = [['alegreya-sc', ['500', '700']], ['alegreya-sans', ['400', '400-italic', '500', '700']]];
+const fontFiles = [];
+let fontCss = '';
+for (const [pkg, styles] of FONTS) {
+  for (const s of styles) {
+    // the latin and latin-ext faces of fontsource's CSS (the sheet's text), pointing at the copied woff2 files
+    for (const face of read('node_modules/@fontsource/' + pkg + '/' + s + '.css').split('@font-face').slice(1)) {
+      const m = face.match(/url\(\.\/files\/([\w-]+-latin(?:-ext)?-\d+-(?:normal|italic)\.woff2)\)/);
+      if (!m) continue;
+      fs.copyFileSync(path.join(R, 'node_modules/@fontsource', pkg, 'files', m[1]), path.join(site, 'fonts', m[1]));
+      fontFiles.push('fonts/' + m[1]);
+      fontCss += '@font-face' + face.replace(/\/\*[^*]*\*\//g, '').replace(/src:[^;]+;/, "src: url(fonts/" + m[1] + ") format('woff2');").trim() + '\n';
+    }
+  }
+}
+if (fontFiles.length < 8) throw new Error('fonts not found in node_modules/@fontsource (npm install)');
+const GOOGLE = /<link rel="preconnect" href="https:\/\/fonts\.googleapis\.com">\s*<link rel="preconnect" href="https:\/\/fonts\.gstatic\.com" crossorigin>\s*<link rel="stylesheet" href="https:\/\/fonts\.googleapis\.com\/css2[^"]*">/;
+if (!GOOGLE.test(full)) throw new Error('Google fonts links not found in src/index.html');
+const sitePage = full.replace(GOOGLE, '<style>' + fontCss + '</style>')
+  .replace('</head>', pwaHead + '<script>window.MPMB_PDFJS = "pdfjs/";</script></head>');
+if (sitePage.indexOf('MPMB_PDFJS') === -1) throw new Error('no </head> in the full page');
+if (/googleapis|gstatic|cdnjs/.test(sitePage.replace(/<script type="text\/plain"[\s\S]*?<\/script>/g, '').replace(/<script>\n[\s\S]*?\n<\/script>/g, ''))) throw new Error('the site page still links another site');
 fs.writeFileSync(path.join(site, 'index.html'), sitePage);
 for (const f of PWA) fs.copyFileSync(path.join(R, 'src', 'pwa', f), path.join(site, f));
-fs.writeFileSync(path.join(site, '_headers'), '/*\n  Cross-Origin-Opener-Policy: same-origin\n  Cross-Origin-Embedder-Policy: credentialless\n  Cache-Control: no-cache\n');
+// the service worker keeps these for offline use from the start (pictures and fonts without a connection)
+const sw = read('src/pwa/sw.js');
+const OWN_MARK = "'apple-touch-icon.png'];";
+if (sw.indexOf(OWN_MARK) === -1) throw new Error('OWN list not found in src/pwa/sw.js');
+fs.writeFileSync(path.join(site, 'sw.js'), sw.replace(OWN_MARK, "'apple-touch-icon.png', " + ['pdfjs/pdf.min.js', 'pdfjs/pdf.worker.min.js'].concat(fontFiles).map((f) => JSON.stringify(f)).join(', ') + '];'));
+// Content-Security-Policy: only this site's own address. MPMB's scripts need eval ('unsafe-eval'), the page's code is
+// inline, the engine worker starts from a blob: URL (data: as a fallback), pictures are blob:/data: images.
+const CSP = ["default-src 'self'", "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data:", "worker-src 'self' blob: data:",
+  "style-src 'self' 'unsafe-inline'", "img-src 'self' blob: data:", "font-src 'self'", "connect-src 'self' blob: data:",
+  "frame-src 'self'", "manifest-src 'self'", "object-src 'none'", "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'"].join('; ');
+const HEADERS = ['Cross-Origin-Opener-Policy: same-origin', 'Cross-Origin-Embedder-Policy: credentialless', 'Cache-Control: no-cache',
+  'Content-Security-Policy: ' + CSP, 'X-Content-Type-Options: nosniff', 'Referrer-Policy: no-referrer', 'X-Frame-Options: DENY',
+  'Cross-Origin-Resource-Policy: same-origin', 'Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()'];
+fs.writeFileSync(path.join(site, '_headers'), '/*\n' + HEADERS.map((h) => '  ' + h + '\n').join(''));
 console.log('dist-site/ for its own web address (index.html + _headers + the installable app files)');
