@@ -92,6 +92,15 @@ check('companion modifiers shown', shown(e, C + 'BlueText.Comp.Use.Skills.Acr.Bo
 const ste = Number(val(e, C + 'Comp.Use.Skills.Ste.Mod'));
 e.commit(C + 'BlueText.Comp.Use.Skills.Ste.Bonus', '3');
 check('companion Stealth modifier', Number(val(e, C + 'Comp.Use.Skills.Ste.Mod')) === ste + 3, ste + ' → ' + val(e, C + 'Comp.Use.Skills.Ste.Mod'));
+// the 7th ability score (Set Pages Layout → 1st page options → Ability Scores → Honor)
+m = tap(e, ['Functions', 'Set Pages Layout']);
+const honor = find(m, /scores#honor/);
+check('Pages menu offers Honor', !!honor, honor && honor.ret);
+tap(e, ['Functions', 'Set Pages Layout'], honor.ret);
+e.commit('HoS', '14');
+e.commit('HoS ST Bonus', '1');
+check('Honor shown with its modifier and save', shown(e, 'HoS') && val(e, 'HoSRememberState') === 'Honor' && val(e, 'HoS Mod') === '2' && Number(val(e, 'HoS ST Mod')) === 3,
+  [shown(e, 'HoS'), val(e, 'HoSRememberState'), val(e, 'HoS Mod'), val(e, 'HoS ST Mod')].join(' '));
 check('no errors', e.log.errors.filter((x) => !/countDecimals/.test(x.msg)).length === 0, JSON.stringify(e.log.errors.slice(-2)));
 
 // save and restore
@@ -100,6 +109,7 @@ const np = notesPages(r);
 check('restore: two notes pages and their text', np.length === 2 && val(r, np[0] + 'Notes.Left') === 'First page notes', np.join(' '));
 check('restore: modifiers, weights, companion', shown(r, 'AC Armor Weight') && val(r, 'AC Armor Weight') === '20' && val(r, C + 'Comp.Use.Combat.Init.Bonus') === '2'
   && Number(val(r, C + 'Comp.Use.Skills.Ste.Mod')) === ste + 3 && val(r, 'MoreProficiencies') === val(e, 'MoreProficiencies'));
+check('restore: Honor', shown(r, 'HoS') && val(r, 'HoS') === '14' && val(r, 'HoS ST Mod') === val(e, 'HoS ST Mod'), [shown(r, 'HoS'), val(r, 'HoS'), val(r, 'HoS ST Mod')].join(' '));
 
 console.log(failed ? '\n' + failed + ' FAILED' : '\nall passed');
 process.exit(failed ? 1 : 0);

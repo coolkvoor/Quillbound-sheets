@@ -257,6 +257,17 @@
         advDis(k + ' ST', long + ' save'),
       ]));
     }
+    // MPMB's optional 7th ability, Honor or Sanity (Set Pages Layout → 1st page options → Ability Scores); shown while MPMB shows it
+    box.append(el('div', { cls: 'abi', 'data-vis': 'HoS', hidden: '' }, [
+      el('span', { cls: 'k up', 'data-out': 'HoSRememberState', text: '' }),
+      el('span', { cls: 'mod num', 'data-out': 'HoS Mod', text: '–' }),
+      el('input', { 'data-f': 'HoS', id: 'f-abi-HoS', inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Honor or Sanity score', cls: 'num' }),
+      el('div', { cls: 'save' }, [
+        el('button', { cls: 'dot sm', type: 'button', 'data-toggle': 'HoS ST Prof', 'aria-pressed': 'false', 'aria-label': 'Honor or Sanity saving throw proficiency' }),
+        el('span', { text: 'Save ' }), el('b', { cls: 'num', 'data-out': 'HoS ST Mod', text: '–' }),
+      ]),
+      advDis('HoS ST', 'Honor or Sanity save'),
+    ]));
   }
   function buildSkills() {
     const box = $('#skills');
@@ -336,6 +347,11 @@
     group('Weight', [['AC Armor Weight', 'Armor'], ['AC Shield Weight', 'Shield']]);
     group('General', [['Proficiency Bonus Modifier', 'Proficiency'], ['All Skills Bonus', 'All skills'], ['All ST Bonus', 'All saves'], ['Passive Perception Bonus', 'Passive Perc.'], ['Spell DC 1 Bonus', 'Spell DC']]);
     group('Saving throws', ABILITIES.map(([k, long]) => [k + ' ST Bonus', long]));
+    // the Honor / Sanity save bonus, while MPMB shows it
+    const hos = modInput('HoS ST Bonus', 'Honor / Sanity');
+    hos.dataset.vis = 'HoS ST Bonus';
+    hos.hidden = true;
+    box.lastChild.querySelector('.mods-grid').append(hos);
     group('Skills', SKILLS.map(([f, name]) => [f + ' Bonus', name]));
   }
   function buildLimited() {
