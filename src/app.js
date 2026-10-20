@@ -1008,6 +1008,8 @@
       openSheet(state.bytes.slice(0), state.fileName, false);
     });
     $('#open-other').addEventListener('click', () => { $('#sheet').hidden = true; $('#start').hidden = false; $('#loading').hidden = true; $('#start-actions').hidden = false; initStart(); });
+    $('#settings-open').addEventListener('click', () => { if (state.info) renderFacts(); renderLog(); $('#settings').showModal(); });
+    $('#settings-close').addEventListener('click', () => $('#settings').close());
   }
 
   // ---------------------------------------------------------------- tabs that follow the scroll
@@ -1215,6 +1217,7 @@
   function renderFacts() {
     const i = state.info, s = state.stats;
     $('#sheet-ver').textContent = 'MPMB v' + i.version + ' · ' + i.type;
+    $('#sheet-file').textContent = state.fileName + ' (' + (s.bytes / 1048576).toFixed(1) + ' MB), MPMB v' + i.version + ', ' + i.type + '. App and sheet details are under Settings (⚙ at the top).';
     const dl = $('#sheet-facts');
     dl.textContent = '';
     const add = (k, v) => { dl.append(el('dt', { text: k }), el('dd', { text: v })); };

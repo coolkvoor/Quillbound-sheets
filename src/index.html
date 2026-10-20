@@ -225,6 +225,8 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .file-row .fname { font-weight: 700; overflow-wrap: anywhere; }
 .file-row > div:first-child { min-width: 0; }
 .btn.sm { min-height: 40px; padding: 6px 12px; font-size: 0.92rem; flex: none; }
+.btn.icon-btn { min-width: 44px; min-height: 44px; padding: 0; display: inline-grid; place-items: center; }
+.settings-body { gap: 14px; }
 .btn.danger { color: var(--bad); border-color: currentColor; }
 .result { border-left: 3px solid var(--line); padding: 4px 0 4px 10px; display: grid; gap: 4px; font-size: 0.95rem; }
 .result.ok { border-color: var(--good); }
@@ -712,6 +714,7 @@ window.MPMBTheme = (() => {
     </div>
     <span class="chip" id="save-chip" title="Saved on this device">Saved</span>
     <span class="busy" id="busy" aria-hidden="true"></span>
+    <button class="btn sm icon-btn" id="settings-open" type="button" aria-label="Settings" title="Settings" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <span hidden data-out="Color.Theme"></span><span hidden data-out="Color.DragonHeads"></span>
   </header>
 
@@ -1048,6 +1051,22 @@ window.MPMBTheme = (() => {
     <section class="band" id="sheetinfo" aria-labelledby="t-sheet">
       <h2 class="band-title" id="t-sheet">Sheet <small id="sheet-ver"></small></h2>
       <div class="grid">
+        <div class="card">
+          <h3>Character</h3>
+          <p class="note" id="char-saved">Changes are saved on this device as you make them.</p>
+          <p class="note">The character is kept with this sheet file in this browser. To keep it anywhere else, or open it in Acrobat, download the sheet with the character written into it.</p>
+          <button class="btn primary" id="save-pdf" type="button">Download PDF</button>
+          <p class="note" id="save-pdf-status" role="status" aria-live="polite" hidden></p>
+          <button class="btn" id="new-char" type="button">Start a new character</button>
+          <button class="btn" id="import-char" type="button">Import from another sheet…</button>
+          <input type="file" id="import-file" accept="application/pdf,.pdf" hidden>
+          <p class="note" id="import-status" role="status" aria-live="polite" hidden></p>
+        </div>
+        <div class="card">
+          <h3>This sheet</h3>
+          <p class="note" id="sheet-file"></p>
+          <button class="btn" id="open-other" type="button">Open another sheet</button>
+        </div>
         <div class="card" id="content">
           <h3>Add-on content <span class="chip" id="content-chip">SRD only</span></h3>
           <p class="note">MPMB add-on scripts add classes, species, spells and more from books you own, or your own homebrew. They stay with this sheet on this device.</p>
@@ -1077,11 +1096,6 @@ window.MPMBTheme = (() => {
           <ul class="list" id="page-list"></ul>
           <button class="btn" id="notes-clear-open" type="button" hidden>Clear out Notes pages…</button>
         </div>
-        <div class="card" id="look">
-          <h3>Look</h3>
-          <p class="note">The app's look, after MPMB's two sheet designs. Colorful takes the sheet's colour (Set Pages Layout → colour). Kept on this device.</p>
-          <div class="looks" role="radiogroup" aria-label="Look" id="look-list"></div>
-        </div>
         <div class="card" id="mpmb-settings">
           <h3>Sheet settings</h3>
           <p class="note">MPMB's own settings dialogs, from its Functions menu. Text options change fonts, font size and lines in the PDF (as Acrobat shows it); the app keeps its own look.</p>
@@ -1092,27 +1106,6 @@ window.MPMBTheme = (() => {
             <button class="btn" type="button" data-bookmark="Functions|Auto/Manual" data-title="Automation">Automation on/off</button>
             <button class="btn" type="button" data-bookmark="Functions/Adventurers League" data-title="Adventurers League" data-pages="1">Adventurers League</button>
           </div>
-        </div>
-        <div class="card">
-          <h3>Character</h3>
-          <p class="note" id="char-saved">Changes are saved on this device as you make them.</p>
-          <p class="note">The character is kept with this sheet file in this browser. To keep it anywhere else, or open it in Acrobat, download the sheet with the character written into it.</p>
-          <button class="btn primary" id="save-pdf" type="button">Download PDF</button>
-          <p class="note" id="save-pdf-status" role="status" aria-live="polite" hidden></p>
-          <button class="btn" id="new-char" type="button">Start a new character</button>
-          <button class="btn" id="import-char" type="button">Import from another sheet…</button>
-          <input type="file" id="import-file" accept="application/pdf,.pdf" hidden>
-          <p class="note" id="import-status" role="status" aria-live="polite" hidden></p>
-        </div>
-        <div class="card">
-          <h3>This sheet</h3>
-          <dl class="kv" id="sheet-facts"></dl>
-          <button class="btn" id="open-other" type="button">Open another sheet</button>
-        </div>
-        <div class="card">
-          <h3>Messages from MPMB <span class="chip" id="msg-count">0</span></h3>
-          <p class="note">MPMB's pop-up questions don't show yet; this list shows what it asked and how the app answered.</p>
-          <div class="log" id="msgs"></div>
         </div>
       </div>
     </section>
@@ -1141,6 +1134,27 @@ window.MPMBTheme = (() => {
     <button class="btn sm" id="menu-close" type="button">Close</button>
   </div>
   <ul class="menu-list" id="menu-list"></ul>
+</dialog>
+
+<!-- The app's own settings (top bar gear): look, about, MPMB's message log. The Sheet tab keeps what belongs to the sheet. -->
+<dialog class="panel full" id="settings" aria-labelledby="settings-title">
+  <div class="panel-head"><h3 id="settings-title">Settings</h3><button class="btn sm" id="settings-close" type="button">Close</button></div>
+  <div class="panel-body settings-body">
+    <div class="card" id="look">
+      <h3>Look</h3>
+      <p class="note">The app's look, after MPMB's two sheet designs. Colorful takes the sheet's colour (Sheet → Pages → Change → Color Theme options). Kept on this device.</p>
+      <div class="looks" role="radiogroup" aria-label="Look" id="look-list"></div>
+    </div>
+    <div class="card">
+      <h3>About</h3>
+      <dl class="kv" id="sheet-facts"></dl>
+    </div>
+    <div class="card">
+      <h3>Messages from MPMB <span class="chip" id="msg-count">0</span></h3>
+      <p class="note">What MPMB said, asked and showed, and any errors in its scripts, newest first.</p>
+      <div class="log" id="msgs"></div>
+    </div>
+  </div>
 </dialog>
 
 <!-- MPMB's messages after a tap -->

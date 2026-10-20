@@ -32,7 +32,7 @@ const DEVICES = {
       await ctx.route('https://fonts.googleapis.com/**', (r) => r.abort());
       await ctx.route('https://fonts.gstatic.com/**', (r) => r.abort());
     }
-    // LOOK=colorful-white|colorful-dark|pf-white|pf-dark|pf-black picks a look (Sheet tab); default: match the sheet
+    // LOOK=colorful-white|colorful-dark|pf-white|pf-dark|pf-black picks a look (Settings); default: match the sheet
     if (process.env.LOOK) await ctx.addInitScript((c) => { try { localStorage.setItem('mpmb-theme', JSON.stringify({ choice: c })); } catch (e) { /* default look */ } }, process.env.LOOK);
     const page = await ctx.newPage();
     const logs = [];
