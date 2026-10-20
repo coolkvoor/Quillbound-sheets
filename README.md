@@ -1,6 +1,6 @@
-# MPMB Sheet App
+# Quillbound
 
-Phone-first web app that opens an MPMB 2024 character sheet PDF and runs the sheet's own scripts in a stand-in for Acrobat.
+Works with MPMB character sheets (not made by MPMB). Phone-first web app that opens an MPMB 2024 character sheet PDF and runs the sheet's own scripts in a stand-in for Acrobat.
 
 - `src/loader.js` reads the PDF (pdf-lib): scripts, fields, calculation order, templates, bookmarks.
 - `src/engine.js` the Acrobat stand-in (fields, events, app/util/doc APIs) that MPMB's code runs against.

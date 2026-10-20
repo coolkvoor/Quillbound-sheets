@@ -1,4 +1,4 @@
-/* MPMB Sheet App — what the screen files share: helpers, the app's lists and its state, in window.MPMBUI.
+/* Quillbound — what the screen files share: helpers, the app's lists and its state, in window.MPMBUI.
    Loaded first; then ui-*.js (each adds its functions to MPMBUI), then app.js, which starts the app. */
 (() => {
   'use strict';

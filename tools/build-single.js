@@ -1,6 +1,6 @@
 // Builds one self-contained HTML page (the engine worker starts from a blob URL).
 // dist-single/index.html: the artifact page (no skeleton); pdf-lib comes from cdnjs, so the page holds only this app's code.
-// dist-single/MPMB-Sheet-App.html: the complete file to download, with pdf-lib bundled so it needs no network for the worker.
+// dist-single/Quillbound.html: the complete file to download, with pdf-lib bundled so it needs no network for the worker.
 const fs = require('fs'), path = require('path');
 const R = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(R, p), 'utf8');
@@ -24,7 +24,7 @@ const BUILT = (() => {
 const PAGE_SCRIPTS = Array.from(read('src/index.html').matchAll(/<script src="([\w.-]+\.js)"><\/script>/g), (m) => m[1]);
 if (PAGE_SCRIPTS[PAGE_SCRIPTS.length - 1] !== 'app.js') throw new Error('src/index.html must load app.js last');
 const app = PAGE_SCRIPTS.map((f) => (f !== 'app.js' ? read('src/' + f)
-  : read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Version ' + VERSION + ', built ' + BUILT) + ';'))).join('\n;\n');
+  : read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Quillbound ' + VERSION + ', built ' + BUILT) + ';'))).join('\n;\n');
 if (app.indexOf('built ' + BUILT) === -1) throw new Error('APP_BUILD marker not found in src/app.js');
 // pdf.js for the downloadable file (pictures without a connection); the other builds load it from cdnjs
 const pdfjsLib = read('node_modules/pdfjs-dist/build/pdf.min.js'), pdfjsWorker = read('node_modules/pdfjs-dist/build/pdf.worker.min.js');
@@ -49,8 +49,8 @@ fs.writeFileSync(path.join(out, 'index.html'), artifact);
 const fullPage = (withPdfjs) => '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
   + '<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style></head><body>\n' + page(workerBundled, withPdfjs) + '\n</body></html>\n';
 const file = fullPage(true), full = fullPage(false);
-fs.writeFileSync(path.join(out, 'MPMB-Sheet-App.html'), file);
-console.log('dist-single/index.html', (artifact.length / 1024).toFixed(0) + ' KB (pdf-lib from cdnjs);', 'MPMB-Sheet-App.html', (file.length / 1024).toFixed(0) + ' KB (pdf-lib and pdf.js bundled)');
+fs.writeFileSync(path.join(out, 'Quillbound.html'), file);
+console.log('dist-single/index.html', (artifact.length / 1024).toFixed(0) + ' KB (pdf-lib from cdnjs);', 'Quillbound.html', (file.length / 1024).toFixed(0) + ' KB (pdf-lib and pdf.js bundled)');
 // dist-site/: the app for its own web address (Cloudflare Pages): the complete page, plus the headers that make it
 // cross-origin isolated, so MPMB's dialogs wait for the user (engine worker + Atomics.wait)
 const site = path.join(R, 'dist-site');
@@ -91,7 +91,7 @@ if (sitePage.indexOf('MPMB_PDFJS') === -1) throw new Error('no </head> in the fu
 if (/googleapis|gstatic|cdnjs/.test(sitePage.replace(/<script type="text\/plain"[\s\S]*?<\/script>/g, '').replace(/<script>\n[\s\S]*?\n<\/script>/g, ''))) throw new Error('the site page still links another site');
 fs.writeFileSync(path.join(site, 'index.html'), sitePage);
 // the build the site serves now: an app left open checks it and offers to reload when it's newer (wireUpdates in app.js)
-fs.writeFileSync(path.join(site, 'version.json'), JSON.stringify({ build: 'Version ' + VERSION + ', built ' + BUILT }) + '\n');
+fs.writeFileSync(path.join(site, 'version.json'), JSON.stringify({ build: 'Quillbound ' + VERSION + ', built ' + BUILT }) + '\n');
 for (const f of PWA) fs.copyFileSync(path.join(R, 'src', 'pwa', f), path.join(site, f));
 // the service worker keeps these for offline use from the start (pictures and fonts without a connection)
 const sw = read('src/pwa/sw.js');

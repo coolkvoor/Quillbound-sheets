@@ -1,4 +1,4 @@
-/* MPMB Sheet App — MPMB's dialogs (app.execDialog), drawn from their description. Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
+/* Quillbound — MPMB's dialogs (app.execDialog), drawn from their description. Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
 (() => {
   'use strict';
   const U = window.MPMBUI;

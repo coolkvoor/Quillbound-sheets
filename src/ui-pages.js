@@ -1,4 +1,4 @@
-/* MPMB Sheet App — the extra pages: companion, wild shape, notes and adventure logsheet pages. Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
+/* Quillbound — the extra pages: companion, wild shape, notes and adventure logsheet pages. Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
 (() => {
   'use strict';
   const U = window.MPMBUI;

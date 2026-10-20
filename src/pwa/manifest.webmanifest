@@ -1,7 +1,7 @@
 {
-  "name": "MPMB Sheet App",
-  "short_name": "MPMB Sheet",
-  "description": "Play and build D&D characters on your phone with your own MPMB character sheet PDF.",
+  "name": "Quillbound",
+  "short_name": "Quillbound",
+  "description": "Play and build characters on your phone or tablet with your own MPMB character sheet PDF. Works with MPMB character sheets.",
   "id": "./",
   "start_url": "./",
   "scope": "./",
