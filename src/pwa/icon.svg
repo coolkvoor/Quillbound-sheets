@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- The app's icon: a plain d20 outline on the ink panel colour with the default sheet purple and MPMB's red.
+       Full-bleed square so it also works as a maskable icon (the drawing stays inside the 80% safe circle). -->
+  <rect width="512" height="512" fill="#141114"/>
+  <circle cx="256" cy="256" r="172" fill="#642481"/>
+  <g fill="none" stroke="#ffffff" stroke-width="14" stroke-linejoin="round">
+    <polygon points="256,124 370,190 370,322 256,388 142,322 142,190"/>
+    <polygon points="256,176 330,302 182,302"/>
+    <path d="M256 124 L256 176 M370 190 L330 302 M142 190 L182 302 M370 322 L330 302 M142 322 L182 302 M256 388 L330 302 M256 388 L182 302 M142 190 L256 176 M370 190 L256 176"/>
+  </g>
+  <circle cx="256" cy="256" r="172" fill="none" stroke="#bd1822" stroke-width="10"/>
+</svg>

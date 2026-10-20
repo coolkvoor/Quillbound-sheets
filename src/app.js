@@ -31,7 +31,11 @@
   // MPMB's dialogs and questions: the worker waits (Atomics.wait) on memory shared with this page until the user has
   // answered (onAsk). Shared memory needs a cross-origin isolated page; without it dialogs keep their defaults.
   const ASK_BYTES = 4 * 1048576;
-  const canAsk = () => !!(self.crossOriginIsolated && typeof SharedArrayBuffer === 'function' && typeof Atomics === 'object');
+  const isolated = () => !!(self.crossOriginIsolated && typeof SharedArrayBuffer === 'function' && typeof Atomics === 'object');
+  // Settings → MPMB's dialogs: "replay" makes the app use restart and replay even where MPMB could wait (the backup)
+  const DLG_KEY = 'mpmb-dialogs';
+  const dialogPref = () => { try { return localStorage.getItem(DLG_KEY) === 'replay' ? 'replay' : 'wait'; } catch (e) { return 'wait'; } };
+  const canAsk = () => isolated() && dialogPref() !== 'replay';
   function connect() {
     const w = newWorker();
     const pending = new Map();
@@ -119,13 +123,15 @@
     if (/Failed to parse|Invalid PDF|No PDF header/i.test(m)) return 'This file couldn’t be read as a PDF.';
     return 'Something went wrong while opening the sheet: ' + m;
   }
-  async function initStart() {
+  // first: the app has just started. Installed (standalone), it opens the last sheet straight away.
+  async function initStart(first) {
     const last = await idbGet('last');
     const btn = $('#reopen');
     if (last && last.blob) {
       btn.textContent = 'Reopen ' + last.name;
       btn.hidden = false;
       btn.onclick = async () => { const buf = await last.blob.arrayBuffer(); openSheet(buf, last.name, false); };
+      if (first && standalone()) btn.onclick();
     }
     // onchange, not addEventListener: initStart runs again for "Open another sheet"
     $('#file').onchange = async (e) => {
@@ -1222,7 +1228,8 @@
     dl.textContent = '';
     const add = (k, v) => { dl.append(el('dt', { text: k }), el('dd', { text: v })); };
     add('App', APP_BUILD);
-    add('Dialogs', state.worker && state.worker.asks ? 'Shown to you; MPMB waits for your answer' : 'Shown to you; MPMB makes the change again with your answer (restart and replay)');
+    add('Dialogs', state.worker && state.worker.asks ? 'Shown to you; MPMB waits for your answer' : 'Shown to you; MPMB makes the change again with your answer (restart and replay' + (isolated() ? ', chosen under MPMB’s dialogs' : '') + ')');
+    add('Installed', standalone() ? 'Yes, running as the app' : navigator.serviceWorker && navigator.serviceWorker.controller ? 'No, but kept for offline use' : 'No');
     add('File', state.fileName + ' (' + (s.bytes / 1048576).toFixed(1) + ' MB)');
     add('Sheet', 'MPMB v' + i.version + ', ' + i.type);
     add('Contents', s.pages + ' pages, ' + s.templates + ' extra page templates, ' + s.fields.toLocaleString('en') + ' fields, ' + s.scripts + ' scripts');
@@ -1242,6 +1249,44 @@
     for (const it of items.slice(0, 60)) box.append(el('div', { cls: it.cls, text: it.text }));
     if (!items.length) box.append(el('div', { cls: 'muted', text: 'Nothing yet.' }));
     $('#msg-count').textContent = String(items.length);
+  }
+  // ---------------------------------------------------------------- MPMB's dialogs (Settings): wait, or restart and replay
+  function wireDialogMode() {
+    const box = $('#dialog-mode');
+    if (!box) return;
+    const show = () => {
+      for (const r of $$('input[name=dlgmode]', box)) { r.checked = r.value === (isolated() ? dialogPref() : 'replay'); r.disabled = !isolated(); }
+      $('#dlgmode-wait-hint').textContent = isolated() ? 'The real behaviour. Needs the app’s own web address.' : 'Not possible here: this page can’t share memory with the sheet engine (it needs the app’s own web address).';
+    };
+    show();
+    box.addEventListener('change', async (e) => {
+      if (e.target.name !== 'dlgmode') return;
+      try { localStorage.setItem(DLG_KEY, e.target.value); } catch (err) { /* stays as it is */ }
+      show();
+      // the engine connection is made with or without shared memory: reopen the character on a new one
+      if (!state.bytes || !state.worker || state.changing) return;
+      $('#settings').close();
+      await saveNow();
+      $('#sheet').hidden = true; $('#start').hidden = false;
+      openSheet(state.bytes.slice(0), state.fileName, false);
+    });
+  }
+  // ---------------------------------------------------------------- the installable app (dist-site: manifest + service worker)
+  const standalone = () => !!(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  let installPrompt = null;
+  function wireInstall() {
+    if (window.MPMB_SW && 'serviceWorker' in navigator && /^https?:$/.test(location.protocol)) {
+      navigator.serviceWorker.register(window.MPMB_SW).catch(() => { /* the app still works, only not offline */ });
+    }
+    window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installPrompt = e; $('#install-card').hidden = false; });
+    window.addEventListener('appinstalled', () => { installPrompt = null; $('#install-card').hidden = true; toast('Installed: the app is on your home screen'); });
+    $('#install-app').addEventListener('click', async () => {
+      if (!installPrompt) return;
+      const p = installPrompt; installPrompt = null;
+      p.prompt();
+      try { await p.userChoice; } catch (e) { /* closed */ }
+      $('#install-card').hidden = true;
+    });
   }
   // ---------------------------------------------------------------- go
   // Cards go into fixed columns, each into the shortest column so far, in reading order. They only move when the
@@ -1316,5 +1361,7 @@
   wireSpells();
   wireClassAbility();
   wireLooks();
-  initStart();
+  wireDialogMode();
+  wireInstall();
+  initStart(true);
 })();

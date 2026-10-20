@@ -49,6 +49,15 @@ console.log('dist-single/index.html', (artifact.length / 1024).toFixed(0) + ' KB
 // cross-origin isolated, so MPMB's dialogs wait for the user (engine worker + Atomics.wait)
 const site = path.join(R, 'dist-site');
 fs.mkdirSync(site, { recursive: true });
-fs.writeFileSync(path.join(site, 'index.html'), full);
+// It is also the installable app: a manifest, icons and a service worker (src/pwa) that keeps the page for offline use.
+// The manifest is fetched with the login cookie (use-credentials), or Cloudflare Access answers it with its login page.
+const PWA = ['manifest.webmanifest', 'sw.js', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+const pwaHead = '<link rel="manifest" href="manifest.webmanifest" crossorigin="use-credentials">'
+  + '<meta name="theme-color" content="#141114"><link rel="icon" href="icon.svg" type="image/svg+xml">'
+  + '<link rel="apple-touch-icon" href="apple-touch-icon.png"><script>window.MPMB_SW = "sw.js";</script>';
+const sitePage = full.replace('</head>', pwaHead + '</head>');
+if (sitePage === full) throw new Error('no </head> in the full page');
+fs.writeFileSync(path.join(site, 'index.html'), sitePage);
+for (const f of PWA) fs.copyFileSync(path.join(R, 'src', 'pwa', f), path.join(site, f));
 fs.writeFileSync(path.join(site, '_headers'), '/*\n  Cross-Origin-Opener-Policy: same-origin\n  Cross-Origin-Embedder-Policy: credentialless\n  Cache-Control: no-cache\n');
-console.log('dist-site/ for its own web address (index.html + _headers)');
+console.log('dist-site/ for its own web address (index.html + _headers + the installable app files)');

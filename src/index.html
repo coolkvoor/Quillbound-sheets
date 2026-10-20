@@ -617,6 +617,8 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
 .look-opt { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 0 12px; align-items: center; min-height: 52px; padding: 4px 0; cursor: pointer; }
 .look-opt input { width: 22px; height: 22px; margin: 0 0 0 2px; accent-color: var(--accent); }
 .look-opt .hint { grid-column: 3; }
+.look-opt.plain { grid-template-columns: auto minmax(0, 1fr); }
+.look-opt.plain .hint { grid-column: 2; }
 .look-sw { width: 44px; height: 30px; border-radius: 6px; border: 1px solid var(--line); display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
 .look-sw i { display: block; }
 </style>
@@ -1144,6 +1146,19 @@ window.MPMBTheme = (() => {
       <h3>Look</h3>
       <p class="note">The app's look, after MPMB's two sheet designs. Colorful takes the sheet's colour (Sheet → Pages → Change → Color Theme options). Kept on this device.</p>
       <div class="looks" role="radiogroup" aria-label="Look" id="look-list"></div>
+    </div>
+    <div class="card" id="dialog-mode">
+      <h3>MPMB's dialogs</h3>
+      <p class="note">How the app shows MPMB's dialogs and questions. Changing it reopens your character (it is saved first). Kept on this device.</p>
+      <div class="looks" role="radiogroup" aria-label="MPMB's dialogs">
+        <label class="look-opt plain"><input type="radio" name="dlgmode" value="wait"><span>MPMB waits for your answer, as in Acrobat</span><span class="hint" id="dlgmode-wait-hint">Needs the app's own web address.</span></label>
+        <label class="look-opt plain"><input type="radio" name="dlgmode" value="replay"><span>Restart and replay</span><span class="hint">MPMB makes the change, stops at a dialog, and makes it again with your answer. The backup: works everywhere.</span></label>
+      </div>
+    </div>
+    <div class="card" id="install-card" hidden>
+      <h3>Install</h3>
+      <p class="note">Put the app on your home screen. It opens on its own, without the browser bar, and works without a connection once opened.</p>
+      <button class="btn primary" id="install-app" type="button">Install the app</button>
     </div>
     <div class="card">
       <h3>About</h3>
