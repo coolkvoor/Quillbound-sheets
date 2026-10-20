@@ -4,10 +4,10 @@
 const fs = require('fs'), path = require('path');
 const R = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(R, p), 'utf8');
-// the version users see comes from package.json (1.0.0 shows as 1.0). A version given on the command line is ignored:
+// the version users see comes from package.json (1.1.0 shows as 1.1, a bug-fix release 1.1.2 as 1.1.2). A version given on the command line is ignored:
 // Cloudflare's build command still passes 0.2.
 const APP_NAME = 'Quillbound Sheets';   // what users see; storage names keep mpmb (saved characters)
-const VERSION = JSON.parse(read('package.json')).version.split('.').slice(0, 2).join('.');
+const VERSION = JSON.parse(read('package.json')).version.replace(/\.0$/, '');
 const PDFLIB_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
 const own = [read('src/loader.js'), read('src/engine.js'), read('src/content.js'), read('src/spells.js'), read('src/appearance.js'), read('src/writer.js'), read('src/classes.js'), read('src/abilities.js'), read('src/worker.js')];
 // the engine and content code once more, for the two frames MPMB's Direct Import runs in (ui-import.js)

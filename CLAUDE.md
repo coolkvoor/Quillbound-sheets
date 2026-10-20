@@ -63,7 +63,7 @@ A phone-first web app that opens an **MPMB 2024 (5.5e) character sheet PDF** and
 ## Build and test
 
 - `npm install`, then put an MPMB 2024 sheet PDF at `test/sheet.pdf` (gitignored; never commit it).
-- `npm start`: builds `dist-single` and serves it at http://localhost:8123 (no caching, cross-origin isolated so MPMB's dialogs are shown; `NOISOLATE=1` serves it like the artifact host), so the PC always runs the current code. The App line under Settings (gear) → About shows the name and version ("Quillbound Sheets 1.0", from package.json major.minor; no build time shown since 2026-10-20, the owner's wish).
+- `npm start`: builds `dist-single` and serves it at http://localhost:8123 (no caching, cross-origin isolated so MPMB's dialogs are shown; `NOISOLATE=1` serves it like the artifact host), so the PC always runs the current code. The App line under Settings (gear) → About shows the name and version ("Quillbound Sheets 1.1", from package.json: major.minor, plus the patch number when it isn't 0, e.g. 1.1.2; no build time shown since 2026-10-20, the owner's wish).
 - `npm test` runs the loader test (writes `test/model.json`) and the engine test. Individually:
 - `node test/loader.test.js`: reads the sheet and writes `test/model.json`, which the other tests need.
 - `node test/engine.test.js`: runs MPMB in a Node `vm` realm and prints the self-test results.
