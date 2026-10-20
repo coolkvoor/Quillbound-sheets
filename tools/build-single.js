@@ -26,12 +26,15 @@ if (PAGE_SCRIPTS[PAGE_SCRIPTS.length - 1] !== 'app.js') throw new Error('src/ind
 const app = PAGE_SCRIPTS.map((f) => (f !== 'app.js' ? read('src/' + f)
   : read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Version ' + VERSION + ', built ' + BUILT) + ';'))).join('\n;\n');
 if (app.indexOf('built ' + BUILT) === -1) throw new Error('APP_BUILD marker not found in src/app.js');
-function page(worker) {
-  for (const bad of ['</script', '<!--']) if (worker.includes(bad) || app.includes(bad) || realm.includes(bad)) throw new Error('bundle contains ' + bad);
+// pdf.js for the downloadable file (pictures without a connection); the other builds load it from cdnjs
+const pdfjsLib = read('node_modules/pdfjs-dist/build/pdf.min.js'), pdfjsWorker = read('node_modules/pdfjs-dist/build/pdf.worker.min.js');
+function page(worker, withPdfjs) {
+  for (const bad of ['</script', '<!--']) if ([worker, app, realm].concat(withPdfjs ? [pdfjsLib, pdfjsWorker] : []).some((s) => s.includes(bad))) throw new Error('bundle contains ' + bad);
   let p = read('src/index.html');
   for (const f of PAGE_SCRIPTS) p = p.replace('<script src="' + f + '"></script>', '');
   p += '\n<script type="text/plain" id="mpmb-worker-src">\n' + worker + '\n</script>\n'
     + '<script type="text/plain" id="mpmb-realm-src">\n' + realm + '\n</script>\n'
+    + (withPdfjs ? '<script type="text/plain" id="mpmb-pdfjs-src">\n' + pdfjsLib + '\n</script>\n<script type="text/plain" id="mpmb-pdfjs-worker-src">\n' + pdfjsWorker + '\n</script>\n' : '')
     + '<script>window.MPMB_WORKER_URL = URL.createObjectURL(new Blob([document.getElementById("mpmb-worker-src").textContent], { type: "text/javascript" }));</script>\n'
     + '<script>\n' + app + '\n</script>\n';
   // the start screen says which build this is (the same as Sheet > This sheet > App)
@@ -41,10 +44,13 @@ const out = path.join(R, 'dist-single');
 fs.mkdirSync(out, { recursive: true });
 const artifact = page(workerCdn);
 fs.writeFileSync(path.join(out, 'index.html'), artifact);
-const full = '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
-  + '<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style></head><body>\n' + page(workerBundled) + '\n</body></html>\n';
-fs.writeFileSync(path.join(out, 'MPMB-Sheet-App.html'), full);
-console.log('dist-single/index.html', (artifact.length / 1024).toFixed(0) + ' KB (pdf-lib from cdnjs);', 'MPMB-Sheet-App.html', (full.length / 1024).toFixed(0) + ' KB (pdf-lib bundled)');
+// the complete page; the downloadable file also carries pdf.js, so it works fully without a connection (the site's
+// service worker keeps pdf.js from cdnjs instead, which keeps the page the site sends at every start smaller)
+const fullPage = (withPdfjs) => '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
+  + '<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style></head><body>\n' + page(workerBundled, withPdfjs) + '\n</body></html>\n';
+const file = fullPage(true), full = fullPage(false);
+fs.writeFileSync(path.join(out, 'MPMB-Sheet-App.html'), file);
+console.log('dist-single/index.html', (artifact.length / 1024).toFixed(0) + ' KB (pdf-lib from cdnjs);', 'MPMB-Sheet-App.html', (file.length / 1024).toFixed(0) + ' KB (pdf-lib and pdf.js bundled)');
 // dist-site/: the app for its own web address (Cloudflare Pages): the complete page, plus the headers that make it
 // cross-origin isolated, so MPMB's dialogs wait for the user (engine worker + Atomics.wait)
 const site = path.join(R, 'dist-site');

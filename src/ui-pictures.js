@@ -12,7 +12,24 @@
   const iconCache = new Map();   // icon key -> object URL ('' when it can't be shown)
   let pdfjsP = null;
   const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  // The downloadable file carries pdf.js itself (build-single.js), so pictures show without a connection
+  function bundledPdfjs() {
+    const lib = document.getElementById('mpmb-pdfjs-src'), wsrc = document.getElementById('mpmb-pdfjs-worker-src');
+    if (!lib || !wsrc) return null;
+    if (!window.pdfjsLib) { const s = document.createElement('script'); s.textContent = lib.textContent; document.head.appendChild(s); }
+    const L = window.pdfjsLib;
+    if (!L || !L.GlobalWorkerOptions) throw new Error('pdf.js not loaded');
+    // its worker from a blob URL, a data: URL when Chrome refuses blob workers on file:// pages, else in the page itself
+    const code = wsrc.textContent;
+    try { L.GlobalWorkerOptions.workerPort = new Worker(URL.createObjectURL(new Blob([code], { type: 'text/javascript' }))); }
+    catch (e) {
+      try { L.GlobalWorkerOptions.workerPort = new Worker('data:text/javascript;charset=utf-8,' + encodeURIComponent(code)); }
+      catch (e2) { const s = document.createElement('script'); s.textContent = code; document.head.appendChild(s); }
+    }
+    return L;
+  }
   function pdfjs() {
+    if (!pdfjsP) { try { const L = bundledPdfjs(); if (L) pdfjsP = Promise.resolve(L); } catch (e) { return Promise.reject(e); } }
     if (!pdfjsP) pdfjsP = new Promise((resolve, reject) => {
       const s = document.createElement('script');
       s.src = PDFJS + 'pdf.min.js';
