@@ -206,6 +206,10 @@
           const ev = mkEvent('Calculate', fld, { value: typedValue(rec), source: sourceRec ? fieldObj(sourceRec) : fld });
           if (!runScript(rec.scripts.C, ev, 'field:' + rec.name + ':calculate') || ev.rc === false) continue;
           let v = ev.value;
+          // a Calculate that sets event.richValue sets the field's rich text, and its value is the spans' text, as in
+          // Acrobat (MPMB's "10 FT SPEED" labels; after a reset they read empty)
+          const rich = Array.isArray(ev.richValue) ? ev.richValue : null;
+          if (rich) { v = ''; for (let k = 0; k < rich.length; k++) v += rich[k] && rich[k].text !== undefined ? String(rich[k].text) : ''; }
           // As in Acrobat, a value a calculation changes is validated before it is stored. MPMB relies on this:
           // it parks a field's new text in field.setVal, the field's Calculate puts it in, and its Validate clears
           // setVal (doDropDownValCalcWithChoices). Left there, setVal made the next typed species, feat or magic
@@ -216,7 +220,14 @@
             if (vev.rc === false) continue;
             v = vev.value;
           }
-          setRaw(rec, v);
+          if (rich) {
+            const spans = rich.map((s) => Object.assign({}, s));
+            const sameSpans = JSON.stringify(spans) === JSON.stringify(rec.props.richValue || null);
+            delete rec.props.richValue;
+            setRaw(rec, v);
+            rec.props.richValue = spans;
+            if (!sameSpans) markDirty(rec);
+          } else setRaw(rec, v);
         }
       } finally { inCalc = false; }
       stats.calcPasses++;
@@ -347,11 +358,13 @@
       if (rec.value === "Off" || rec.value === "") return 0;
       return (ex.length <= 1 || ex[i] === rec.value || (rec.props.exportValues ? rec.props.exportValues[i] === rec.value : false)) ? 1 : 0;
     };
+    // bCheckIt is optional (true) and any false-ish value unchecks: MPMB passes 0 (SetProf's "neither advantage nor
+    // disadvantage"); before, 0 ticked the box, so removing a condition ticked every skill's Adv and Dis
     FP.checkThisBox = function (n, b) {
       const rec = this[R]; const ex = exportsOf(rec); const i = n || 0;
-      scriptSetValue(rec, b === false ? 'Off' : (ex[i] || 'Yes'));
+      scriptSetValue(rec, b !== undefined && !b ? 'Off' : (ex[i] || 'Yes'));
     };
-    FP.defaultIsChecked = function (n, b) { this[R].props.defaultValue = b === false ? 'Off' : (exportsOf(this[R])[n || 0] || 'Yes'); return true; };
+    FP.defaultIsChecked = function (n, b) { this[R].props.defaultValue = b !== undefined && !b ? 'Off' : (exportsOf(this[R])[n || 0] || 'Yes'); return true; };
     FP.setItems = function (arr) {
       const rec = this[R]; const out = [];
       const a = Array.isArray(arr) ? arr : [];
@@ -773,7 +786,13 @@
       setInterval(code, ms) { return { id: ++timeoutId, code, ms, interval: true }; },
       clearInterval() {},
       launchURL(url) { push(log.urls, String(url)); if (opts.onURL) opts.onURL(String(url)); },
-      openDoc() { unsupported('app.openDoc'); return null; },
+      // MPMB's Direct Import opens the sheet to import from: the host gives that sheet's document (another engine's realm)
+      openDoc(a) {
+        const p = a && typeof a === 'object' ? a.cPath : a;
+        const d = opts.openDoc ? opts.openDoc(String(p || '')) : null;
+        if (!d) unsupported('app.openDoc');
+        return d || null;
+      },
       newDoc() { unsupported('app.newDoc'); return null; },
       addToolButton() {}, removeToolButton() {}, addMenuItem() {}, addSubMenu() {}, hideMenuItem() {}, hideToolbarButton() {},
       execMenuItem(m) { unsupported('execMenuItem:' + m); }, listMenuItems() { return []; }, listToolbarButtons() { return []; },
@@ -891,6 +910,11 @@
 
     const docScriptsAdded = {};
     const info = Object.assign({}, model.info);
+    // Acrobat's doc.info answers the standard keys in lower case too (MPMB's Direct Import checks info.title)
+    for (const k of ['Title', 'Author', 'Subject', 'Keywords', 'Creator', 'Producer', 'CreationDate', 'ModDate', 'Trapped']) {
+      const lk = k.charAt(0).toLowerCase() + k.slice(1);
+      Object.defineProperty(info, lk, { configurable: true, enumerable: false, get: () => info[k], set: (v) => { info[k] = v; } });
+    }
     const docAPI = {
       getField,
       getNthFieldName(n) { let i = 0; for (const k of recs.keys()) { if (i++ === n) return k; } return null; },
@@ -915,7 +939,8 @@
       addField() { unsupported('addField'); return null; },
       addScript(n, code) { docScriptsAdded[n] = code; runGlobal(code, 'doc:' + n); },
       removeScript(n) { delete docScriptsAdded[n]; },
-      closeDoc() { unsupported('closeDoc'); }, print() { unsupported('print'); }, getPrintParams() { return { constants: { interactionLevel: {}, printContents: {} } }; },
+      toString() { return '[object Doc]'; },   // as Acrobat's; MPMB's Direct Import checks it
+      closeDoc() { if (opts.onCloseDoc) opts.onCloseDoc(); else unsupported('closeDoc'); }, bringToFront() {}, print() { unsupported('print'); }, getPrintParams() { return { constants: { interactionLevel: {}, printContents: {} } }; },
       mailDoc() { unsupported('mailDoc'); }, saveAs() { unsupported('saveAs'); },
       importDataObject() { unsupported('importDataObject'); return false; }, exportDataObject() { unsupported('exportDataObject'); },
       getDataObject() { return null; }, dataObjects: [],
