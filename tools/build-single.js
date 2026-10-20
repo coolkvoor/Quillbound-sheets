@@ -4,7 +4,9 @@
 const fs = require('fs'), path = require('path');
 const R = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(R, p), 'utf8');
-const VERSION = process.argv[2] || '0.2';
+// the version users see comes from package.json (1.0.0 shows as 1.0). A version given on the command line is ignored:
+// Cloudflare's build command still passes 0.2.
+const VERSION = JSON.parse(read('package.json')).version.split('.').slice(0, 2).join('.');
 const PDFLIB_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
 const own = [read('src/loader.js'), read('src/engine.js'), read('src/content.js'), read('src/spells.js'), read('src/appearance.js'), read('src/writer.js'), read('src/classes.js'), read('src/abilities.js'), read('src/worker.js')];
 // the engine and content code once more, for the two frames MPMB's Direct Import runs in (ui-import.js)
@@ -24,8 +26,9 @@ const BUILT = (() => {
 const PAGE_SCRIPTS = Array.from(read('src/index.html').matchAll(/<script src="([\w.-]+\.js)"><\/script>/g), (m) => m[1]);
 if (PAGE_SCRIPTS[PAGE_SCRIPTS.length - 1] !== 'app.js') throw new Error('src/index.html must load app.js last');
 const app = PAGE_SCRIPTS.map((f) => (f !== 'app.js' ? read('src/' + f)
-  : read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Quillbound ' + VERSION + ', built ' + BUILT) + ';'))).join('\n;\n');
-if (app.indexOf('built ' + BUILT) === -1) throw new Error('APP_BUILD marker not found in src/app.js');
+  : read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Quillbound ' + VERSION) + ';')
+    .replace("const APP_BUILD_ID = '';", 'const APP_BUILD_ID = ' + JSON.stringify(BUILT) + ';'))).join('\n;\n');
+if (app.indexOf(JSON.stringify(BUILT)) === -1 || app.indexOf(JSON.stringify('Quillbound ' + VERSION)) === -1) throw new Error('APP_BUILD / APP_BUILD_ID marker not found in src/app.js');
 // pdf.js for the downloadable file (pictures without a connection); the other builds load it from cdnjs
 const pdfjsLib = read('node_modules/pdfjs-dist/build/pdf.min.js'), pdfjsWorker = read('node_modules/pdfjs-dist/build/pdf.worker.min.js');
 function page(worker, withPdfjs) {
@@ -38,7 +41,7 @@ function page(worker, withPdfjs) {
     + '<script>window.MPMB_WORKER_URL = URL.createObjectURL(new Blob([document.getElementById("mpmb-worker-src").textContent], { type: "text/javascript" }));</script>\n'
     + '<script>\n' + app + '\n</script>\n';
   // the start screen says which build this is (the same as Sheet > This sheet > App)
-  return p.replace(/Version 0\.1 test build/g, 'Version ' + VERSION + ' test build, built ' + BUILT);
+  return p.replace(/Version 0\.1 test build/g, 'Version ' + VERSION);
 }
 const out = path.join(R, 'dist-single');
 fs.mkdirSync(out, { recursive: true });
@@ -91,7 +94,7 @@ if (sitePage.indexOf('MPMB_PDFJS') === -1) throw new Error('no </head> in the fu
 if (/googleapis|gstatic|cdnjs/.test(sitePage.replace(/<script type="text\/plain"[\s\S]*?<\/script>/g, '').replace(/<script>\n[\s\S]*?\n<\/script>/g, ''))) throw new Error('the site page still links another site');
 fs.writeFileSync(path.join(site, 'index.html'), sitePage);
 // the build the site serves now: an app left open checks it and offers to reload when it's newer (wireUpdates in app.js)
-fs.writeFileSync(path.join(site, 'version.json'), JSON.stringify({ build: 'Quillbound ' + VERSION + ', built ' + BUILT }) + '\n');
+fs.writeFileSync(path.join(site, 'version.json'), JSON.stringify({ version: VERSION, build: BUILT }) + '\n');
 for (const f of PWA) fs.copyFileSync(path.join(R, 'src', 'pwa', f), path.join(site, f));
 // the service worker keeps these for offline use from the start (pictures and fonts without a connection)
 const sw = read('src/pwa/sw.js');

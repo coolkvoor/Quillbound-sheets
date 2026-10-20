@@ -12,7 +12,8 @@
     spellsSoon, pickPicture, syncCompanions, syncWildShapes, syncLogs, syncNotes, iconCache, renderCasters,
     renderSpellList, renderContent, refreshSpells, wireContent, wireSpells, wireClassAbility, clearPageCards, wireImport
   } = U;
-  const APP_BUILD = 'development build';   // tools/build-single.js puts the version and build time here
+  const APP_BUILD = 'development build';   // tools/build-single.js puts the name and version here ("Quillbound 1.0")
+  const APP_BUILD_ID = '';   // and the build time: not shown, only compared with the site's version.json (wireUpdates)
 
   // ---------------------------------------------------------------- worker connection
   // Chrome refuses blob: workers on pages opened from a file (file://); a data: URL may still work there
@@ -1307,7 +1308,7 @@
       const r = await fetch('version.json', { cache: 'no-store' });
       if (!r.ok || r.redirected || !/json/.test(r.headers.get('content-type') || '')) return;
       const v = await r.json();
-      if (v && v.build && v.build !== APP_BUILD) { newBuild = v.build; $('#update-text').textContent = 'A new version of the app is ready (' + v.build.replace(/^(?:Quillbound|Version) [\d.]+, built /, 'built ') + ').'; $('#update-bar').hidden = false; }
+      if (v && v.build && v.build !== APP_BUILD_ID) { newBuild = v.build; $('#update-text').textContent = 'A new version of the app is ready' + (v.version && 'Quillbound ' + v.version !== APP_BUILD ? ' (' + v.version + ').' : '.'); $('#update-bar').hidden = false; }
     } catch (e) { /* offline or signed out: try again later */ }
   }
   async function reloadForUpdate() {

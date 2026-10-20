@@ -1,12 +1,12 @@
 {
   "name": "mpmb-sheet-app",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Phone-first web app that runs MPMB character sheets with their own automation",
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "start": "node tools/build-single.js 0.2 && node test/serve.js dist-single",
+    "start": "node tools/build-single.js && node test/serve.js dist-single",
     "test": "node test/loader.test.js && node test/engine.test.js && node test/content.test.js && node test/spells.test.js && node test/menus.test.js && node test/gear.test.js && node test/save.test.js && node test/writer.test.js && node test/import.test.js && node test/pictures.test.js && node test/classes.test.js && node test/abilities.test.js && node test/extras.test.js && node test/textoptions.test.js && node test/adventurers.test.js && node test/fields.test.js && node test/companion.test.js && node test/wildshape.test.js && node test/dialogs.test.js && node test/replay.test.js && node test/exclusions.test.js && node test/sheets2014.test.js && node test/features.test.js",
     "test:ui": "node test/ui.test.js",
     "build": "node tools/build-single.js",
