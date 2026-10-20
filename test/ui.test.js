@@ -4,11 +4,12 @@ const { chromium } = require('playwright-core');
 const { start } = require('./serve');
 const OUT = process.env.SHOTS || path.join(__dirname, 'shots');
 fs.mkdirSync(OUT, { recursive: true });
-const PDF = path.join(__dirname, 'sheet.pdf');
+const PDF = (process.env.SHEET || path.join(__dirname, 'sheet.pdf'));
 const PDFLIB = fs.readFileSync(path.join(__dirname, '..', 'node_modules', 'pdf-lib', 'dist', 'pdf-lib.min.js'));
 // add-on content to add through the screen: CONTENT=file.js, or the first .js file in resources/ (skipped when none)
 const RES = path.join(__dirname, '..', 'resources');
-const CONTENT = process.env.CONTENT || (fs.existsSync(RES) ? fs.readdirSync(RES).filter((f) => /\.js$/i.test(f)).sort().map((f) => path.join(RES, f))[0] : null);
+// CONTENT=none skips it (a 2024 content file doesn't belong in a 2014 sheet)
+const CONTENT = process.env.CONTENT === 'none' ? null : process.env.CONTENT || (fs.existsSync(RES) ? fs.readdirSync(RES).filter((f) => /\.js$/i.test(f)).sort().map((f) => path.join(RES, f))[0] : null);
 
 const DEVICES = {
   'phone-portrait': { viewport: { width: 393, height: 852 }, deviceScaleFactor: 3.1, isMobile: true, hasTouch: true },
@@ -41,7 +42,10 @@ const DEVICES = {
     await page.screenshot({ path: path.join(OUT, name + '-0-start.png') });
     const t0 = Date.now();
     await page.setInputFiles('#file', PDF);
-    await page.waitForSelector('#sheet:not([hidden])', { timeout: 120000 });
+    await page.waitForSelector('#sheet:not([hidden])', { timeout: 120000 }).catch(async (e) => {
+      console.log(`[${name}] not opened:`, (await page.$eval('#start', (n) => n.innerText)).replace(/\s+/g, ' ').slice(0, 400), '| console:', logs.slice(0, 8).join(' || '));
+      throw e;
+    });
     const openMs = Date.now() - t0;
     const facts = await page.$eval('#sheet-facts', (n) => n.innerText);
     console.log(`[${name}] opened in ${openMs} ms | ${facts.replace(/\n/g, ' | ')}`);
@@ -75,7 +79,7 @@ const DEVICES = {
     const commit = async (sel, val) => { await page.fill(sel, val); await page.press(sel, 'Enter'); await settle(); };
     await commit('#f-name', 'Ilvara');
     for (const [k, v] of [['Str', '8'], ['Dex', '14'], ['Con', '14'], ['Int', '16'], ['Wis', '12'], ['Cha', '10']]) await commit('#f-abi-' + k, v);
-    await commit('#f-race', 'Elf');
+    await commit('#f-race', process.env.RACE || 'Elf');   // RACE='High Elf' on 2014 sheets
     const tc = Date.now();
     await commit('#f-class', 'Wizard 3');
     const classMs = Date.now() - tc;

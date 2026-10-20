@@ -30,8 +30,13 @@
   // data-icon: the picture one of MPMB's buttons shows (portrait, symbol, companion)
   const BOUND = ['data-f', 'data-out', 'data-rich', 'data-toggle', 'data-items', 'data-mpmb', 'data-vis', 'data-opts', 'data-prof', 'data-pick', 'data-icon'];
 
+  // how many lines of a kind the app shows: its own number, but never more than this sheet has (the sheets differ:
+  // Printer Friendly and Letter have fewer attacks, feats, actions and gear lines than Colorful A4). state.rowCounts
+  // comes from the worker's open (ROWS in worker.js), counted from the sheet's own fields.
+  const rows = (key, n) => { const c = state.rowCounts && state.rowCounts[key]; return typeof c === 'number' ? Math.min(n, c) : n; };
+
   window.MPMBUI = {
-    $, $$, el, reduceMotion, state, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
+    $, $$, el, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
     ACTIONS, LANGUAGES
   };
 })();

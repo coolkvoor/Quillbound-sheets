@@ -4,7 +4,7 @@
   'use strict';
   const U = window.MPMBUI;
   const {
-    $, $$, el, reduceMotion, state, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
+    $, $$, el, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
     ACTIONS, LANGUAGES
   } = U;
   const {
@@ -113,7 +113,7 @@
   function friendlyError(e) {
     const m = String(e && e.message || e);
     if (/EVAL_BLOCKED/.test(m)) return 'This viewer doesn’t allow the sheet’s scripts to run, so the app can’t start here. Tell Claude: EVAL_BLOCKED.';
-    if (/NOT_MPMB/.test(m)) return 'This PDF doesn’t look like an MPMB character sheet. Pick an MPMB 2024 sheet PDF.';
+    if (/NOT_MPMB/.test(m)) return 'This PDF doesn’t look like an MPMB character sheet. Pick an MPMB character sheet PDF (2024 or 2014).';
     if (/FILE_PAGE/.test(m)) return 'Chrome doesn’t let this app run when it’s opened straight from a file on your computer. Open it from its web link, or through the local test server.';
     if (/WORKER_FAILED/.test(m)) return 'The sheet engine couldn’t start in this browser (' + m.replace('WORKER_FAILED: ', '') + '). Try Chrome, or tell Claude what you see.';
     if (/Failed to parse|Invalid PDF|No PDF header/i.test(m)) return 'This file couldn’t be read as a PDF.';
@@ -163,7 +163,7 @@
       wireWorker(w);
       const res = await w.call('open', { bytes: buf, fileName: name, saved: stored && stored.saved ? stored.saved : null, state: char && char.state ? char.state : null }, [buf]);
       if (T) T.sheet({ look: /printer friendly/i.test(res.info.type) ? 'pf' : 'colorful' });
-      state.info = res.info; state.stats = res.stats; state.stats.openMs = Math.round(performance.now() - t0); state.log = res.log;
+      state.info = res.info; state.rowCounts = res.rowCounts || null; state.stats = res.stats; state.stats.openMs = Math.round(performance.now() - t0); state.log = res.log;
       state.content = res.content; state.saved = res.saved;
       // MPMB drops an add-on that fails at startup; keep what it kept
       if (stored && stored.saved && JSON.stringify(stored.saved) !== JSON.stringify(res.saved)) idbPut(state.sheetKey, { saved: res.saved, date: Date.now() });
@@ -292,7 +292,7 @@
   function buildHitDice() {
     const box = $('#hitdice');
     box.textContent = '';
-    for (let i = 1; i <= HITDICE; i++) {
+    for (let i = 1; i <= rows('hd', HITDICE); i++) {
       box.append(el('div', { cls: 'hd', 'data-row': 'HD' + i + ' Level' }, [
         el('span', { 'data-hd': String(i), text: 'Hit dice' }),
         el('label', { cls: 'hd-die' }, [el('span', { cls: 'hint', text: 'Die' }), el('input', { cls: 'num', 'data-f': 'HD' + i + ' Die', id: 'f-hdd' + i, inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Hit die size' })]),
@@ -307,7 +307,7 @@
     const box = $('#attacks');
     box.textContent = '';
     box.append(el('datalist', { id: 'dl-weapons', 'data-items': 'Attack.1.Weapon Selection' }));
-    for (let i = 1; i <= ATTACKS; i++) {
+    for (let i = 1; i <= rows('attacks', ATTACKS); i++) {
       const p = 'Attack.' + i + '.';
       box.append(el('div', { cls: 'attack', 'data-attack': String(i) }, [
         el('div', { cls: 'line' }, [
@@ -357,7 +357,7 @@
   function buildLimited() {
     const box = $('#limited');
     box.textContent = '';
-    for (let i = 1; i <= LIMITED; i++) {
+    for (let i = 1; i <= rows('limited', LIMITED); i++) {
       box.append(el('li', { 'data-row': 'Limited Feature ' + i }, [
         el('div', {}, [el('div', { 'data-out': 'Limited Feature ' + i }), el('div', { cls: 'hint', 'data-out': 'Limited Feature Recovery ' + i })]),
         el('div', { cls: 'uses' }, [
@@ -373,7 +373,7 @@
     const box = $('#feats');
     box.textContent = '';
     box.append(el('datalist', { id: 'dl-feats', 'data-items': 'Feat Name 1' }));
-    for (let i = 1; i <= FEATS; i++) {
+    for (let i = 1; i <= rows('feats', FEATS); i++) {
       box.append(el('li', { 'data-feat': String(i) }, [el('div', { cls: 'grow' }, [
         el('div', { cls: 'line' }, [
           el('input', { cls: 'in', 'data-f': 'Feat Name ' + i, id: 'f-feat' + i, list: 'dl-feats', autocomplete: 'off', placeholder: 'Pick or type a feat', 'aria-label': 'Feat ' + i }),
@@ -387,7 +387,7 @@
   function buildActions() {
     const box = $('#actions');
     box.textContent = '';
-    for (const [pre, n, label] of ACTIONS) for (let i = 1; i <= n; i++) box.append(el('li', { 'data-row': pre + ' ' + i }, [el('span', { cls: 'grow', 'data-out': pre + ' ' + i }), el('span', { cls: 'chip', text: label }), lineMenu('Button.' + pre + ' ' + i, label + ' ' + i)]));
+    for (const [pre, n, label] of ACTIONS) for (let i = 1; i <= rows(pre, n); i++) box.append(el('li', { 'data-row': pre + ' ' + i }, [el('span', { cls: 'grow', 'data-out': pre + ' ' + i }), el('span', { cls: 'chip', text: label }), lineMenu('Button.' + pre + ' ' + i, label + ' ' + i)]));
     box.append(el('li', { cls: 'empty-note muted', text: 'No actions yet.' }));
   }
 
@@ -410,12 +410,12 @@
     a.textContent = ''; w.textContent = '';
     a.append(tg('Proficiency Armor Light', 'Light'), tg('Proficiency Armor Medium', 'Medium'), tg('Proficiency Armor Heavy', 'Heavy'), tg('Proficiency Shields', 'Shields'));
     w.append(tg('Proficiency Weapon Simple', 'Simple'), tg('Proficiency Weapon Martial', 'Martial'));
-    // tools and languages: MPMB's 8 lines each; the filled ones show, plus one empty line to add to (refreshDerived)
+    // tools and languages: MPMB's lines (8 each on Colorful A4, 6 on the other sheets); the filled ones show, plus one empty line to add to (refreshDerived)
     for (const [id, pre, list, label] of [['#tools', 'Tool ', 'dl-tools', 'Tool'], ['#languages', 'Language ', 'dl-languages', 'Language']]) {
       const box = $(id);
       box.textContent = '';
       box.append(el('datalist', { id: list }));
-      for (let i = 1; i <= 8; i++) box.append(el('input', { cls: 'in', 'data-f': pre + i, id: 'f-' + list.slice(3) + i, list, autocomplete: 'off', 'aria-label': label + ' ' + i, placeholder: 'Add ' + label.toLowerCase() }));
+      for (let i = 1; i <= rows(pre.trim(), 8); i++) box.append(el('input', { cls: 'in', 'data-f': pre + i, id: 'f-' + list.slice(3) + i, list, autocomplete: 'off', 'aria-label': label + ' ' + i, placeholder: 'Add ' + label.toLowerCase() }));
     }
     const dl = $('#dl-languages');
     for (const n of LANGUAGES) dl.append(el('option', { value: n }));
@@ -427,7 +427,7 @@
     const res = $('#resistances');
     res.textContent = '';
     res.append(el('datalist', { id: 'dl-res', 'data-items': 'Resistance Damage Type 1' }));
-    for (let i = 1; i <= 6; i++) res.append(el('input', { cls: 'in', 'data-f': 'Resistance Damage Type ' + i, id: 'f-res' + i, list: 'dl-res', autocomplete: 'off', 'aria-label': 'Resistance ' + i, placeholder: 'Add resistance' }));
+    for (let i = 1; i <= rows('res', 6); i++) res.append(el('input', { cls: 'in', 'data-f': 'Resistance Damage Type ' + i, id: 'f-res' + i, list: 'dl-res', autocomplete: 'off', 'aria-label': 'Resistance ' + i, placeholder: 'Add resistance' }));
     $('#dc1-mod').replaceChildren(abilitySelect('Spell DC 1 Mod', 'Ability of save DC 1', ' '));
     $('#dc2-mod').replaceChildren(abilitySelect('Spell DC 2 Mod', 'Ability of save DC 2', ' '));
   }
@@ -440,10 +440,23 @@
   }
 
   const CONDITIONS = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Surprised', 'Unconscious'];
+  // the 2014 Colorful sheets have them on the 3rd page's Rules section as numbered boxes (MPMB's ConditionSet), with
+  // exhaustion as six level boxes; the Printer Friendly sheets have no condition fields, so the card stays hidden there
+  const CONDITIONS_2014 = ['Blinded', 'Charmed', 'Deafened', 'Frightened', 'Grappled', 'Incapacitated', 'Invisible', 'Paralyzed', 'Petrified', 'Poisoned', 'Prone', 'Restrained', 'Stunned', 'Unconscious'];
   function buildConditions() {
     const box = $('#conditions');
     box.textContent = '';
-    for (const c of CONDITIONS) box.append(el('span', { cls: 'tg' }, [el('button', { cls: 'dot sm', type: 'button', 'data-toggle': 'Condition.' + c, 'aria-pressed': 'false', 'aria-label': c }), el('span', { text: c })]));
+    const tg = (field, label) => el('span', { cls: 'tg' }, [el('button', { cls: 'dot sm', type: 'button', 'data-toggle': field, 'aria-pressed': 'false', 'aria-label': label }), el('span', { text: label })]);
+    const new24 = rows('cond24', 1) > 0, old14 = rows('cond14', 14);
+    if (new24) for (const c of CONDITIONS) box.append(tg('Condition.' + c, c));
+    else for (let i = 1; i <= old14; i++) box.append(tg('Extra.Condition ' + i, CONDITIONS_2014[i - 1] || 'Condition ' + i));
+    $('#exh-2024').hidden = !new24;
+    const exh = $('#exh-2014-levels');
+    exh.textContent = '';
+    const levels = new24 ? 0 : rows('exh14', 6);
+    for (let i = 1; i <= levels; i++) exh.append(tg('Extra.Exhaustion Level ' + i, String(i)));
+    $('#exh-2014').hidden = !levels;
+    $('#cond-card').hidden = !new24 && !old14 && !levels;
   }
   // MPMB's two ammunition trackers on page 1
   function buildAmmo() {
@@ -464,12 +477,13 @@
     }
   }
 
-  // Magic items: the 6 lines on the Additional sheet (page 3); Equipment: the 46 lines on page 2
-  const MAGIC = 6, GEAR = 46, XGEAR = 42;
+  // Magic items: the first 6 lines on the Additional sheet (page 3); Equipment: every line on pages 2 and 3 (46 and 42
+  // on Colorful, 54 and 36 on Printer Friendly; rows() caps it at what the sheet has)
+  const MAGIC = 6, GEAR = 99, XGEAR = 99;
   function buildMagicItems() {
     const box = $('#magic-items');
     box.textContent = '';
-    for (let i = 1; i <= MAGIC; i++) {
+    for (let i = 1; i <= rows('magic', MAGIC); i++) {
       const p = 'Extra.Magic Item ';
       box.append(el('div', { cls: 'mi', 'data-mi': String(i) }, [
         el('div', { cls: 'line' }, [
@@ -492,7 +506,7 @@
       const box = $(boxSel);
       box.textContent = '';
       box.append(el('div', { cls: 'gear-head' }, [el('span', { text: 'Item' }), el('span', { cls: 'gloc', text: 'Where' }), el('span', { text: 'Amount' }), el('span', { text: 'Weight' }), el('span')]));
-      for (let i = 1; i <= count; i++) {
+      for (let i = 1; i <= rows(key, count); i++) {
         box.append(el('div', { cls: 'gear-row', ['data-' + key]: String(i) }, [
           el('input', { cls: 'in', 'data-f': p + 'Row ' + i, id: 'f-' + idp + i, autocomplete: 'off', placeholder: 'Add an item', 'aria-label': 'Item ' + i }),
           el('input', { cls: 'in gloc', 'data-f': p + 'Location.Row ' + i, id: 'f-' + idp + 'l' + i, autocomplete: 'off', 'aria-label': 'Item ' + i + ': where it is carried', placeholder: 'Where' }),
@@ -519,9 +533,11 @@
     const s = new Set();
     for (const n of $$(BOUND.map((a) => '[' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) s.add(n.getAttribute(a));
     for (const [f] of SKILLS.concat([['Too']])) { s.add(f + ' Prof'); s.add(f + ' Exp'); }
-    for (let i = 1; i <= HITDICE; i++) { s.add('HD' + i + ' Level'); s.add('HD' + i + ' Die'); s.add('HD' + i + ' Con Mod'); }
+    for (let i = 1; i <= rows('hd', HITDICE); i++) { s.add('HD' + i + ' Level'); s.add('HD' + i + ' Die'); s.add('HD' + i + ' Con Mod'); }
     s.add('Extra.Gear Weight Subtotal Left'); s.add('Extra.Gear Weight Subtotal Right');
-    for (let i = 1; i <= 8; i++) { s.add('Tool ' + i); s.add('Language ' + i); }
+    s.add('Wildshapes.Info.KnownForms'); s.add('Wildshapes.Info.Uses');   // whether MPMB gave Wild Shape (2024 / 2014 sheets)
+    for (let i = 1; i <= rows('Tool', 8); i++) s.add('Tool ' + i);
+    for (let i = 1; i <= rows('Language', 8); i++) s.add('Language ' + i);
     for (let l = 1; l <= 9; l++) s.add('SpellSlots.CheckboxesSet.lvl' + l);
     return Array.from(s);
   }
@@ -634,10 +650,17 @@
     for (const n of sel('data-toggle')) n.setAttribute('aria-pressed', snap.checked ? 'true' : 'false');
     for (const n of sel('data-mpmb')) n.hidden = !snap.exists || !!snap.hidden;
     for (const n of sel('data-vis')) n.hidden = !snap.exists || !!snap.hidden;
+    // a field this sheet doesn't have (the sheet types and versions differ: 2014 sheets have no known forms on the
+    // Wild Shapes page, Printer Friendly no hit points per shape): its box and label are left out
+    for (const a of ['data-f', 'data-out', 'data-rich', 'data-toggle', 'data-opts']) for (const n of sel(a)) absent(n, !snap.exists);
     for (const n of sel('data-items')) {
       n.textContent = '';
       for (const it of snap.items || []) if (it[0]) n.append(el('option', { value: it[0] }));
     }
+  }
+  function absent(n, gone) {
+    const w = n.closest('.f, .tg, .stat, .ad-wrap') || n;   // .ad-wrap: a label with its Adv / Dis boxes (none on Printer Friendly)
+    if (gone) { if (!w.hidden) { w.hidden = true; w.dataset.absent = '1'; } } else if (w.dataset.absent) { w.hidden = false; delete w.dataset.absent; }
   }
   function refreshDerived() {
     const v = (n) => shown(state.snap.get(n)).trim();

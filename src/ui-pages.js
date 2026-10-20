@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const U = window.MPMBUI;
-  const { $, $$, el, state, ABILITIES, SKILLS, BOUND } = U;
+  const { $, $$, el, state, rows, ABILITIES, SKILLS, BOUND } = U;
   // from the other screen files (all loaded before anything runs)
   const picture = (...a) => U.picture(...a);
   const lineMenu = (...a) => U.lineMenu(...a);
@@ -108,7 +108,7 @@
     grid.append(card('Skills', [el('p', { cls: 'hint', text: 'Tap a dot for proficiency, again for expertise, a third time to clear.' }), skills], { 'data-span': '2' }));
     // attacks
     const atks = el('div', {}, [el('datalist', { id: 'dl-' + fid(P + 'atk'), 'data-items': U + 'Attack.1.Weapon Selection' })]);
-    for (let i = 1; i <= COMP_ATTACKS; i++) {
+    for (let i = 1; i <= rows('compAttacks', COMP_ATTACKS); i++) {
       const p = U + 'Attack.' + i + '.';
       atks.append(el('div', { cls: 'attack', 'data-cattack': p }, [
         el('div', { cls: 'line' }, [
@@ -151,7 +151,7 @@
     ], { 'data-span': '2', 'data-vis': B + 'Skills.Acr.Bonus', hidden: '' }));
     // equipment (MPMB can hide this section: Options → Change visible sections)
     const gear = el('div', {}, [el('div', { cls: 'gear-head' }, [el('span', { text: 'Item' }), el('span', { text: 'Amount' }), el('span', { text: 'Weight' }), el('span')])]);
-    for (let i = 1; i <= COMP_GEAR; i++) {
+    for (let i = 1; i <= rows('compGear', COMP_GEAR); i++) {
       const g = P + 'Comp.eqp.Gear ';
       gear.append(el('div', { cls: 'gear-row', 'data-cgear': g + 'Row ' + i }, [
         el('input', { cls: 'in', 'data-f': g + 'Row ' + i, id: fid(g + 'Row ' + i), autocomplete: 'off', placeholder: 'Add an item', 'aria-label': 'Item ' + i }),
@@ -229,11 +229,12 @@
     const I = P + 'Wildshapes.Info.';
     grid.append(card(el('h3', {}, [el('span', { text: 'Wild Shape' }), el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Wildshapes.Settings', 'data-title': 'Wild Shapes', 'data-pages': '1' }, [document.createTextNode('Options')])]), [
       el('p', { cls: 'hint', text: 'Options → Add Wild Shape lists the beasts this character can take; MPMB works out each shape with your own proficiencies. It also removes shapes, recalculates them (after a level up) and adds or removes Wild Shapes pages.' }),
-      el('div', { cls: 'row' }, [cInput(I + 'KnownForms', 'Known forms'), cInput(I + 'TempHP', 'Temp HP', { inputmode: 'numeric', cls: 'in num' })]),
+      // 2024 sheets: known forms and temp HP; 2014 sheets: uses (the one the sheet doesn't have is left out)
+      el('div', { cls: 'row' }, [cInput(I + 'KnownForms', 'Known forms'), cInput(I + 'TempHP', 'Temp HP', { inputmode: 'numeric', cls: 'in num' }), cInput(I + 'Uses', 'Uses')]),
       cInput(I + 'Limitations', 'Limitations'),
       cInput(I + 'Duration', 'Duration'),
     ]));
-    for (let i = 1; i <= WS_PER_PAGE; i++) {
+    for (let i = 1; i <= rows('ws', WS_PER_PAGE); i++) {
       const W = P + 'Wildshape.' + i + '.', T = P + 'Text.Wildshape.' + i + '.Skills.', race = P + 'Wildshape.Race.' + i;
       const body = el('div', { cls: 'stack', 'data-wsbody': '1' });
       body.append(
@@ -276,12 +277,17 @@
           el('button', { cls: 'dot sm', type: 'button', 'data-mpmb': T + f + '.Name', 'data-prof': T + f + '.Prof', 'data-title': name, 'aria-pressed': 'false', 'aria-label': name + ' proficiency' }),
           el('span', { cls: 'n', text: name }), el('span', { cls: 'a', text: abi }),
           el('input', { cls: 'v num in-v', 'data-f': W + 'Skills.' + f, id: fid(W + 'Skills.' + f), inputmode: 'numeric', autocomplete: 'off', 'aria-label': name }),
+          // the Printer Friendly sheets instead: proficiency and expertise boxes and the number in ".Mod" (the set the
+          // sheet doesn't have is left out)
+          el('button', { cls: 'dot sm', type: 'button', 'data-toggle': W + 'Skills.' + f + '.Prof', 'aria-pressed': 'false', 'aria-label': name + ' proficiency' }),
+          el('button', { cls: 'dot sm', type: 'button', 'data-toggle': W + 'Skills.' + f + '.Exp', 'aria-pressed': 'false', 'aria-label': name + ' expertise', title: 'Expertise' }),
+          el('input', { cls: 'v num in-v', 'data-f': W + 'Skills.' + f + '.Mod', id: fid(W + 'Skills.' + f + '.Mod'), inputmode: 'numeric', autocomplete: 'off', 'aria-label': name }),
         ]));
       }
       body.append(el('details', { cls: 'more' }, [el('summary', {}, [document.createTextNode('Skills '), el('span', { cls: 'muted', 'data-wsskills': W })]),
-        el('p', { cls: 'hint', text: 'MPMB works these out when the shape is added. A dot marks proficiency (tap again for expertise, a third time to clear) but, as on the PDF, doesn’t change the number: type it in.' }), skills]));
+        el('p', { cls: 'hint', text: 'MPMB works these out when the shape is added. A dot marks proficiency (tap again for expertise, a third time to clear; Printer Friendly sheets have a second dot for expertise) but, as on the PDF, doesn’t change the number: type it in.' }), skills]));
       // attacks as MPMB worked them out, editable underneath
-      for (let a = 1; a <= WS_ATTACKS; a++) {
+      for (let a = 1; a <= rows('wsAttacks', WS_ATTACKS); a++) {
         const p = W + 'Attack.' + a + '.';
         body.append(el('div', { cls: 'attack', 'data-wsattack': p }, [
           el('b', { 'data-out': p + 'Weapon' }),
@@ -294,7 +300,7 @@
         ]));
       }
       const edits = [];
-      for (let a = 1; a <= WS_ATTACKS; a++) {
+      for (let a = 1; a <= rows('wsAttacks', WS_ATTACKS); a++) {
         const p = W + 'Attack.' + a + '.';
         edits.push(el('div', { cls: 'stack' }, [
           cInput(p + 'Weapon', 'Attack ' + a),
@@ -336,7 +342,7 @@
   function refreshWildShapes(v) {
     const band = $('#wildshape');
     // the band: shown with a Wild Shapes page, or when MPMB has given the character Wild Shape (its known forms)
-    const has = wsPrefixes.length > 0, known = v('Wildshapes.Info.KnownForms') !== '';
+    const has = wsPrefixes.length > 0, known = v('Wildshapes.Info.KnownForms') !== '' || v('Wildshapes.Info.Uses') !== '';
     const show = has || known;
     if (band.hidden === show) { band.hidden = !show; $('#tab-wildshape').hidden = !show; }
     $('#ws-none').hidden = has;
@@ -361,8 +367,9 @@
     }
     for (const s of $$('[data-wsskills]')) {
       const W = s.dataset.wsskills, T = W.replace(/Wildshape\.(\d+)\.$/, 'Text.Wildshape.$1.Skills.');
-      const prof = SKILLS.filter(([f]) => { const x = v(T + f + '.Prof'); return x === 'proficient' || x === 'expertise'; })
-        .map(([f, name]) => name + ' ' + v(W + 'Skills.' + f));
+      const box = (n) => !!(state.snap.get(n) || {}).checked;   // Printer Friendly: Prof / Exp boxes and ".Mod"
+      const prof = SKILLS.filter(([f]) => { const x = v(T + f + '.Prof'); return x === 'proficient' || x === 'expertise' || box(W + 'Skills.' + f + '.Prof') || box(W + 'Skills.' + f + '.Exp'); })
+        .map(([f, name]) => name + ' ' + (v(W + 'Skills.' + f) || v(W + 'Skills.' + f + '.Mod')));
       s.textContent = prof.length ? '(' + prof.join(', ') + ')' : '';
     }
     if (changed.length) layoutGrids(true, changed.map((pg) => pg.querySelector('.grid')));
@@ -411,7 +418,7 @@
       el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'AdvLog.Options', 'data-title': 'Logsheet options', 'data-pages': '1' }, [document.createTextNode('Options')])]), [
       el('p', { cls: 'hint', text: 'One entry per session. Options → Generate next Logsheet Entry starts the next one from the totals; Options also sets the date format and adds or removes logsheet pages. An entry’s ⋯ button moves, inserts, deletes or clears it.' }),
     ]));
-    for (let i = 1; i <= LOG_PER_PAGE; i++) {
+    for (let i = 1; i <= rows('log', LOG_PER_PAGE); i++) {
       const E = P + 'AdvLog.' + i + '.';
       const counts = el('div', { cls: 'log-counts' }, [el('span', {}), el('span', { cls: 'k', text: 'Start' }), el('span', { cls: 'k', text: '+ / −' }), el('span', { cls: 'k', text: 'Total' })]);
       for (const [k, label] of LOG_COUNTS) {

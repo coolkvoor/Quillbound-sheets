@@ -17,7 +17,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 | Save file | The MPMB PDF itself (+ autosave inside the app). Both built; a PDF saved by the app works completely in the owner's real Acrobat (checked 2026-10-19, version 40) |
 | Platform | Web app installed from Chrome; app stores later, if ever |
 | Scope | Play **and** build characters |
-| Rules | 2024 sheets first; 2014 sheets later (assumption) |
+| Rules | 2024 sheets first; the 2014 (v14) sheets work too (2026-10-20); later MPMB versions must keep working |
 | Looks | Five themes after MPMB's Colorful and Printer Friendly sheets + "Match my sheet"; no handwriting font; sheet art recreated in CSS, never shipped |
 
 ## Milestones
@@ -77,6 +77,8 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - `node test/textoptions.test.js`: Text Options menu, the font dialog (size 8, Garamond, line spacing 12), hiding lines, unicode off/on, autosave, the PDF (DA, the name drawn in Garamond, read back as a new sheet) and a font missing from /DR (SegoeUI-Semibold) added by the writer. Writes `test/saved-textoptions.pdf` (gitignored; `notes/sheet-serve.js` `/view?f=textoptions`). Part of `npm test`.
 - `node test/adventurers.test.js`: the AL menu one option at a time and all at once, the faction from its list (symbol, ranks), logsheet totals, Options → Generate next entry, entry Insert/Delete, save and restore, the PDF read back, Undo all. Part of `npm test`.
 - `node test/import.test.js [file.pdf]`: MPMB's Direct Import from `test/saved-character.pdf` (written by writer.test.js) into a fresh sheet, each sheet in its own vm realm; reopens the result and compares every field with a value (the rest are MPMB's own import differences). Part of `npm test`, after writer.test.js.
+- `node test/sheets2014.test.js [file.pdf]`: each 2014 (v14) sheet in `resources/` (skips when none): starts, the self-test with High Elf, the worker's line counts against MPMB's FieldNumbers, 2014 conditions/exhaustion (Colorful), Wild Shape uses and a Wolf (Colorful skill dot, Printer Friendly Prof/Exp boxes), autosave restore, written PDF read back. Writes `test/saved-2014.pdf` (gitignored). Part of `npm test`.
+- Other sheets in the tests: `SHEET=path.pdf` makes loader/writer/pictures/textoptions/adventurers/ui tests use it instead of `test/sheet.pdf` (rerun `node test/loader.test.js` without it afterwards: model.json is rewritten). The other tests expect 2024 rules (Elf lineages, Infernal Tiefling, 2024 Wolf…), so they fail on a 2014 sheet by design. ui.test: `RACE='High Elf'`, `CONTENT=none` for 2014 sheets.
 - `node test/fields.test.js`: Notes pages (Options: lines, add, remove), MoreProficiencies, the modifier switches, armour weight (Weight: Armor on), damage die, companion initiative bonus and Stealth modifier, save and restore. Part of `npm test`.
 - `node test/features.test.js [all]`: every class and subclass levelled 1 → 20 one level at a time, read with the app's parser (`src/features.js`): every feature must have a description and no "Rebuild feature texts" may be offered. Each class runs in its own child process on a fresh sheet with a 300 s limit (one sheet reused for ~40 subclasses with the WotC content ended up looping inside MPMB). `all` adds the first content file in `resources/` (50 subclasses, about 25 s). Part of `npm test` (SRD only). `VERBOSE=1` prints every check.
 - `node test/debug.js 'expr' ...`: runs the self-test steps, then evaluates expressions inside the sheet's realm.
@@ -84,6 +86,16 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - Checking a screen in the Claude preview pane with the owner's sheet: `.claude/launch.json` (local, untracked) has a "sheet" server (`notes/sheet-serve.js`, gitignored) that serves `test/sheet.pdf` at http://localhost:8124/sheet.pdf only (its main address is a text page: the preview opens a tab there, and a PDF there made the pane offer a download each time). The page fetches it and puts it on `#file` with a DataTransfer. Never copy the sheet into `dist-single` (that folder is published). While the pane is hidden, dialog close events and resize events wait until it renders: reload at the size you want rather than resizing.
 - `node test/ui.test.js [phone-portrait|phone-landscape|tablet-portrait|tablet-landscape]`: Playwright at the real device sizes, with screenshots in `test/shots/`. Env: `SCHEME=dark`, `NOCDN=1`, `DIST=dist-single` (the default `dist/` is only rebuilt by `tools/build.sh`), `URL=file:///…`, `LOOK=colorful-white|colorful-dark|pf-white|pf-dark|pf-black`, `FONTS=1` (load the Google fonts; blocked otherwise), `SHOTS=folder`.
 - `tools/build.sh` → `dist/` (multi-file). `node tools/build-single.js [version]` → `dist-single/index.html` (artifact page, pdf-lib from cdnjs) and `dist-single/MPMB-Sheet-App.html` (one downloadable file with pdf-lib bundled; the worker starts from a blob URL, or a data: URL when Chrome refuses blob workers on file:// pages).
+
+## Sheet types and versions (2026-10-20)
+
+- MPMB's own code runs unchanged on the 2014 sheets (v14.1.2: Colorful A4/Letter, Printer Friendly, Printer Friendly Redesign); the engine needed nothing. The differences are in the fields, so the app must never assume one sheet's layout:
+  - Line counts differ per sheet type (MPMB's `FieldNumbers`): Colorful A4 has 6 attacks, 8 languages/tools, 46/42 gear lines; Letter and Printer Friendly 5 attacks, 6 languages, Printer Friendly 54/36 gear lines and 17 companion gear lines. The worker counts each kind from the sheet's fields (`ROWS` / `rowCounts` in worker.js, returned by `open`) and the app's `rows(key, n)` (ui-core.js) shows at most that many.
+  - A field the sheet doesn't have is left out: `absent()` in app.js marks its wrapper (`.f`, `.tg`, `.stat`, `.ad-wrap`) `data-absent` (CSS `display: none`). Printer Friendly sheets (2024 too) have no Adv/Dis boxes, no conditions, no "Reaction used", no Attacks per Action.
+  - Conditions: 2024 Colorful `Condition.<Name>` + `Condition.Exhaustion`; 2014 Colorful `Extra.Condition 1..14` (2014 order, no Surprised) + `Extra.Exhaustion Level 1..6` boxes (MPMB's ConditionSet); Printer Friendly none (the card hides).
+  - Wild Shapes: 2024 `Wildshapes.Info.KnownForms`/`TempHP`; 2014 `Wildshapes.Info.Uses`. Shape skills: Colorful `Text.Wildshape.N.Skills.X.Name`/`.Prof` (a combo cycled by MPMB) + `Wildshape.N.Skills.X`; Printer Friendly (both years) `Wildshape.N.Skills.X.Prof`/`.Exp` check boxes + `.Mod`. The app binds both sets.
+  - 2014 names: "High Elf" (no Elf lineage menu), Racial Bonus column in Ability Scores, 25 doc scripts (2024: 27).
+- MPMB fills a wild shape only when all six ability scores are set (an empty Str stops ApplyWildshape); the same in Acrobat.
 
 ## Acrobat fidelity: lessons learned (keep these true)
 
@@ -146,7 +158,7 @@ A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) cha
 - Hosting isn't needed for dialogs any more (restart and replay). Cloudflare Pages + `_headers` (dist-site) is prepared but not set up; the owner prefers no server.
 - The character is autosaved in IndexedDB per sheet file and can be downloaded written into the PDF, which works in real Acrobat (checked 2026-10-19). Overlay spawns are skipped (reported). Template spawning is basic and untested.
 - Sources can be switched on/off per book; MPMB's per-category exclusions (single classes, spells, etc.) need dialogs inside dialogs in restart and replay.
-- Done 2026-10-20: Text Options checked, Adventurers League wired, Honor/Sanity, Import from another sheet (not yet tried on the owner's phone). Next: the remaining design-doc "Still to do" items. the owner's test checklist doc (see memory) collects what is checked on his devices.
+- Done 2026-10-20: 2014 sheets (all four v14 sheets; not yet tried on the owner's phone), Text Options checked, Adventurers League wired, Honor/Sanity, Import from another sheet (not yet tried on the owner's phone). Next: the remaining design-doc "Still to do" items. the owner's test checklist doc (see memory) collects what is checked on his devices.
 - The full list of what the sheet has and the app doesn't (fields, Functions menu items, bigger work, suggested order) is in the design doc, section "Still to do" (checked 2026-10-19). Update it there when items are done.
 
 ## Working safely on the owner's PC

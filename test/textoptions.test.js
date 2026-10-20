@@ -95,7 +95,7 @@ const DIALOG = 'Set the Font and the Font Size';
     && Number(r.evalExpr('tDoc.getField("Whiteout.Standard.0").display')) === 0);
 
   // into the PDF
-  const bytes = fs.readFileSync(path.join(__dirname, 'sheet.pdf'));
+  const bytes = fs.readFileSync((process.env.SHEET || path.join(__dirname, 'sheet.pdf')));
   state.look = e.appearanceData(Object.keys(state.fields));
   state.lookLineHeight = Number(e.evalExpr('CurrentVars.linespacing'));
   const out = await write(new Uint8Array(bytes), state, PDFLib);

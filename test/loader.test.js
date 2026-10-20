@@ -2,7 +2,7 @@ const fs = require('fs'), path = require('path');
 const PDFLib = require('pdf-lib');
 const { load } = require('../src/loader.js');
 (async () => {
-  const bytes = fs.readFileSync(path.join(__dirname, 'sheet.pdf'));
+  const bytes = fs.readFileSync((process.env.SHEET || path.join(__dirname, 'sheet.pdf')));
   const m = await load(new Uint8Array(bytes), PDFLib, (s) => console.log('..', s));
   console.log('stats', m.stats, 'pages', m.pageCount, 'templates', m.templates.length, 'docScripts', m.docScripts.length, 'fields', Object.keys(m.fields).length, 'calcOrder', m.calcOrder.length, 'bookmarks', m.bookmarks.length);
   fs.writeFileSync(path.join(__dirname, 'model.json'), JSON.stringify(m));

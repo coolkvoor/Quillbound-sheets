@@ -111,7 +111,7 @@ const find = (items, re) => { for (const i of items || []) { if (i.items) { cons
   check('restore: the symbol stays', r.snapshot('Symbol').icon === 'fld:SaveIMG.Faction.harpers.symbol', r.snapshot('Symbol').icon);
 
   // into the PDF and back as a new sheet
-  const bytes = fs.readFileSync(path.join(__dirname, 'sheet.pdf'));
+  const bytes = fs.readFileSync((process.env.SHEET || path.join(__dirname, 'sheet.pdf')));
   state.look = e.appearanceData(Object.keys(state.fields));
   const out = await write(new Uint8Array(bytes), state, PDFLib);
   const model2 = await load(out.bytes, PDFLib);

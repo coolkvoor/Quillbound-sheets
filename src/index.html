@@ -449,6 +449,8 @@ select option, select optgroup { background-color: var(--surface); color: var(--
 /* the A and D boxes shrink with a narrow panel, both alike, so they stay centred */
 .abi > .ad { gap: 8px; max-width: 100%; justify-content: center; }
 .abi > .ad button { width: 34px; flex: 0 1 34px; min-width: 0; height: 28px; }
+.ad-wrap { display: contents; }
+[data-absent] { display: none !important; }   /* a field this sheet does not have (absent() in app.js) */
 .row-ad { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-height: 40px; }
 .f.inline { display: inline-flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; }
 /* small number boxes beside a label: a box's own width (about 20 characters) made rows wider than the card */
@@ -697,7 +699,7 @@ window.MPMBTheme = (() => {
       <p class="note" id="loading-sub"></p>
     </div>
     <p class="alert" id="start-error" hidden></p>
-    <p class="note">Works with MPMB's 2024 (5.5e) character sheets, including books you imported in Acrobat. Your file stays on this device.</p>
+    <p class="note">Works with MPMB's 2024 (5.5e) and 2014 (5e) character sheets, Colorful and Printer Friendly, including books you imported in Acrobat. Your file stays on this device.</p>
     <p class="note">Version 0.1 test build. Your character and add-on content are saved on this device as you go (not into the PDF yet). MPMB's dialogs and questions are shown to you, as in Acrobat.</p>
   </div>
 </div>
@@ -781,7 +783,7 @@ window.MPMBTheme = (() => {
           </div>
           <label class="f"><span>Armor</span><input class="in" data-f="AC Armor Description" id="f-armor" list="dl-armor" autocomplete="off" placeholder="Pick or type armor"><datalist id="dl-armor" data-items="AC Armor Description"></datalist></label>
           <label class="f"><span>Shield</span><input class="in" data-f="AC Shield Bonus Description" id="f-shield" autocomplete="off" placeholder="e.g. Shield"></label>
-          <div class="row-ad"><span class="muted">Initiative rolls</span><span id="init-ad"></span>
+          <div class="row-ad"><span class="ad-wrap"><span class="muted">Initiative rolls</span><span id="init-ad"></span></span>
             <label class="f mod inline"><span>Initiative bonus</span><input class="in num" data-f="Init Bonus" id="f-init-bonus" autocomplete="off"></label></div>
           <details class="more">
             <summary>Armor class parts</summary>
@@ -830,10 +832,11 @@ window.MPMBTheme = (() => {
             </div>
           </div>
         </div>
-        <div class="card">
+        <div class="card" id="cond-card">
           <h3>Conditions</h3>
           <div class="toggles conds" id="conditions"></div>
-          <div class="row">
+          <div class="f" id="exh-2014" hidden><span class="flabel">Exhaustion level</span><div class="toggles" id="exh-2014-levels"></div></div>
+          <div class="row" id="exh-2024">
             <div class="f"><span class="flabel">Exhaustion</span><span class="stepper"><button class="btn" type="button" data-step="Condition.Exhaustion" data-by="-1" aria-label="Less exhaustion">−</button><input class="in num" data-f="Condition.Exhaustion" id="f-exh" inputmode="numeric" autocomplete="off" aria-label="Exhaustion level"><button class="btn" type="button" data-step="Condition.Exhaustion" data-by="1" aria-label="More exhaustion">+</button></span></div>
             <div class="f"><span class="flabel">Effect</span><span data-out="Condition.Exhaustion Effect">–</span></div>
           </div>
@@ -849,7 +852,7 @@ window.MPMBTheme = (() => {
         </div>
         <div class="card span-2">
           <h3>Attacks and cantrips</h3>
-          <div class="row-ad"><span class="muted">All attack rolls</span><span id="att-ad"></span>
+          <div class="row-ad"><span class="ad-wrap"><span class="muted">All attack rolls</span><span id="att-ad"></span></span>
             <label class="f inline"><span>Attacks per action</span><input class="in num" data-f="Attacks per Action" id="f-atk-per" inputmode="numeric" autocomplete="off"></label></div>
           <div id="attacks"></div>
         </div>
@@ -1032,7 +1035,7 @@ window.MPMBTheme = (() => {
 
     <section class="band" id="wildshape" aria-labelledby="t-wildshape" hidden>
       <h2 class="band-title" id="t-wildshape">Wild Shape</h2>
-      <p class="note" id="ws-none" hidden>MPMB gives this character Wild Shape (known forms: <span data-out="Wildshapes.Info.KnownForms"></span>), but your PDF has no Wild Shapes page yet. Add one: MPMB works out each beast you pick with your own proficiencies.</p>
+      <p class="note" id="ws-none" hidden>MPMB gives this character Wild Shape, but your PDF has no Wild Shapes page yet. Add one: MPMB works out each beast you pick with your own proficiencies.</p>
       <button class="btn primary" id="ws-add" type="button" hidden>Add a Wild Shapes page</button>
       <div id="ws-list"></div>
     </section>

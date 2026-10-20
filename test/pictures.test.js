@@ -37,7 +37,7 @@ function png(w, h) {
 const JPEG = '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=';
 
 (async () => {
-  const bytes = fs.readFileSync(path.join(__dirname, 'sheet.pdf'));
+  const bytes = fs.readFileSync((process.env.SHEET || path.join(__dirname, 'sheet.pdf')));
   const e = newEngine(fs.readFileSync(path.join(__dirname, 'model.json'), 'utf8'));
   check('portrait starts with its own icon', e.snapshot('Portrait').icon === 'own:Portrait', e.snapshot('Portrait').icon);
 

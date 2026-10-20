@@ -93,6 +93,24 @@ function logSummary() {
   return { alerts: l.alerts.slice(-40), dialogs: l.dialogs.slice(-40), menus: l.menus.slice(-20), errors: l.errors.slice(-40), unsupported: Object.assign({}, l.unsupported), urls: l.urls.slice(-10) };
 }
 
+// How many lines of each kind this sheet has, counted from its own fields (sheet types and versions differ: Printer
+// Friendly and Letter have fewer attacks, feats, actions and gear lines than Colorful A4). Template pages count by
+// their fields as distributed. The app shows at most this many (rows() in ui-core.js).
+const ROWS = {
+  hd: (n) => 'HD' + n + ' Level', attacks: (n) => 'Attack.' + n + '.Weapon Selection', limited: (n) => 'Limited Feature ' + n,
+  feats: (n) => 'Feat Name ' + n, Action: (n) => 'Action ' + n, 'Bonus Action': (n) => 'Bonus Action ' + n, Reaction: (n) => 'Reaction ' + n,
+  magic: (n) => 'Extra.Magic Item ' + n, gear: (n) => 'Adventuring Gear Row ' + n, xgear: (n) => 'Extra.Gear Row ' + n,
+  Tool: (n) => 'Tool ' + n, Language: (n) => 'Language ' + n, res: (n) => 'Resistance Damage Type ' + n,
+  compAttacks: (n) => 'Comp.Use.Attack.' + n + '.Weapon Selection', compGear: (n) => 'Comp.eqp.Gear Row ' + n,
+  ws: (n) => 'Wildshape.Race.' + n, wsAttacks: (n) => 'Wildshape.1.Attack.' + n + '.Weapon', log: (n) => 'AdvLog.' + n + '.date',
+  cond24: (n) => (n === 1 ? 'Condition.Blinded' : ''), cond14: (n) => 'Extra.Condition ' + n, exh14: (n) => 'Extra.Exhaustion Level ' + n,
+};
+function rowCounts(model) {
+  const out = {};
+  for (const k in ROWS) { let n = 0; while (n < 200 && Object.prototype.hasOwnProperty.call(model.fields, ROWS[k](n + 1))) n++; out[k] = n; }
+  return out;
+}
+
 const ops = {
   // saved: field values kept with this sheet in the app (add-on content and source choices), restored before MPMB starts
   // state: a saved character (engine.exportState), put back before MPMB starts; it includes the add-on content
@@ -110,6 +128,7 @@ const ops = {
     const { restoredChar, startMs, restored } = startEngine(model, fileName, saved, state);
     return {
       info: { title: model.info.Title || '', version: model.info.SheetVersion || '', type: model.info.SheetType || '', author: model.info.Author || '' },
+      rowCounts: rowCounts(model),
       stats: { bytes: model.stats.bytes, loadMs, startMs, fields: model.fieldOrder.length, scripts: model.docScripts.length, pages: model.pageCount, templates: model.templates.length },
       content: restored.content,
       restoredChar,

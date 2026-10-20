@@ -25,7 +25,7 @@ let failed = 0;
 const check = (label, ok, detail) => { if (!ok) failed++; console.log(ok ? 'PASS' : 'FAIL', label.padEnd(44), detail === undefined ? '' : String(detail).slice(0, 200)); };
 
 (async () => {
-  const bytes = fs.readFileSync(path.join(__dirname, 'sheet.pdf'));
+  const bytes = fs.readFileSync((process.env.SHEET || path.join(__dirname, 'sheet.pdf')));
   const e = newEngine(fs.readFileSync(path.join(__dirname, 'model.json'), 'utf8'));
   for (const [op, f, v] of selftest.steps) e[op](f, v);
   e.commit('PC Name', 'Ilvara');
