@@ -186,7 +186,7 @@
 
   // Full text of one spell, for the details view
   function details(engine, key) {
-    return json(engine, '(function (k) { var s = SpellsList[k]; if (!s) return null; return { name: s.name, level: s.level, school: s.school || "", time: s.time || "", range: s.range || "", components: s.components || "", compMaterial: s.compMaterial || "", duration: s.duration || "", ritual: !!s.ritual, save: s.save || "", text: s.descriptionFull ? (isArray(s.descriptionFull) ? s.descriptionFull.join("\\n") : String(s.descriptionFull)) : (s.description || ""), source: stringSource(s, "full,page", "", "") }; })(' + JSON.stringify(key) + ')');
+    return json(engine, '(function (k) { var s = SpellsList[k]; if (!s) return null; return { name: s.name, level: s.level, school: s.school || "", time: s.time || "", range: s.range || "", components: s.components || "", compMaterial: s.compMaterial || "", duration: s.duration || "", ritual: !!s.ritual, reqLoS: !!s.reqLoS, save: s.save || "", text: s.descriptionFull ? (isArray(s.descriptionFull) ? s.descriptionFull.join("\\n") : String(s.descriptionFull)) : (s.description || ""), source: stringSource(s, "full,page", "", "") }; })(' + JSON.stringify(key) + ')');
   }
 
   // A tap on a row's first column (MPMB's button): marks a spell prepared, or a once-per-rest spell used

@@ -23,6 +23,18 @@
     } catch (e) { return; }
     renderCasters(); renderSpellList();
   }
+  // MPMB ends a spell's name with its marks: ® (or "(R)" without unicode) for a ritual, ◉ for a spell whose target must
+  // be one you can see (reqLoS). The row shows them as labelled tags instead of tiny symbols.
+  const SPELL_MARKS = [[/\s*(?:®|\(R\))/g, 'Ritual', 'Can be cast as a ritual'], [/\s*◉/g, 'Needs sight', 'The target must be one you can see']];
+  function spellMarks(name) {
+    const tags = [];
+    let n = String(name);
+    for (const [re, label, hint] of SPELL_MARKS) {
+      const without = n.replace(re, '');
+      if (without !== n) { n = without; tags.push(el('span', { cls: 'tag', text: label, title: hint })); }
+    }
+    return { name: n.trim(), tags };
+  }
   const firstColTag = { atwill: 'At will', markedbox: 'Always prepared', oncelr: '1/long rest', oncesr: '1/short rest', onceday: '1/day', 'oncelr+markedbox': '1/long rest', 'oncesr+markedbox': '1/short rest', known: 'Known' };
   function renderCasters() {
     const box = $('#casters');
@@ -61,20 +73,21 @@
       let level = null, ul = null;
       for (const r of rows.filter((x) => x.caster === ck)) {
         if (r.level !== level || !ul) { level = r.level; box.append(el('div', { cls: 'spell-level', text: level === null ? 'Other' : LEVEL_NAMES[level] })); ul = el('ul', { cls: 'spells-ul' }); box.append(ul); }
+        const marked = spellMarks(r.name);
         // the first column: prepared (checkbox) or used (once per rest), toggled by MPMB's own button
         let left = el('span');
         if (r.toggles && r.button) {
-          left = el('button', { cls: 'dot sm', type: 'button', 'aria-pressed': r.on ? 'true' : 'false', 'aria-label': r.name + (r.toggles === 'prepared' ? ' prepared' : ' used') });
+          left = el('button', { cls: 'dot sm', type: 'button', 'aria-pressed': r.on ? 'true' : 'false', 'aria-label': marked.name + (r.toggles === 'prepared' ? ' prepared' : ' used'), title: r.toggles === 'prepared' ? 'Prepared: tap to prepare or unprepare' : 'Used: tap when you use it' });
           left.addEventListener('click', async () => { const res = await send('tapSpellRow', { button: r.button }); if (res) { state.sheet = res.sheet; renderSpellList(); renderCasters(); } });
         }
-        const nameBtn = el('button', { cls: 'sp-name', type: 'button', text: r.name });
-        nameBtn.addEventListener('click', () => showSpell(r.key, r.name));
+        const nameBtn = el('button', { cls: 'sp-name', type: 'button', text: marked.name });
+        nameBtn.addEventListener('click', () => showSpell(r.key, marked.name));
         const tagText = firstColTag[r.first] || (r.toggles === 'prepared' ? '' : r.first && r.first.length <= 4 ? r.first.toUpperCase() : '');
-        const tag = tagText ? el('span', { cls: 'tag', text: tagText + (r.toggles === 'used' && r.on ? ', used' : '') }) : null;
+        const tags = marked.tags.concat(tagText ? [el('span', { cls: 'tag', text: tagText + (r.toggles === 'used' && r.on ? ', used' : '') })] : []);
         const save = r.save && !/^[–-]$/.test(r.save) ? r.save + ' save' : '';
         const meta = [r.time, r.range, r.components, r.duration, save, r.school.trim(), r.book ? r.book + ' ' + r.pageRef : ''].filter(Boolean).join(' · ');
         const more = r.button ? el('button', { cls: 'btn sm more', type: 'button', 'data-mpmb': r.button, 'data-modifier': '1', 'data-title': r.name, 'aria-label': r.name + ': options', text: '⋯' }) : el('span');
-        ul.append(el('li', { cls: 'spell' }, [left, el('div', {}, [el('div', {}, [nameBtn].concat(tag ? [tag] : [])), el('div', { cls: 'meta', text: meta }), el('div', { cls: 'desc', text: r.description })]), more]));
+        ul.append(el('li', { cls: 'spell' }, [left, el('div', {}, [el('div', {}, [nameBtn].concat(tags)), el('div', { cls: 'meta', text: meta }), el('div', { cls: 'desc', text: r.description })]), more]));
       }
     }
   }
@@ -90,7 +103,7 @@
     body.textContent = '';
     if (!d) { body.append(el('p', { cls: 'note', text: 'No details found for this spell.' })); return; }
     $('#si-title').textContent = d.name;
-    body.append(el('div', { cls: 'hint', text: [d.level === 0 ? 'Cantrip' : LEVEL_NAMES[d.level], d.school, d.ritual ? 'ritual' : ''].filter(Boolean).join(' · ') }));
+    body.append(el('div', { cls: 'hint', text: [d.level === 0 ? 'Cantrip' : LEVEL_NAMES[d.level], d.school, d.ritual ? 'ritual' : '', d.reqLoS ? 'needs a target you can see' : ''].filter(Boolean).join(' · ') }));
     const dl = el('dl', { cls: 'kv' });
     for (const [k, v] of [['Casting time', d.time], ['Range', d.range], ['Components', d.components + (d.compMaterial ? ' (' + d.compMaterial + ')' : '')], ['Duration', d.duration], ['Save', d.save], ['Source', d.source]]) if (v) dl.append(el('dt', { text: k }), el('dd', { text: v }));
     body.append(dl);
