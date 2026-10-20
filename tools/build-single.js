@@ -32,11 +32,15 @@ const app = PAGE_SCRIPTS.map((f) => (f !== 'app.js' ? read('src/' + f)
 if (app.indexOf(JSON.stringify(BUILT)) === -1 || app.indexOf(JSON.stringify(APP_NAME + ' ' + VERSION)) === -1) throw new Error('APP_BUILD / APP_BUILD_ID marker not found in src/app.js');
 // pdf.js for the downloadable file (pictures without a connection); the other builds load it from cdnjs
 const pdfjsLib = read('node_modules/pdfjs-dist/build/pdf.min.js'), pdfjsWorker = read('node_modules/pdfjs-dist/build/pdf.worker.min.js');
+// the licence texts of the parts every build uses (Settings → Credits and licences shows them; renderCredits in app.js)
+const LICENCES = [['pdf-lib (MIT License)', 'node_modules/pdf-lib/LICENSE.md'], ['PDF.js (Apache License 2.0)', 'node_modules/pdfjs-dist/LICENSE'],
+  ['Alegreya SC (SIL Open Font License 1.1)', 'node_modules/@fontsource/alegreya-sc/LICENSE'], ['Alegreya Sans (SIL Open Font License 1.1)', 'node_modules/@fontsource/alegreya-sans/LICENSE']];
+const licences = '<script type="text/plain" id="mpmb-licences">' + JSON.stringify(LICENCES.map(([name, f]) => ({ name, text: read(f).replace(/\r\n?/g, '\n').trim() }))).replace(/</g, '\\u003c') + '</script>\n';
 function page(worker, withPdfjs) {
   for (const bad of ['</script', '<!--']) if ([worker, app, realm].concat(withPdfjs ? [pdfjsLib, pdfjsWorker] : []).some((s) => s.includes(bad))) throw new Error('bundle contains ' + bad);
   let p = read('src/index.html');
   for (const f of PAGE_SCRIPTS) p = p.replace('<script src="' + f + '"></script>', '');
-  p += '\n<script type="text/plain" id="mpmb-worker-src">\n' + worker + '\n</script>\n'
+  p += '\n' + licences + '<script type="text/plain" id="mpmb-worker-src">\n' + worker + '\n</script>\n'
     + '<script type="text/plain" id="mpmb-realm-src">\n' + realm + '\n</script>\n'
     + (withPdfjs ? '<script type="text/plain" id="mpmb-pdfjs-src">\n' + pdfjsLib + '\n</script>\n<script type="text/plain" id="mpmb-pdfjs-worker-src">\n' + pdfjsWorker + '\n</script>\n' : '')
     + '<script>window.MPMB_WORKER_URL = URL.createObjectURL(new Blob([document.getElementById("mpmb-worker-src").textContent], { type: "text/javascript" }));</script>\n'

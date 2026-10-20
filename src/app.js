@@ -1019,7 +1019,7 @@
       openSheet(state.bytes.slice(0), state.fileName, false);
     });
     $('#open-other').addEventListener('click', () => { $('#sheet').hidden = true; $('#start').hidden = false; $('#loading').hidden = true; $('#start-actions').hidden = false; initStart(); });
-    $('#settings-open').addEventListener('click', () => { if (state.info) renderFacts(); renderLog(); U.renderBackup(); $('#settings').showModal(); });
+    $('#settings-open').addEventListener('click', () => { if (state.info) renderFacts(); renderCredits(); renderLog(); U.renderBackup(); $('#settings').showModal(); });
     $('#settings-close').addEventListener('click', () => $('#settings').close());
   }
 
@@ -1240,6 +1240,18 @@
     add('Contents', s.pages + ' pages, ' + s.templates + ' extra page templates, ' + s.fields.toLocaleString('en') + ' fields, ' + s.scripts + ' scripts');
     add('Opening', fmtS(s.openMs) + ' (reading the PDF ' + fmtS(s.loadMs) + ', starting MPMB ' + fmtS(s.startMs) + ')');
     add('Screen', window.innerWidth + ' × ' + window.innerHeight + ' at ' + Math.round((window.devicePixelRatio || 1) * 100) / 100 + '×');
+  }
+  // Settings → Credits and licences: the open sheet's own SRD statement (MPMB's licenseSRD) in place of the general
+  // one, and the licence texts of the bundled parts (the builds put them in #mpmb-licences)
+  function renderCredits() {
+    const srd = state.info && state.info.srd;
+    if (srd) { $('#srd-notice').textContent = srd; $('#srd-source').hidden = false; }
+    const box = $('#licence-texts');
+    if (!box || box.childNodes.length) return;
+    const src = document.getElementById('mpmb-licences');
+    let list = [];
+    try { list = src ? JSON.parse(src.textContent) : []; } catch (e) { list = []; }
+    for (const l of list) box.append(el('details', {}, [el('summary', { text: 'Licence text: ' + l.name }), el('pre', { text: l.text })]));
   }
   function renderLog() {
     const box = $('#msgs');

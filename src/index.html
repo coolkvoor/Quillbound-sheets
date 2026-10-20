@@ -496,6 +496,13 @@ details.more summary { cursor: pointer; padding: 10px 0; min-height: 44px; color
 dl.kv { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; margin: 0; font-size: 0.95rem; }
 dl.kv dt { color: var(--muted); }
 dl.kv dd { margin: 0; overflow-wrap: anywhere; }
+/* Settings → Credits and licences */
+#credits .credits-h { margin: 6px 0 0; font-size: 0.95rem; }
+#credits .credits-p, #credits .credits-list { margin: 0; font-size: 0.92rem; overflow-wrap: anywhere; }
+#credits .credits-list { padding-left: 1.2em; display: grid; gap: 4px; }
+#credits a { color: var(--accent); }
+#licence-texts details summary { cursor: pointer; color: var(--accent); min-height: 40px; display: flex; align-items: center; }
+#licence-texts pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.78rem; max-height: 50vh; overflow: auto; margin: 0 0 8px; padding: 8px; border: 1px solid var(--line); border-radius: 6px; }
 
 /* tab bar */
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom, 0px); }
@@ -1183,6 +1190,23 @@ window.MPMBTheme = (() => {
     <div class="card">
       <h3>About</h3>
       <dl class="kv" id="sheet-facts"></dl>
+    </div>
+    <div class="card" id="credits">
+      <h3>Credits and licences</h3>
+      <p class="note">Quillbound Sheets is an independent app. It is not made, endorsed or supported by Wizards of the Coast or by MorePurpleMoreBetter (MPMB).</p>
+      <h4 class="credits-h">Rules content</h4>
+      <p class="credits-p" id="srd-notice">The rules content comes from your sheet. MPMB's sheets include material from the System Reference Document by Wizards of the Coast LLC, licensed under the Creative Commons Attribution 4.0 International License (<a href="https://creativecommons.org/licenses/by/4.0/legalcode" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>).</p>
+      <p class="note" id="srd-source" hidden>As your sheet states it (MPMB's FAQ menu shows the same text).</p>
+      <p class="note">Add-on content you load belongs to its own makers.</p>
+      <h4 class="credits-h">The sheet's scripts</h4>
+      <p class="credits-p">All D&amp;D rules and automation run MPMB's own code from your sheet: MorePurpleMoreBetter's Character Record Sheets by Joost Wijnen (<a href="https://flapkan.com" target="_blank" rel="noopener noreferrer">flapkan.com</a>), licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU General Public License version 3</a>. The app includes none of it.</p>
+      <h4 class="credits-h">Parts of this app</h4>
+      <ul class="credits-list">
+        <li><b>pdf-lib</b> (reads and saves the PDF): copyright 2019 Andrew Dillon, MIT License.</li>
+        <li><b>PDF.js</b> (draws the pictures): copyright Mozilla Foundation, Apache License 2.0.</li>
+        <li><b>Alegreya SC</b>: copyright 2011 The Alegreya Project Authors. <b>Alegreya Sans</b>: copyright 2013 The Alegreya Sans Project Authors. Both under the SIL Open Font License 1.1.</li>
+      </ul>
+      <div id="licence-texts"></div>
     </div>
     <div class="card">
       <h3>Messages from MPMB <span class="chip" id="msg-count">0</span></h3>

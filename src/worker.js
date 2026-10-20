@@ -126,8 +126,11 @@ const ops = {
     modelJSON = JSON.stringify(model);
     progress(state ? 'Starting MPMB’s scripts with your character' : saved ? 'Starting MPMB’s scripts and your add-on content' : 'Starting MPMB’s scripts');
     const { restoredChar, startMs, restored } = startEngine(model, fileName, saved, state);
+    // the sheet's own SRD attribution (MPMB's FAQ menu shows it): SRD 5.2.1 on 2024 sheets, SRD 5.1 on 2014 ones
+    let srd = '';
+    try { srd = String(engine.evalExpr('typeof licenseSRD === "string" ? licenseSRD : ""')); } catch (e) { /* none */ }
     return {
-      info: { title: model.info.Title || '', version: model.info.SheetVersion || '', type: model.info.SheetType || '', author: model.info.Author || '' },
+      info: { title: model.info.Title || '', version: model.info.SheetVersion || '', type: model.info.SheetType || '', author: model.info.Author || '', srd },
       rowCounts: rowCounts(model),
       stats: { bytes: model.stats.bytes, loadMs, startMs, fields: model.fieldOrder.length, scripts: model.docScripts.length, pages: model.pageCount, templates: model.templates.length },
       content: restored.content,
