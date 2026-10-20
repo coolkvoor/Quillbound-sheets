@@ -61,7 +61,8 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin === self.location.origin) {
-    if (url.pathname.endsWith('/sw.js')) return;
+    // the worker itself, and the build the site serves now (always from the network: the app compares it with its own)
+    if (url.pathname.endsWith('/sw.js') || url.pathname.endsWith('/version.json')) return;
     e.respondWith(fromNetworkFirst(req));
   } else if (/(^|\.)cdnjs\.cloudflare\.com$|(^|\.)fonts\.(googleapis|gstatic)\.com$/.test(url.hostname)) {
     e.respondWith(fromCacheFirst(req));

@@ -309,6 +309,9 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .menu-list li.note { margin: 4px 16px 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); }
 .notice-msg { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
 .toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tabbar-h) + 14px + env(safe-area-inset-bottom, 0px)); z-index: 8; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 10px 16px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgb(0 0 0 / 0.25); }
+.update-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tabbar-h) + 14px + env(safe-area-inset-bottom, 0px)); z-index: 7; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: max-content; max-width: calc(100% - 32px); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 10px 16px; box-shadow: 0 4px 18px rgb(0 0 0 / 0.25); }
+#update-text { flex: 1 1 14rem; }
+.update-bar .btns { display: flex; gap: 8px; }
 
 /* spells */
 .caster { display: grid; gap: 6px; padding: 8px 0; border-bottom: 1px solid var(--line); }
@@ -1188,6 +1191,9 @@ window.MPMBTheme = (() => {
     </div>
   </div>
 </dialog>
+
+<!-- a new version of the app while it is open (wireUpdates in app.js) -->
+<div class="update-bar" id="update-bar" role="status" aria-live="polite" hidden><span id="update-text">A new version of the app is ready.</span><span class="btns"><button class="btn sm primary" id="update-now" type="button">Reload</button><button class="btn sm" id="update-later" type="button">Later</button></span></div>
 
 <!-- MPMB's messages after a tap -->
 <dialog class="panel" id="notice" aria-labelledby="notice-title">

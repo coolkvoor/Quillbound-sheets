@@ -90,6 +90,8 @@ const sitePage = full.replace(GOOGLE, '<style>' + fontCss + '</style>')
 if (sitePage.indexOf('MPMB_PDFJS') === -1) throw new Error('no </head> in the full page');
 if (/googleapis|gstatic|cdnjs/.test(sitePage.replace(/<script type="text\/plain"[\s\S]*?<\/script>/g, '').replace(/<script>\n[\s\S]*?\n<\/script>/g, ''))) throw new Error('the site page still links another site');
 fs.writeFileSync(path.join(site, 'index.html'), sitePage);
+// the build the site serves now: an app left open checks it and offers to reload when it's newer (wireUpdates in app.js)
+fs.writeFileSync(path.join(site, 'version.json'), JSON.stringify({ build: 'Version ' + VERSION + ', built ' + BUILT }) + '\n');
 for (const f of PWA) fs.copyFileSync(path.join(R, 'src', 'pwa', f), path.join(site, f));
 // the service worker keeps these for offline use from the start (pictures and fonts without a connection)
 const sw = read('src/pwa/sw.js');

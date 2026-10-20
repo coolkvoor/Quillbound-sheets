@@ -131,7 +131,10 @@
       btn.textContent = 'Reopen ' + last.name;
       btn.hidden = false;
       btn.onclick = async () => { const buf = await last.blob.arrayBuffer(); openSheet(buf, last.name, false); };
-      if (first && standalone()) btn.onclick();
+      // also after "Reload" for a new version (wireUpdates): the character comes straight back
+      let again = false;
+      try { again = sessionStorage.getItem(RELOAD_KEY) === '1'; sessionStorage.removeItem(RELOAD_KEY); } catch (e) { /* no storage */ }
+      if (first && (standalone() || again)) btn.onclick();
     }
     // onchange, not addEventListener: initStart runs again for "Open another sheet"
     $('#file').onchange = async (e) => {
@@ -1289,6 +1292,43 @@
       $('#install-card').hidden = true;
     });
   }
+  // ---------------------------------------------------------------- a new version while the app is open (dist-site)
+  // The page comes from the network at every start, so a new version arrives then. An app left open for days doesn't
+  // start again: it checks the build the site serves now (version.json, never from the service worker's copy) when it
+  // comes back on screen (at most every 10 minutes) and every 30 minutes while shown, and offers to reload. Reloading
+  // saves the character first and opens it again. Offline, or with the Access sign-in expired, the check finds nothing.
+  const RELOAD_KEY = 'mpmb-reload-open';
+  const UPDATE_EVERY_MS = 30 * 60000, UPDATE_MIN_GAP_MS = 10 * 60000;
+  let lastUpdateCheck = 0, newBuild = null;
+  async function checkForUpdate() {
+    if (newBuild || !navigator.onLine) return;
+    lastUpdateCheck = Date.now();
+    try {
+      const r = await fetch('version.json', { cache: 'no-store' });
+      if (!r.ok || r.redirected || !/json/.test(r.headers.get('content-type') || '')) return;
+      const v = await r.json();
+      if (v && v.build && v.build !== APP_BUILD) { newBuild = v.build; $('#update-text').textContent = 'A new version of the app is ready (' + v.build.replace(/^Version [\d.]+, built /, 'built ') + ').'; $('#update-bar').hidden = false; }
+    } catch (e) { /* offline or signed out: try again later */ }
+  }
+  async function reloadForUpdate() {
+    if (state.changing) { toast('Finish the open dialog first'); return; }
+    $('#update-now').disabled = true;
+    clearTimeout(saveTimer);
+    // a save already running finishes first, then this one has the latest
+    for (let i = 0; i < 100 && saving; i++) await new Promise((r) => setTimeout(r, 100));
+    if (state.worker && state.charKey) await saveNow();
+    try { if (state.bytes) sessionStorage.setItem(RELOAD_KEY, '1'); } catch (e) { /* the start screen shows Reopen instead */ }
+    location.reload();
+  }
+  function wireUpdates() {
+    if (!window.MPMB_SW || !/^https?:$/.test(location.protocol)) return;   // only the site has version.json
+    $('#update-now').addEventListener('click', reloadForUpdate);
+    $('#update-later').addEventListener('click', () => { $('#update-bar').hidden = true; });
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - lastUpdateCheck > UPDATE_MIN_GAP_MS) checkForUpdate(); });
+    setInterval(() => { if (document.visibilityState === 'visible') checkForUpdate(); }, UPDATE_EVERY_MS);
+    // the page itself may be the service worker's kept copy (offline, or a slow start): check soon after starting too
+    setTimeout(checkForUpdate, 60000);
+  }
   // ---------------------------------------------------------------- go
   // Cards go into fixed columns, each into the shortest column so far, in reading order. They only move when the
   // number of columns changes (rotating, resizing), never because a card's content grows or folds.
@@ -1364,6 +1404,7 @@
   wireLooks();
   wireDialogMode();
   wireInstall();
+  wireUpdates();
   U.wireBackup();
   initStart(true);
 })();
