@@ -3,7 +3,7 @@
 A phone-first web app (the owner's project) that opens an **MPMB 2024 (5.5e) character sheet PDF** and runs MPMB's own scripts in a stand-in for Adobe Acrobat. Users can play and build characters on a phone or tablet, with all D&D logic coming from MPMB's code inside their PDF.
 
 - Design doc (decisions, milestones, risks): https://claude.ai/code/artifact/DESIGN-DOC
-- The test build is published as a private Claude artifact (0.2 since 2026-10-12; version 51 on 2026-10-20 has Text Options, Adventurers League, notes pages, modifiers, Honor/Sanity and Import from another sheet): https://claude.ai/artifact/ARTIFACT. Publish `dist-single/index.html` (`node tools/build-single.js 0.2`); it loads pdf-lib from cdnjs so the page holds only this app's code.
+- The test build is published as a private Claude artifact (0.2 since 2026-10-12; version 52 on 2026-10-20 adds the 2014 sheets to Text Options, Adventurers League, notes pages, modifiers, Honor/Sanity and Import from another sheet): https://claude.ai/artifact/ARTIFACT. Publish `dist-single/index.html` (`node tools/build-single.js 0.2`); it loads pdf-lib from cdnjs so the page holds only this app's code.
 - Code: private GitHub repo https://github.com/OWNER/mpmb-sheet-app (branch `master`, pushed with the `gh` login of the owner's account OWNER). Hosting with real dialogs: Cloudflare Pages from that repo (build `node tools/build-single.js 0.2`, output `dist-site`, which holds the full page and `_headers` with COOP/COEP), behind Cloudflare Access so only the owner can open it. Being set up 2026-10-19.
 - Test devices: the phone (6.3", 1220×2656, about 393×852 CSS px at 3.1×) and the tablet (10.9", 1440×2304, about 800×1280 at 1.8×). Chrome on Android.
 
