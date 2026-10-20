@@ -12,6 +12,10 @@ Build: `tools/build.sh` → `dist/`. Tests: put an MPMB sheet at `test/sheet.pdf
 
 No MPMB code or book content is included; users bring their own sheet.
 
+## Licence
+
+Quillbound Sheets is free software under the GNU General Public License version 3 or (at your option) any later version; see [LICENSE](LICENSE). It comes with no warranty.
+
 ## Credits and licences
 
 Quillbound Sheets is an independent app, not made, endorsed or supported by Wizards of the Coast or by MorePurpleMoreBetter (MPMB). Settings → Credits and licences in the app shows all of this, including the open sheet's own SRD attribution statement.

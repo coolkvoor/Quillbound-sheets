@@ -33,7 +33,7 @@ if (app.indexOf(JSON.stringify(BUILT)) === -1 || app.indexOf(JSON.stringify(APP_
 // pdf.js for the downloadable file (pictures without a connection); the other builds load it from cdnjs
 const pdfjsLib = read('node_modules/pdfjs-dist/build/pdf.min.js'), pdfjsWorker = read('node_modules/pdfjs-dist/build/pdf.worker.min.js');
 // the licence texts of the parts every build uses (Settings → Credits and licences shows them; renderCredits in app.js)
-const LICENCES = [['pdf-lib (MIT License)', 'node_modules/pdf-lib/LICENSE.md'], ['PDF.js (Apache License 2.0)', 'node_modules/pdfjs-dist/LICENSE'],
+const LICENCES = [['Quillbound Sheets (GNU General Public License version 3)', 'LICENSE'], ['pdf-lib (MIT License)', 'node_modules/pdf-lib/LICENSE.md'], ['PDF.js (Apache License 2.0)', 'node_modules/pdfjs-dist/LICENSE'],
   ['Alegreya SC (SIL Open Font License 1.1)', 'node_modules/@fontsource/alegreya-sc/LICENSE'], ['Alegreya Sans (SIL Open Font License 1.1)', 'node_modules/@fontsource/alegreya-sans/LICENSE']];
 const licences = '<script type="text/plain" id="mpmb-licences">' + JSON.stringify(LICENCES.map(([name, f]) => ({ name, text: read(f).replace(/\r\n?/g, '\n').trim() }))).replace(/</g, '\\u003c') + '</script>\n';
 function page(worker, withPdfjs) {
