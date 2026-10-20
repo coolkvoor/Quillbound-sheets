@@ -1,4 +1,4 @@
-/* Quillbound — import a character from another MPMB sheet (MPMB's Direct Import, Functions → Import/Export).
+/* Quillbound Sheets — import a character from another MPMB sheet (MPMB's Direct Import, Functions → Import/Export).
    Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
 (() => {
   'use strict';

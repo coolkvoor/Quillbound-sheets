@@ -1,4 +1,4 @@
-/* Quillbound 0.1 — the screens. All MPMB logic runs in worker.js; this file shows fields and sends taps.
+/* Quillbound Sheets 0.1 — the screens. All MPMB logic runs in worker.js; this file shows fields and sends taps.
    The screens are split over ui-core.js (shared helpers and state, window.MPMBUI), ui-*.js and this file, loaded in that order. */
 (() => {
   'use strict';
@@ -12,7 +12,7 @@
     spellsSoon, pickPicture, syncCompanions, syncWildShapes, syncLogs, syncNotes, iconCache, renderCasters,
     renderSpellList, renderContent, refreshSpells, wireContent, wireSpells, wireClassAbility, clearPageCards, wireImport
   } = U;
-  const APP_BUILD = 'development build';   // tools/build-single.js puts the name and version here ("Quillbound 1.0")
+  const APP_BUILD = 'development build';   // tools/build-single.js puts the name and version here ("Quillbound Sheets 1.0")
   const APP_BUILD_ID = '';   // and the build time: not shown, only compared with the site's version.json (wireUpdates)
 
   // ---------------------------------------------------------------- worker connection
@@ -1308,7 +1308,7 @@
       const r = await fetch('version.json', { cache: 'no-store' });
       if (!r.ok || r.redirected || !/json/.test(r.headers.get('content-type') || '')) return;
       const v = await r.json();
-      if (v && v.build && v.build !== APP_BUILD_ID) { newBuild = v.build; $('#update-text').textContent = 'A new version of the app is ready' + (v.version && 'Quillbound ' + v.version !== APP_BUILD ? ' (' + v.version + ').' : '.'); $('#update-bar').hidden = false; }
+      if (v && v.build && v.build !== APP_BUILD_ID) { newBuild = v.build; $('#update-text').textContent = 'A new version of the app is ready' + (v.version && !APP_BUILD.endsWith(' ' + v.version) ? ' (' + v.version + ').' : '.'); $('#update-bar').hidden = false; }
     } catch (e) { /* offline or signed out: try again later */ }
   }
   async function reloadForUpdate() {

@@ -1,4 +1,4 @@
-/* Quillbound — add-on content and sources. Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
+/* Quillbound Sheets — add-on content and sources. Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
 (() => {
   'use strict';
   const U = window.MPMBUI;

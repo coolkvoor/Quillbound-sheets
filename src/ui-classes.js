@@ -1,4 +1,4 @@
-/* Quillbound — the class and ability score screens (MPMB's Class Selection and Ability Scores dialogs). Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
+/* Quillbound Sheets — the class and ability score screens (MPMB's Class Selection and Ability Scores dialogs). Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
 (() => {
   'use strict';
   const U = window.MPMBUI;

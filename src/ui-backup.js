@@ -1,4 +1,4 @@
-/* Quillbound — keeping characters safe: storage Chrome keeps for good, and a copy of each character in a folder.
+/* Quillbound Sheets — keeping characters safe: storage Chrome keeps for good, and a copy of each character in a folder.
    Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
 (() => {
   'use strict';

@@ -1,4 +1,4 @@
-/* Quillbound — pictures on MPMB's buttons (portrait, symbol, companion picture). Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
+/* Quillbound Sheets — pictures on MPMB's buttons (portrait, symbol, companion picture). Shares helpers and state with the other screen files through window.MPMBUI (ui-core.js). */
 (() => {
   'use strict';
   const U = window.MPMBUI;

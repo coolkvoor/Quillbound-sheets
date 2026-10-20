@@ -1,11 +1,12 @@
 // Builds one self-contained HTML page (the engine worker starts from a blob URL).
 // dist-single/index.html: the artifact page (no skeleton); pdf-lib comes from cdnjs, so the page holds only this app's code.
-// dist-single/Quillbound.html: the complete file to download, with pdf-lib bundled so it needs no network for the worker.
+// dist-single/Quillbound-Sheets.html: the complete file to download, with pdf-lib bundled so it needs no network for the worker.
 const fs = require('fs'), path = require('path');
 const R = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(R, p), 'utf8');
 // the version users see comes from package.json (1.0.0 shows as 1.0). A version given on the command line is ignored:
 // Cloudflare's build command still passes 0.2.
+const APP_NAME = 'Quillbound Sheets';   // what users see; storage names keep mpmb (saved characters)
 const VERSION = JSON.parse(read('package.json')).version.split('.').slice(0, 2).join('.');
 const PDFLIB_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
 const own = [read('src/loader.js'), read('src/engine.js'), read('src/content.js'), read('src/spells.js'), read('src/appearance.js'), read('src/writer.js'), read('src/classes.js'), read('src/abilities.js'), read('src/worker.js')];
@@ -26,9 +27,9 @@ const BUILT = (() => {
 const PAGE_SCRIPTS = Array.from(read('src/index.html').matchAll(/<script src="([\w.-]+\.js)"><\/script>/g), (m) => m[1]);
 if (PAGE_SCRIPTS[PAGE_SCRIPTS.length - 1] !== 'app.js') throw new Error('src/index.html must load app.js last');
 const app = PAGE_SCRIPTS.map((f) => (f !== 'app.js' ? read('src/' + f)
-  : read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify('Quillbound ' + VERSION) + ';')
+  : read('src/app.js').replace("const APP_BUILD = 'development build';", 'const APP_BUILD = ' + JSON.stringify(APP_NAME + ' ' + VERSION) + ';')
     .replace("const APP_BUILD_ID = '';", 'const APP_BUILD_ID = ' + JSON.stringify(BUILT) + ';'))).join('\n;\n');
-if (app.indexOf(JSON.stringify(BUILT)) === -1 || app.indexOf(JSON.stringify('Quillbound ' + VERSION)) === -1) throw new Error('APP_BUILD / APP_BUILD_ID marker not found in src/app.js');
+if (app.indexOf(JSON.stringify(BUILT)) === -1 || app.indexOf(JSON.stringify(APP_NAME + ' ' + VERSION)) === -1) throw new Error('APP_BUILD / APP_BUILD_ID marker not found in src/app.js');
 // pdf.js for the downloadable file (pictures without a connection); the other builds load it from cdnjs
 const pdfjsLib = read('node_modules/pdfjs-dist/build/pdf.min.js'), pdfjsWorker = read('node_modules/pdfjs-dist/build/pdf.worker.min.js');
 function page(worker, withPdfjs) {
@@ -52,8 +53,8 @@ fs.writeFileSync(path.join(out, 'index.html'), artifact);
 const fullPage = (withPdfjs) => '<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">'
   + '<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}[hidden]{display:none!important}img{max-width:100%}</style></head><body>\n' + page(workerBundled, withPdfjs) + '\n</body></html>\n';
 const file = fullPage(true), full = fullPage(false);
-fs.writeFileSync(path.join(out, 'Quillbound.html'), file);
-console.log('dist-single/index.html', (artifact.length / 1024).toFixed(0) + ' KB (pdf-lib from cdnjs);', 'Quillbound.html', (file.length / 1024).toFixed(0) + ' KB (pdf-lib and pdf.js bundled)');
+fs.writeFileSync(path.join(out, 'Quillbound-Sheets.html'), file);
+console.log('dist-single/index.html', (artifact.length / 1024).toFixed(0) + ' KB (pdf-lib from cdnjs);', 'Quillbound-Sheets.html', (file.length / 1024).toFixed(0) + ' KB (pdf-lib and pdf.js bundled)');
 // dist-site/: the app for its own web address (Cloudflare Pages): the complete page, plus the headers that make it
 // cross-origin isolated, so MPMB's dialogs wait for the user (engine worker + Atomics.wait)
 const site = path.join(R, 'dist-site');

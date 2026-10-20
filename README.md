@@ -1,4 +1,4 @@
-# Quillbound
+# Quillbound Sheets
 
 Works with MPMB character sheets (not made by MPMB). Phone-first web app that opens an MPMB 2024 character sheet PDF and runs the sheet's own scripts in a stand-in for Acrobat.
 
