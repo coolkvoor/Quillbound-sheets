@@ -1,6 +1,6 @@
 {
   "name": "mpmb-sheet-app",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Phone-first web app that runs MPMB character sheets with their own automation",
   "directories": {
     "test": "test"
