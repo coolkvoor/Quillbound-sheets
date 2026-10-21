@@ -929,7 +929,7 @@
               if (st.ended !== null) break;
               req = st.request;
             }
-            mpmbDialog.idle();
+            // stays on screen while the change is made again, until the next dialog replaces it (no gap between them)
             answers.push({ kind: 'dialog', name: res.stopped.name, replies });
           }
         } finally { setBusy(1); }
@@ -938,7 +938,7 @@
         w = next;
       }
       throw new Error('MPMB kept asking: more than 12 dialogs in one change');
-    } finally { state.changing = false; }
+    } finally { state.changing = false; mpmbDialog.idle(); }
   }
   async function send(op, args) {
     setBusy(1);

@@ -51,9 +51,15 @@
       cur.waiting = true;
       dlg().classList.add('waiting');
       r(Object.assign({}, reply, { set }));
-      if (reply.press === 'ok' || reply.press === 'cancel' || reply.press === 'other') close();
+      // OK, Cancel and Other: the dialog stays on screen (taps blocked) until MPMB is done (idle) or shows the next
+      // dialog, or this one again when its validate fails. Closing at once showed the page between two dialogs.
+      if (reply.press === 'ok' || reply.press === 'cancel' || reply.press === 'other') {
+        const was = cur;
+        setTimeout(() => { if (cur === was && cur.waiting) mpmbDialog.idle(); }, ENDED_MS);
+      }
     }
     function close() { const d = dlg(); if (d.open) d.close(); }
+    const ENDED_MS = 8000;   // a dialog that was answered closes by itself after this, should no idle() come
 
     function build(req) {
       const d = dlg();
