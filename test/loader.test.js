@@ -6,6 +6,20 @@ const { load } = require('../src/loader.js');
   const m = await load(new Uint8Array(bytes), PDFLib, (s) => console.log('..', s));
   console.log('stats', m.stats, 'pages', m.pageCount, 'templates', m.templates.length, 'docScripts', m.docScripts.length, 'fields', Object.keys(m.fields).length, 'calcOrder', m.calcOrder.length, 'bookmarks', m.bookmarks.length);
   fs.writeFileSync(path.join(__dirname, 'model.json'), JSON.stringify(m));
+  // a very long field value (a saved add-on content file is over 1 MB): pdf-lib's own decoding overflowed the stack
+  {
+    const d = await PDFLib.PDFDocument.create();
+    const form = d.getForm(), page = d.addPage();
+    const long8 = 'var x = "plain";\n'.repeat(12000), long16 = 'Ünderhill “quotes” ◆ 漢字 𝟗\n'.repeat(8000);
+    form.createTextField('Plain').addToPage(page); form.createTextField('Unicode').addToPage(page);
+    const N = PDFLib.PDFName.of;
+    form.getTextField('Plain').acroField.dict.set(N('V'), PDFLib.PDFString.of(long8.replace(/\n/g, '\\n')));
+    form.getTextField('Unicode').acroField.dict.set(N('V'), PDFLib.PDFHexString.fromText(long16));
+    const lm = await load(await d.save(), PDFLib);
+    const ok = lm.fields.Plain.value === long8 && lm.fields.Unicode.value === long16;
+    console.log(ok ? 'PASS' : 'FAIL', 'long text values read back', long8.length + ' + ' + long16.length + ' characters');
+    if (!ok) process.exitCode = 1;
+  }
   if (!process.argv[2]) { console.log('wrote test/model.json'); return; }
   // optional: compare with an earlier pikepdf extraction
   const ref = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
