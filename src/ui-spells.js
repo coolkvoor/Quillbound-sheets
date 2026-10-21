@@ -5,7 +5,6 @@
   const { $, el, state, LEVEL_NAMES } = U;
   // from the other screen files (all loaded before anything runs)
   const send = (...a) => U.send(...a);
-  const shown = (...a) => U.shown(...a);
   const inlineMarkup = (...a) => U.inlineMarkup(...a);
   const toast = (...a) => U.toast(...a);
   const showNotice = (...a) => U.showNotice(...a);
