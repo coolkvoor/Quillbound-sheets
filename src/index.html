@@ -303,7 +303,10 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .md-list.off li { cursor: default; }
 .md-foot { flex-wrap: wrap; }
 .md-foot .btn { flex: 1 1 auto; }
-#mdlg.waiting .md-body, #mdlg.waiting .md-foot { opacity: 0.6; pointer-events: none; }
+/* while MPMB answers a reply: taps are blocked at once, but the dialog only dims when that takes a while (most
+   answers come back in a few hundredths of a second, and dimming each time made every tap flicker) */
+#mdlg .md-body, #mdlg .md-foot { transition: opacity 0.12s; }
+#mdlg.waiting .md-body, #mdlg.waiting .md-foot { opacity: 0.6; pointer-events: none; transition-delay: 0.35s; }
 .menu-list { list-style: none; margin: 0; padding: 4px 0 calc(8px + env(safe-area-inset-bottom, 0px)); overflow: auto; }
 .menu-list li.sep { border-top: 1px solid var(--line); margin: 4px 16px; }
 .menu-list button { width: 100%; display: grid; grid-template-columns: 1.4rem minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; text-align: left; min-height: 48px; padding: 8px 16px; border: 0; background: none; cursor: pointer; }
