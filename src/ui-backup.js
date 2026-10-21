@@ -21,6 +21,12 @@
   let allowed = false;             // Chrome may ask again for permission after a restart
   let persisted = null, timer = 0, running = false, asked = false;
   let dirty = false;               // this character changed since its last copy
+  // Without folder access (Brave turns it off, as do Firefox and Safari) a copy takes the user's taps: Save a copy
+  // writes the PDF, then Send to… (the share sheet: Drive, email, Files) or Download. Two taps, because the share
+  // sheet only opens right after a tap and writing the PDF takes seconds.
+  let copy = null;                 // { key, name, blob }: the copy written for this character, until it changes
+  let brave = false;               // navigator.brave.isBrave(), to say why there's no folder
+  const canShare = (file) => { try { return !!(navigator.canShare && navigator.canShare({ files: [file] })); } catch (e) { return false; } };
   const backupKey = () => 'backup:' + state.charKey;
 
   async function keepStorage() {
@@ -48,7 +54,7 @@
   // a copy was made (here, or by Download PDF): remember when, per character
   async function noteBackup(how, file) {
     if (!state.charKey) return;
-    if (how === 'download') dirty = false;
+    if (how !== 'folder') dirty = false;
     await idbPut(backupKey(), { at: Date.now(), how, file });
     render();
   }
@@ -80,7 +86,7 @@
   }
   function schedule() { clearTimeout(timer); timer = setTimeout(() => backupNow(false), QUIET_MS); }
   // after each autosave (app.js saveNow): back up once the character has been left alone for a while
-  function afterSave() { dirty = true; if (dir && allowed) schedule(); }
+  function afterSave() { dirty = true; if (copy) { copy = null; render(); } if (dir && allowed) schedule(); }
   function onHidden() { if (document.visibilityState === 'hidden' && dirty && dir && allowed && !running) backupNow(false); }
 
   async function chooseFolder() {
@@ -94,6 +100,42 @@
       if (e && e.name === 'AbortError') return;
       render('This browser didn’t let the app use a folder (' + (e && e.message || e) + ').');
     }
+  }
+  // no folder: write the copy, then the user sends it somewhere or downloads it
+  async function makeCopy() {
+    if (!state.worker || !state.charKey || running) return;
+    running = true;
+    const key = state.charKey;
+    $('#backup-copy').disabled = true;
+    render('Writing the copy…');
+    try {
+      const res = await state.worker.call('savePdf', {});
+      if (state.charKey !== key) return;
+      copy = { key, name: fileName(), blob: new Blob([res.bytes], { type: 'application/pdf' }) };
+      render('The copy is ready: send it somewhere safe (Google Drive, email, Files) or download it.');
+    } catch (e) {
+      render('Writing the copy didn’t work: ' + (e && e.message || e));
+    } finally { running = false; $('#backup-copy').disabled = false; }
+  }
+  async function shareCopy() {
+    if (!copy) return;
+    const file = new File([copy.blob], copy.name, { type: 'application/pdf' });
+    try {
+      await navigator.share({ files: [file], title: copy.name });
+      await noteBackup('shared', copy.name);
+      toast('Sent ' + copy.name);
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      render('Sending didn’t work here (' + (e && e.message || e) + '). Download it instead.');
+    }
+  }
+  async function downloadCopy() {
+    if (!copy) return;
+    const a = el('a', { href: URL.createObjectURL(copy.blob), download: copy.name });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+    await noteBackup('download', copy.name);
+    toast('Downloaded ' + copy.name);
   }
   async function stopBackups() {
     clearTimeout(timer); timer = 0;
@@ -110,11 +152,12 @@
     const card = $('#backup-card');
     if (!card) return;
     $('#storage-kept').textContent = persisted === null ? 'This browser doesn’t say whether it keeps the app’s storage.'
-      : persisted ? 'Kept for good: Chrome won’t clear the characters saved in the app on its own.'
-        : 'Not kept for good yet: Chrome may clear the app’s saved characters when the device runs low on space. Installing the app usually changes that. Keep a backup.';
+      : persisted ? 'Kept for good: the browser won’t clear the characters saved in the app on its own.'
+        : 'Not kept for good yet: the browser may clear the app’s saved characters when the device runs low on space. Installing the app usually changes that. Keep a backup.';
     const last = state.charKey ? await idbGet(backupKey()) : null;
     const lines = [];
-    if (!canPickFolder()) lines.push('This browser can’t write to a folder. Download PDF (Sheet tab) makes a copy you can keep.');
+    if (copy && copy.key !== state.charKey) copy = null;
+    if (!canPickFolder()) lines.push((brave ? 'Brave turns off folder access for websites' : 'This browser can’t write to a folder') + ', so the app can’t back up by itself here. Save a copy now and then and keep it somewhere safe' + (brave ? ', or use the app in Chrome for automatic backups.' : '.'));
     else if (!dir) lines.push('No backup folder yet. Pick one, and the app writes each character into it as a PDF, when you leave the app (switch away or close it) and after five minutes without a change.');
     else lines.push('Backing up into the folder “' + dir.name + '”' + (allowed ? '.' : ', once you allow it again.'));
     if (state.charKey) lines.push(last ? 'This character: last copy ' + ago(last.at) + (last.file ? ' (' + last.file + ')' : '') + '.' : 'This character has no copy yet.');
@@ -126,6 +169,11 @@
     $('#backup-allow').hidden = !dir || allowed;
     $('#backup-now').hidden = !dir || !allowed || !state.worker;
     $('#backup-stop').hidden = !dir;
+    const noFolder = !canPickFolder() && !!state.worker && !!state.charKey;
+    $('#backup-copy').hidden = !noFolder;
+    $('#backup-copy').classList.toggle('primary', !copy);
+    $('#backup-share').hidden = !noFolder || !copy || !canShare(new File([], copy.name, { type: 'application/pdf' }));
+    $('#backup-download').hidden = !noFolder || !copy;
   }
 
   // when a character opens: keep the storage, pick up the folder, and remind when the last copy is old
@@ -152,6 +200,10 @@
     $('#backup-allow').addEventListener('click', async () => { if (await permission(true)) { asked = false; render(); backupNow(true); } else render('Not allowed.'); });
     $('#backup-now').addEventListener('click', () => backupNow(true));
     $('#backup-stop').addEventListener('click', stopBackups);
+    $('#backup-copy').addEventListener('click', makeCopy);
+    $('#backup-share').addEventListener('click', shareCopy);
+    $('#backup-download').addEventListener('click', downloadCopy);
+    try { if (navigator.brave && navigator.brave.isBrave) navigator.brave.isBrave().then((b) => { brave = !!b; render(); }, () => {}); } catch (e) { /* not Brave */ }
     document.addEventListener('visibilitychange', onHidden);
     keepStorage().then(() => render());
   }

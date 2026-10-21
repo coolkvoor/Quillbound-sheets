@@ -299,10 +299,14 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .md-list li { padding: 10px 10px 10px calc(10px + var(--d, 0) * 16px); border-radius: 6px; cursor: pointer; min-height: 44px; display: flex; align-items: center; overflow-wrap: anywhere; }
 .md-list li[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
 .md-list li.md-group { font-weight: 700; color: var(--muted); cursor: default; }
+.md-src { font-family: var(--font-display); font-weight: 400; font-size: 0.8em; letter-spacing: 0.04em; margin-left: 0.45em; opacity: 0.7; white-space: nowrap; }
 .md-list.off li { cursor: default; }
 .md-foot { flex-wrap: wrap; }
 .md-foot .btn { flex: 1 1 auto; }
-#mdlg.waiting .md-body, #mdlg.waiting .md-foot { opacity: 0.6; pointer-events: none; }
+/* while MPMB answers a reply: taps are blocked at once, but the dialog only dims when that takes a while (most
+   answers come back in a few hundredths of a second, and dimming each time made every tap flicker) */
+#mdlg .md-body, #mdlg .md-foot { transition: opacity 0.12s; }
+#mdlg.waiting .md-body, #mdlg.waiting .md-foot { opacity: 0.6; pointer-events: none; transition-delay: 0.35s; }
 .menu-list { list-style: none; margin: 0; padding: 4px 0 calc(8px + env(safe-area-inset-bottom, 0px)); overflow: auto; }
 .menu-list li.sep { border-top: 1px solid var(--line); margin: 4px 16px; }
 .menu-list button { width: 100%; display: grid; grid-template-columns: 1.4rem minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; text-align: left; min-height: 48px; padding: 8px 16px; border: 0; background: none; cursor: pointer; }
@@ -1191,6 +1195,9 @@ window.MPMBTheme = (() => {
       <button class="btn" id="backup-allow" type="button" hidden>Allow backups again</button>
       <button class="btn" id="backup-now" type="button" hidden>Back up now</button>
       <button class="btn" id="backup-stop" type="button" hidden>Stop backing up</button>
+      <button class="btn primary" id="backup-copy" type="button" hidden>Save a copy</button>
+      <button class="btn primary" id="backup-share" type="button" hidden>Send to…</button>
+      <button class="btn" id="backup-download" type="button" hidden>Download</button>
       <p class="note">A backup is the character written into your sheet's PDF, as Download PDF makes it: open it in the app (Open another sheet) or in Acrobat.</p>
     </div>
     <div class="card">

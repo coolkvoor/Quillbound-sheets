@@ -35,9 +35,8 @@ function ask(req) {
   try { return JSON.parse(new TextDecoder().decode(copy)); } catch (e) { return null; }
 }
 // requests a person started (typing, tapping, the app's own screens): their dialogs are shown to the user, with
-// the channel (waiting here) or by restart and replay (op run)
+// the channel (waiting here) or by restart and replay (op run). The page gets this list with the ready message.
 const USER_OPS = new Set(['commit', 'toggle', 'press', 'tap', 'shootAmmo', 'addPage', 'applyClasses', 'applyAbilities', 'chooseSpells', 'removeSpells', 'tapSpellRow', 'excludeItems']);
-const ASKS_USER = USER_OPS;
 let spareName = '';
 function changesFor(names) {
   const out = [];
@@ -332,7 +331,7 @@ self.onmessage = async (e) => {
   try {
     if (!ops[op]) throw new Error('Unknown request: ' + op);
     if (op !== 'open' && op !== 'channel' && op !== 'prepare' && op !== 'startFrom' && !engine) throw new Error('No sheet loaded');
-    const user = chan && engine && ASKS_USER.has(op);
+    const user = chan && engine && USER_OPS.has(op);
     if (user) engine.interactive(ask);
     let result;
     try { result = await ops[op](args || {}); } finally { if (user) engine.interactive(null); if (!READS.has(op)) stateNow = null; }
@@ -341,5 +340,5 @@ self.onmessage = async (e) => {
     postMessage({ id, ok: false, error: err && err.message ? err.message : String(err) });
   }
 };
-postMessage({ type: 'ready' });
+postMessage({ type: 'ready', userOps: Array.from(USER_OPS) });
 })();
