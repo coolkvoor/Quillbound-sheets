@@ -54,10 +54,26 @@
         return decodeBytes(bytes);
       } catch (e) { return ''; }
     };
+    // A text string as decodeText() reads it, in pieces: pdf-lib passes one function argument per character, which
+    // overflows the stack on a saved add-on content file (User_Imported_Files.Stringified, over 1 MB)
+    function textOf(o) {
+      const b = o.asBytes();
+      if (b.length < 20000) return o.decodeText();
+      const STEP = 8192, parts = [];
+      const be = b[0] === 0xfe && b[1] === 0xff, le = b[0] === 0xff && b[1] === 0xfe;
+      if (!be && !le) { for (let i = 0; i < b.length; i += STEP) parts.push(PDFLib.pdfDocEncodingDecode(b.subarray(i, i + STEP))); return parts.join(''); }
+      // UTF-16 code units (a surrogate pair split between two pieces joins up again in the string)
+      for (let i = 2; i + 1 < b.length; i += STEP * 2) {
+        const units = [];
+        for (let j = i; j + 1 < b.length && j < i + STEP * 2; j += 2) units.push(be ? (b[j] << 8) | b[j + 1] : b[j] | (b[j + 1] << 8));
+        parts.push(String.fromCharCode.apply(String, units));
+      }
+      return parts.join('');
+    }
     function val(o) {
       o = deref(o);
       if (o === undefined || o === null) return null;
-      if (o instanceof PDFString || o instanceof PDFHexString) return o.decodeText();
+      if (o instanceof PDFString || o instanceof PDFHexString) return textOf(o);
       if (o instanceof PDFName) return nameStr(o);
       if (o instanceof PDFNumber) return o.asNumber();
       if (o instanceof PDFBool) return o.asBoolean ? o.asBoolean() : String(o) === 'true';
