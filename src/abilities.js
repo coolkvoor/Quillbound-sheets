@@ -44,10 +44,8 @@
     engine.queueDialog({ name: DIALOG, steps });
     engine.action('AbilityScores_Button();', 'abilities:apply');
     engine.clearQueues();
-    return {
-      alerts: engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ title: a.title, msg: a.msg })),
-      errors: engine.log.errors.filter((e) => e.seq > seq).map((e) => e.where + ': ' + e.msg),
-    };
+    const { alerts, errors } = engine.logSince(seq);
+    return { alerts, errors };
   }
 
   const api = { options, preview, apply };

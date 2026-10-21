@@ -10,7 +10,6 @@
   const ZW = /[​-‍﻿]/g;
 
   function json(engine, code) { return JSON.parse(engine.evalExpr('JSON.stringify(' + code + ')') || 'null'); }
-  function since(engine, seq, list) { return engine.log[list].filter((x) => x.seq > seq); }
 
   // A list from MPMB's dialog ([display → -n], [display → key], ...) as [{ key, name }] in MPMB's order
   function listOf(obj) {
@@ -33,7 +32,7 @@
     engine.evalExpr('AskUserSpellSheet(); SetStringifieds("spells");');
     engine.clearQueues();
     if (saved) engine.evalExpr('(function (s) { for (var i = 0; i < s.length; i++) if (CurrentSpells[s[i][0]]) { if (s[i][1] === null || s[i][1] === undefined) delete CurrentSpells[s[i][0]].typeList; else CurrentSpells[s[i][0]].typeList = s[i][1]; } SetStringifieds("spells"); })(' + JSON.stringify(saved) + ')');
-    return since(engine, seq, 'dialogs').filter((d) => d.data);
+    return engine.logSince(seq).dialogs.filter((d) => d.data);
   }
 
   const RADIO = { 1: 'Spells up to the highest level I can cast', 2: 'All chosen spells, any level', 3: 'Prepared spells only', 4: 'The full class spell list' };
@@ -134,11 +133,8 @@
     return report(engine, seq);
   }
   function report(engine, seq) {
-    return {
-      alerts: since(engine, seq, 'alerts').map((a) => ({ title: a.title, msg: a.msg })),
-      errors: since(engine, seq, 'errors').map((e) => e.where + ': ' + e.msg),
-      sheet: sheet(engine),
-    };
+    const { alerts, errors } = engine.logSince(seq);
+    return { alerts, errors, sheet: sheet(engine) };
   }
 
   // The generated spell sheet pages, read back as caster headers and spell rows in page order

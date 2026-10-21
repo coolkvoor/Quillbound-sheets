@@ -56,8 +56,7 @@
     prepare();
     engine.action(code, label);
     engine.clearQueues();
-    const alerts = engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ title: a.title, msg: a.msg }));
-    const errors = engine.log.errors.filter((e) => e.seq > seq).map((e) => e.where + ': ' + e.msg);
+    const { alerts, errors } = engine.logSince(seq);
     return { alerts, errors, content: info(engine) };
   }
 
@@ -118,8 +117,7 @@
     // stopped for the user (restart and replay): this copy is thrown away, so don't apply here
     const changed = !engine.hasStopped && engine.evalExpr('CurrentSources.toSource()') !== was;
     const r = changed ? run(engine, 'resourceDecisionDialog();', 'content:sources', () => engine.queueDialog({ name: SOURCES_DIALOG, steps: [] })) : { content: null };
-    const alerts = engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ title: a.title, msg: a.msg }));
-    const errors = engine.log.errors.filter((e) => e.seq > seq).map((e) => e.where + ': ' + e.msg);
+    const { alerts, errors } = engine.logSince(seq);
     return { alerts, errors, changed, content: r.content || info(engine) };
   }
   // how many items of each kind are excluded by hand (CurrentSources), for the app's Sources card

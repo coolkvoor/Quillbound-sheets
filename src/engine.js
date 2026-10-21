@@ -1344,6 +1344,16 @@
         node.execute(); finishAction(); return true;
       },
       fieldNames() { return Array.from(recs.keys()); },
+      // what MPMB said since log entry n (engine.logSeq before a step): alerts and errors as the app shows them,
+      // dialogs as logged
+      logSince(n) {
+        const after = (x) => x.seq > n;
+        return {
+          alerts: log.alerts.filter(after).map((a) => ({ title: a.title, msg: a.msg })),
+          errors: log.errors.filter(after).map((e) => e.where + ': ' + e.msg),
+          dialogs: log.dialogs.filter(after),
+        };
+      },
       get log() { return log; }, get logSeq() { return logSeq; }, get stats() { return stats; }, get pageCount() { return pages.length; },
     };
   }
