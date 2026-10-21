@@ -85,7 +85,7 @@ let stateNow = null;    // engine.exportState() while nothing has changed since 
 let stopped = null;     // the dialog or question the last run stopped at
 function currentState() { return stateNow || (stateNow = engine.exportState()); }
 // requests that only read: the saved state stays valid
-const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'parseModel', 'pageList', 'xpInfo', 'notesText', 'toolNames', 'spellSheet', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare', 'iconImage']);
+const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'parseModel', 'pageList', 'xpInfo', 'notesText', 'toolNames', 'spellSheet', 'spellKey', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare', 'iconImage']);
 
 function logSummary() {
   const l = engine.log;
@@ -298,6 +298,7 @@ const ops = {
   // Spells (spells.js)
   spellOptions() { return MPMBSpells.options(engine); },
   spellSheet() { return MPMBSpells.sheet(engine); },
+  spellKey() { return MPMBSpells.key(engine); },
   spellDetails({ key }) { return MPMBSpells.details(engine, key); },
   chooseSpells({ picks }) { return spellOp(() => MPMBSpells.choose(engine, picks)); },
   removeSpells() { return spellOp(() => MPMBSpells.remove(engine)); },

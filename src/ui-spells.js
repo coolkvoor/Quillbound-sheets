@@ -12,16 +12,24 @@
   const goTo = (...a) => U.goTo(...a);
 
   // ---------------------------------------------------------------- spells
-  // options: MPMB's choices per caster (spells.js options); sheet: the generated spell list
-  let spellTimer = 0;
-  function spellsSoon() { clearTimeout(spellTimer); spellTimer = setTimeout(refreshSpells, 250); }
-  async function refreshSpells() {
+  // options: MPMB's choices per caster (spells.js options); sheet: the generated spell list.
+  // Working out the options runs MPMB's whole spell dialog, so after an ordinary change (HP, a box, an item) the app
+  // asks the worker for the spell key first and skips it when nothing that matters to spells changed.
+  let spellTimer = 0, spellForce = false;
+  function spellsSoon(force) { if (force) spellForce = true; clearTimeout(spellTimer); spellTimer = setTimeout(refreshSpells, 250); }
+  async function refreshSpells(force) {
     if (!state.worker || $('#picker').open) return;
+    force = force === true || spellForce || !state.spellOpts;
+    spellForce = false;
+    let sheet, opts = false;
     try {
-      state.spellOpts = await state.worker.call('spellOptions', {});
-      state.sheet = await state.worker.call('spellSheet', {});
+      if (force || await state.worker.call('spellKey', {}) !== state.spellOpts.key) { state.spellOpts = await state.worker.call('spellOptions', {}); opts = true; }
+      else if (!state.sheet || !state.sheet.pages) return;   // no spell list to look at either
+      sheet = await state.worker.call('spellSheet', {});
     } catch (e) { return; }
-    renderCasters(); renderSpellList();
+    const same = !opts && JSON.stringify(sheet) === JSON.stringify(state.sheet);
+    state.sheet = sheet;
+    if (!same) { renderCasters(); renderSpellList(); }
   }
   // MPMB ends a spell's name with its marks: ® (or "(R)" without unicode) for a ritual, ◉ for a spell whose target must
   // be one you can see (reqLoS). The row shows them as labelled tags instead of tiny symbols.
@@ -314,7 +322,7 @@
     renderSpellList();
     if (res.errors && res.errors.length) await showNotice(res.alerts.concat(res.errors.map((m) => ({ title: 'Script error', msg: m }))), 'MPMB reported a problem');
     else toast('Spell list ready: ' + res.sheet.rows.length + ' spells.');
-    refreshSpells();
+    refreshSpells(true);
     goTo('spell-list-card', 'spells');
   }
 
