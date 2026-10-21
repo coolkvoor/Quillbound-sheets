@@ -21,6 +21,20 @@
   const cInput = (field, label, attrs) => el('label', { cls: 'f' }, [el('span', { text: label }), el('input', Object.assign({ cls: 'in', 'data-f': field, id: fid(field), autocomplete: 'off' }, attrs || {}))]);
   // a drop-down whose options are the combo box's own items (value: export value, text: what the sheet shows)
   const cSelect = (field, label) => el('select', { cls: 'in', 'data-f': field, 'data-opts': field, id: fid(field), 'aria-label': label });
+  // the prefixes of a template's pages ("P4.AScomp.") in the worker's pageList
+  const pagePrefixes = (list, key) => { const p = (list || []).filter((x) => x.key === key)[0]; return p ? p.prefixes : []; };
+  // one set of cards per page of a template, rebuilt in `box` when MPMB adds or removes pages; then the app watches
+  // every field the cards bind (plus `extra`) and fills them. grids: false for pages without card grids (Notes).
+  async function rebuildPages(box, prefixes, build, extra, grids) {
+    box.textContent = '';
+    prefixes.forEach((P, i) => box.append(build(P, i + 1, prefixes.length)));
+    buildIndex();
+    const names = new Set(extra || []);
+    for (const n of box.querySelectorAll(BOUND.map((a) => '[' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) names.add(n.getAttribute(a));
+    if (names.size) { const snaps = await state.worker.call('watch', { names: Array.from(names) }); for (const s of snaps) apply(s); }
+    if (grids !== false) layoutGrids(true, Array.from(box.querySelectorAll('.grid')));
+    refreshDerived();
+  }
   const cText = (field, label, rows) => el('label', { cls: 'f', 'data-vis': field, hidden: '' }, [el('span', { text: label }), el('textarea', { cls: 'in', rows: String(rows || 4), 'data-f': field, id: fid(field) })]);
   function buildCompanion(P, n, total) {
     const U = P + 'Comp.Use.';
@@ -173,22 +187,12 @@
   }
   // build (or rebuild) the companion cards when the companion pages change, and watch their fields
   async function syncCompanions(list) {
-    const p = (list || []).filter((x) => x.key === 'AScomp')[0];
-    const prefixes = p ? p.prefixes : [];
+    const prefixes = pagePrefixes(list, 'AScomp');
     if (JSON.stringify(prefixes) === JSON.stringify(compPrefixes) && $('#comp-list').childElementCount === prefixes.length) return;
     compPrefixes = prefixes.slice();
-    const box = $('#comp-list');
-    box.textContent = '';
-    prefixes.forEach((P, i) => box.append(buildCompanion(P, i + 1, prefixes.length)));
     $('#comp-none').hidden = prefixes.length > 0;
     $('#comp-add').hidden = prefixes.length > 0;
-    buildIndex();
-    const names = new Set();
-    for (const n of $$(BOUND.map((a) => '#comp-list [' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) names.add(n.getAttribute(a));
-    for (const P of prefixes) names.add(P + 'Comp.Use.Ability.Str.Mod');
-    if (names.size) { const snaps = await state.worker.call('watch', { names: Array.from(names) }); for (const s of snaps) apply(s); }
-    layoutGrids(true, $$('#comp-list .grid'));
-    refreshDerived();
+    await rebuildPages($('#comp-list'), prefixes, buildCompanion, prefixes.map((P) => P + 'Comp.Use.Ability.Str.Mod'));
   }
   function refreshCompanions(v) {
     for (const h of $$('[data-compname]')) {
@@ -325,19 +329,10 @@
   }
   // build (or rebuild) the wild shape cards when the Wild Shapes pages change, and watch their fields
   async function syncWildShapes(list) {
-    const p = (list || []).filter((x) => x.key === 'WSfront')[0];
-    const prefixes = p ? p.prefixes : [];
+    const prefixes = pagePrefixes(list, 'WSfront');
     if (JSON.stringify(prefixes) === JSON.stringify(wsPrefixes) && $('#ws-list').childElementCount === prefixes.length) return;
     wsPrefixes = prefixes.slice();
-    const box = $('#ws-list');
-    box.textContent = '';
-    prefixes.forEach((P, i) => box.append(buildWildShapePage(P, i + 1, prefixes.length)));
-    buildIndex();
-    const names = new Set();
-    for (const n of $$(BOUND.map((a) => '#ws-list [' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) names.add(n.getAttribute(a));
-    if (names.size) { const snaps = await state.worker.call('watch', { names: Array.from(names) }); for (const s of snaps) apply(s); }
-    layoutGrids(true, $$('#ws-list .grid'));
-    refreshDerived();
+    await rebuildPages($('#ws-list'), prefixes, buildWildShapePage);
   }
   function refreshWildShapes(v) {
     const band = $('#wildshape');
@@ -379,28 +374,21 @@
   // MPMB's Notes pages (template ASnotes; the PDF as distributed has one): two columns each, and the page's Options
   // button (lines on or off per column, add a page, remove this one)
   let notesPrefixes = null;
+  function buildNotesPage(P, i, total) {
+    const n = total > 1 ? ' ' + i : '';
+    return el('div', { cls: 'stack', 'data-notespage': P }, [
+      el('div', { cls: 'row' }, [el('span', { cls: 'lbl grow', text: 'Notes page' + n }),
+        el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Notes.Options', 'data-title': 'Notes page' + n, 'data-pages': '1' }, [document.createTextNode('Options')])]),
+      el('label', { cls: 'f' }, [el('span', { text: 'Left column' }), el('textarea', { cls: 'in', rows: '6', 'data-f': P + 'Notes.Left', id: fid(P + 'Notes.Left') })]),
+      el('label', { cls: 'f' }, [el('span', { text: 'Right column' }), el('textarea', { cls: 'in', rows: '6', 'data-f': P + 'Notes.Right', id: fid(P + 'Notes.Right') })]),
+    ]);
+  }
   async function syncNotes(list) {
-    const p = (list || []).filter((x) => x.key === 'ASnotes')[0];
-    const prefixes = p ? p.prefixes : [];
+    const prefixes = pagePrefixes(list, 'ASnotes');
     $('#notes-add').hidden = prefixes.length > 0;
     if (notesPrefixes && JSON.stringify(prefixes) === JSON.stringify(notesPrefixes)) return;
     notesPrefixes = prefixes.slice();
-    const box = $('#notes-pages');
-    box.textContent = '';
-    prefixes.forEach((P, i) => {
-      const n = prefixes.length > 1 ? ' ' + (i + 1) : '';
-      box.append(el('div', { cls: 'stack', 'data-notespage': P }, [
-        el('div', { cls: 'row' }, [el('span', { cls: 'lbl grow', text: 'Notes page' + n }),
-          el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Notes.Options', 'data-title': 'Notes page' + n, 'data-pages': '1' }, [document.createTextNode('Options')])]),
-        el('label', { cls: 'f' }, [el('span', { text: 'Left column' }), el('textarea', { cls: 'in', rows: '6', 'data-f': P + 'Notes.Left', id: fid(P + 'Notes.Left') })]),
-        el('label', { cls: 'f' }, [el('span', { text: 'Right column' }), el('textarea', { cls: 'in', rows: '6', 'data-f': P + 'Notes.Right', id: fid(P + 'Notes.Right') })]),
-      ]));
-    });
-    buildIndex();
-    const names = new Set();
-    for (const nd of $$(BOUND.map((a) => '#notes-pages [' + a + ']').join(','))) for (const a of BOUND) if (nd.hasAttribute(a)) names.add(nd.getAttribute(a));
-    if (names.size) { const snaps = await state.worker.call('watch', { names: Array.from(names) }); for (const s of snaps) apply(s); }
-    refreshDerived();
+    await rebuildPages($('#notes-pages'), prefixes, buildNotesPage, null, false);
   }
 
   // ---------------------------------------------------------------- adventure logsheet pages
@@ -443,19 +431,10 @@
     return el('div', { cls: 'comp', 'data-logpage': P }, head.concat([grid]));
   }
   async function syncLogs(list) {
-    const p = (list || []).filter((x) => x.key === 'ALlog')[0];
-    const prefixes = p ? p.prefixes : [];
+    const prefixes = pagePrefixes(list, 'ALlog');
     if (JSON.stringify(prefixes) === JSON.stringify(logPrefixes) && $('#log-list').childElementCount === prefixes.length) return;
     logPrefixes = prefixes.slice();
-    const box = $('#log-list');
-    box.textContent = '';
-    prefixes.forEach((P, i) => box.append(buildLogPage(P, i + 1, prefixes.length)));
-    buildIndex();
-    const names = new Set();
-    for (const n of $$(BOUND.map((a) => '#log-list [' + a + ']').join(','))) for (const a of BOUND) if (n.hasAttribute(a)) names.add(n.getAttribute(a));
-    if (names.size) { const snaps = await state.worker.call('watch', { names: Array.from(names) }); for (const s of snaps) apply(s); }
-    layoutGrids(true, $$('#log-list .grid'));
-    refreshDerived();
+    await rebuildPages($('#log-list'), prefixes, buildLogPage);
   }
   function refreshLogs(v) {
     const show = logPrefixes.length > 0;
