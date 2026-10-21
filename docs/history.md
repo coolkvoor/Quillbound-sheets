@@ -59,6 +59,12 @@ How the app came to be the way it is: the timeline, how decisions were reached, 
 - MPMB's superscript source marks in dialog lists ("Paladin ˢʳᵈ'²⁴") showed as a jumble of fallback fonts on the phone; now a small-caps label.
 - `CLAUDE.md` cleaned up; this file holds what was taken out.
 
+### 2026-10-22
+- Spells: the app re-ran MPMB's whole spell dialog (`spellOptions`, 35 ms for a Wizard 3 and 63 ms for a three-class caster on the PC, more on the phone) after every change, HP and conditions included, and each run dropped the worker's cached state, so the next autosave worked it out again. Now a spell key (`spellKey`, 0.2 ms) decides; ten HP changes run no spell probe at all.
+- Every tap sent the page about 2 MB once the spell options had run: the log summary carried the spell dialog's captured lists (about 1 MB per caster). The page now gets only each dialog's name, title and answer (2 KB), and spells.js and classes.js take the captured data out of the log after reading it (the log keeps 200 entries, which could have held 200 MB).
+- A saved PDF whose character once had a second companion page didn't work in Acrobat (no bookmark or button did anything): removing the page had left 138 empty field nodes. The writer now removes emptied parents, and its `removeField` (which never found its node) works.
+- Small duplicates merged: `engine.logSince(seq)` for "what MPMB said since step n", one `card()` in ui-pages.js, one "is this an MPMB sheet?" check in the worker. The PDF helpers (`deref`, `get`, `L`…) stay per file: each is a one-line closure over its own document.
+
 ## Milestones (as planned on day one)
 
 1. Engine in the browser. Done in desktop Chrome tests (self-test 19/19); phone results still to come.

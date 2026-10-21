@@ -10,7 +10,6 @@
   const ZW = /[​-‍﻿]/g;
 
   function json(engine, code) { return JSON.parse(engine.evalExpr('JSON.stringify(' + code + ')') || 'null'); }
-  function since(engine, seq, list) { return engine.log[list].filter((x) => x.seq > seq); }
 
   // A list from MPMB's dialog ([display → -n], [display → key], ...) as [{ key, name }] in MPMB's order
   function listOf(obj) {
@@ -33,7 +32,8 @@
     engine.evalExpr('AskUserSpellSheet(); SetStringifieds("spells");');
     engine.clearQueues();
     if (saved) engine.evalExpr('(function (s) { for (var i = 0; i < s.length; i++) if (CurrentSpells[s[i][0]]) { if (s[i][1] === null || s[i][1] === undefined) delete CurrentSpells[s[i][0]].typeList; else CurrentSpells[s[i][0]].typeList = s[i][1]; } SetStringifieds("spells"); })(' + JSON.stringify(saved) + ')');
-    return since(engine, seq, 'dialogs').filter((d) => d.data);
+    // taken out of the log: the lists are large (about 1 MB per caster) and the log keeps 200 entries
+    return engine.logSince(seq).dialogs.filter((d) => d.data).map((d) => { const out = { name: d.name, data: d.data }; delete d.data; return out; });
   }
 
   const RADIO = { 1: 'Spells up to the highest level I can cast', 2: 'All chosen spells, any level', 3: 'Prepared spells only', 4: 'The full class spell list' };
@@ -84,7 +84,7 @@
     for (const c of casters) for (const part of [c.cantrips, c.spells, c.prepared]) if (part) for (const s of part.list) keys.add(s.key);
     for (const c of casters) if (c.bonus) for (const slot of c.bonus) for (const s of slot.list) keys.add(s.key);
     const info = json(engine, '(function (ks) { var o = {}; for (var i = 0; i < ks.length; i++) { var s = SpellsList[ks[i]]; if (!s) continue; o[ks[i]] = { name: s.name, level: s.level, school: s.school || "", time: s.time || "", range: s.range || "", components: s.components || "", duration: s.duration || "", ritual: !!s.ritual, description: s.description || "", source: stringSource(s, "first,abbr", "", "") }; } return o; })(' + JSON.stringify(Array.from(keys)) + ')');
-    return { casters, spells: info || {} };
+    return { casters, spells: info || {}, key: key(engine) };
   }
 
   // picks: { caster: { cantrips: [keys], spells: [keys], prepared: [keys], show: 1-4, bonus: [key per slot] } }
@@ -134,11 +134,8 @@
     return report(engine, seq);
   }
   function report(engine, seq) {
-    return {
-      alerts: since(engine, seq, 'alerts').map((a) => ({ title: a.title, msg: a.msg })),
-      errors: since(engine, seq, 'errors').map((e) => e.where + ': ' + e.msg),
-      sheet: sheet(engine),
-    };
+    const { alerts, errors } = engine.logSince(seq);
+    return { alerts, errors, sheet: sheet(engine) };
   }
 
   // The generated spell sheet pages, read back as caster headers and spell rows in page order
@@ -201,7 +198,21 @@
     return r;
   }
 
-  const api = { options, choose, remove, sheet, details, tapRow };
+  // A short string that changes whenever options() could give something else: MPMB's casters with their picks, levels
+  // and bonus spells (CurrentSpells, as probe() leaves it), the ability modifiers and level (counts to prepare), the
+  // sources and add-on content (the lists). The app re-runs options() only when it changes. A first options() run fills
+  // in the dialogs' own parts of CurrentSpells, so options() returns the key from after its run.
+  function key(engine) {
+    const text = engine.evalExpr('(function () { var c = {}; for (var k in CurrentSpells) { var o = {}, s = CurrentSpells[k];' +
+      ' for (var p in s) if (!(s.typeSp === "list" && (p === "selectSp" || p === "selectSpSB"))) o[p] = s[p]; c[k] = o; }' +
+      ' var f = ["Str Mod", "Dex Mod", "Con Mod", "Int Mod", "Wis Mod", "Cha Mod", "Character Level", "Proficiency Bonus"].map(function (n) { var x = tDoc.getField(n); return x ? x.valueAsString : ""; });' +
+      ' return [c.toSource(), f.join(","), CurrentSources.toSource(), What("User_Imported_Files.Stringified"), What("User Script")].join("|"); })()');
+    let h = 0x811c9dc5;   // FNV-1a: the add-on script alone can be hundreds of KB
+    for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+    return text.length + ':' + (h >>> 0).toString(36);
+  }
+
+  const api = { options, choose, remove, sheet, details, tapRow, key };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MPMBSpells = api;
 })(typeof self !== 'undefined' ? self : this);

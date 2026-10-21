@@ -97,6 +97,37 @@ const check = (label, ok, detail) => { if (!ok) failed++; console.log(ok ? 'PASS
   e2.commit('Class and Levels', 'Wizard 4');
   check('the written sheet still levels up', String(e2.snapshot('Character Level').value) === '4' && e2.log.errors.length === 0);
   console.log('wrote test/saved-character.pdf');
+
+  // a page added and removed again: its fields go completely. Empty field nodes left behind (no kids, no widget)
+  // broke MPMB's scripts in Acrobat: its bookmarks and buttons stopped working.
+  {
+    const r = newEngine(fs.readFileSync(path.join(__dirname, 'model.json'), 'utf8'));
+    r.evalExpr('DoTemplate("AScomp", "Add")');
+    const pre = String(r.evalExpr('What("Template.extras.AScomp")')).split(',').slice(1);
+    r.clearQueues(); r.queueMenu('companion#remove_page'); r.queueAnswer(true);
+    r.press(pre[1] + 'Companion.Options', 0);
+    r.clearQueues();
+    const after = String(r.evalExpr('What("Template.extras.AScomp")')).split(',').slice(1);
+    const st2 = r.exportState();
+    const ops = (st2.pageOps || []).map((o) => o[0] + ' ' + o[1]).join(', ');
+    const res2 = await write(new Uint8Array(bytes), st2, PDFLib);
+    const d = await PDFLib.PDFDocument.load(res2.bytes, { ignoreEncryption: true, updateMetadata: false });
+    const dl = (o) => (o instanceof PDFLib.PDFRef ? d.context.lookup(o) : o);
+    const empty = [];
+    (function walk(arr, prefix) {
+      for (const ref of arr.asArray()) {
+        const n = dl(ref), t = dl(n.get(N('T'))), name = t ? (prefix ? prefix + '.' : '') + t.decodeText() : prefix;
+        const kids = dl(n.get(N('Kids')));
+        if (kids instanceof PDFLib.PDFArray && kids.size()) walk(kids, name);
+        else if (!n.has(N('Rect'))) empty.push(name);
+      }
+    })(dl(dl(d.catalog.get(N('AcroForm'))).get(N('Fields'))), '');
+    const m3 = await load(res2.bytes, PDFLib);
+    const left = Object.keys(m3.fields).filter((n) => n.indexOf(pre[1]) === 0);
+    check('page added and removed: MPMB removed it', pre.length === 2 && after.length === 1, pre.join() + ' → ' + after.join() + ' (' + ops + ')');
+    check('page added and removed: no fields left', left.length === 0, left.length + ': ' + left.slice(0, 4).join(', '));
+    check('page added and removed: no empty field nodes', empty.length === 0, empty.length + ': ' + empty.slice(0, 4).join(', '));
+  }
   console.log(failed ? failed + ' FAILED' : 'all passed');
   process.exitCode = failed ? 1 : 0;
 })().catch((err) => { console.error(err); process.exit(1); });

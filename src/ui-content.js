@@ -127,7 +127,7 @@
     for (const s of res.changes || []) apply(s);
     state.log = res.log; state.content = res.content; state.saved = res.saved;
     idbPut(state.sheetKey, { saved: res.saved, date: Date.now() });
-    renderContent(); refreshDerived(); spellsSoon(); saveSoon();
+    renderContent(); refreshDerived(); spellsSoon(true); saveSoon();
     setBusy(-1); contentBusy(false);
     // MPMB's own alerts: "Success!" only says it worked; anything else (errors, version warnings) is worth showing
     const worked = res.alerts.some((a) => /success/i.test(a.title));

@@ -20,6 +20,8 @@
   const fid = (name) => 'f-' + name.replace(/\W+/g, '-');
   const cInput = (field, label, attrs) => el('label', { cls: 'f' }, [el('span', { text: label }), el('input', Object.assign({ cls: 'in', 'data-f': field, id: fid(field), autocomplete: 'off' }, attrs || {}))]);
   // a drop-down whose options are the combo box's own items (value: export value, text: what the sheet shows)
+  // a card with a heading (a string, or an h3 with buttons in it)
+  const card = (title, kids, attrs) => el('div', Object.assign({ cls: 'card' }, attrs || {}), [typeof title === 'string' ? el('h3', { text: title }) : title].concat(kids));
   const cSelect = (field, label) => el('select', { cls: 'in', 'data-f': field, 'data-opts': field, id: fid(field), 'aria-label': label });
   // the prefixes of a template's pages ("P4.AScomp.") in the worker's pageList
   const pagePrefixes = (list, key) => { const p = (list || []).filter((x) => x.key === key)[0]; return p ? p.prefixes : []; };
@@ -39,7 +41,6 @@
   function buildCompanion(P, n, total) {
     const U = P + 'Comp.Use.';
     const grid = el('div', { cls: 'grid' });
-    const card = (title, kids, attrs) => el('div', Object.assign({ cls: 'card' }, attrs || {}), [typeof title === 'string' ? el('h3', { text: title }) : title].concat(kids));
     const opts = el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Companion.Options', 'data-title': 'Companion options', 'data-pages': '1' }, [document.createTextNode('Options')]);
     // the creature: MPMB fills in the whole page from its list
     grid.append(card(el('h3', {}, [el('span', { 'data-compname': P, text: 'Companion' }), opts]), [
@@ -229,7 +230,6 @@
   let wsPrefixes = [];
   function buildWildShapePage(P, n, total) {
     const grid = el('div', { cls: 'grid' });
-    const card = (title, kids, attrs) => el('div', Object.assign({ cls: 'card' }, attrs || {}), [typeof title === 'string' ? el('h3', { text: title }) : title].concat(kids));
     const I = P + 'Wildshapes.Info.';
     grid.append(card(el('h3', {}, [el('span', { text: 'Wild Shape' }), el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Wildshapes.Settings', 'data-title': 'Wild Shapes', 'data-pages': '1' }, [document.createTextNode('Options')])]), [
       el('p', { cls: 'hint', text: 'Options → Add Wild Shape lists the beasts this character can take; MPMB works out each shape with your own proficiencies. It also removes shapes, recalculates them (after a level up) and adds or removes Wild Shapes pages.' }),
@@ -401,7 +401,6 @@
   let logPrefixes = [];
   function buildLogPage(P, n, total) {
     const grid = el('div', { cls: 'grid' });
-    const card = (title, kids, attrs) => el('div', Object.assign({ cls: 'card' }, attrs || {}), [title].concat(kids));
     grid.append(card(el('h3', {}, [el('span', { text: 'Logsheet' }), el('span', { cls: 'chip', 'data-out': P + 'AdvLog.sheetNumber', text: '' }),
       el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'AdvLog.Options', 'data-title': 'Logsheet options', 'data-pages': '1' }, [document.createTextNode('Options')])]), [
       el('p', { cls: 'hint', text: 'One entry per session. Options → Generate next Logsheet Entry starts the next one from the totals; Options also sets the date format and adds or removes logsheet pages. An entry’s ⋯ button moves, inserts, deletes or clears it.' }),

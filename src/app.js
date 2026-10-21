@@ -1159,7 +1159,7 @@
       }
       if (res.alerts && res.alerts.length) await showNotice(res.alerts);
       else if (btn.dataset.done) toast(btn.dataset.done);
-      if (btn.dataset.pages) { refreshPages(); spellsSoon(); }
+      if (btn.dataset.pages) { refreshPages(); spellsSoon(true); }
       return;
     }
   }

@@ -13,9 +13,11 @@
     engine.queueDialog({ name: DIALOG, steps: [{ end: 'cancel' }], capture: true });
     engine.action('SelectClass();', 'classes:read');
     engine.clearQueues();
-    const d = engine.log.dialogs.filter((x) => x.seq > seq && x.name === DIALOG && x.data)[0];
-    if (!d) return { available: false, alerts: engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ title: a.title, msg: a.msg })) };
+    const said = engine.logSince(seq);
+    const d = said.dialogs.filter((x) => x.name === DIALOG && x.data)[0];
+    if (!d) return { available: false, alerts: said.alerts };
     const x = d.data;
+    delete d.data;   // read once; the log keeps 200 entries
     const names = (o) => Object.keys(o || {}).filter((k) => k.trim());
     const classes = names(x.classes).map((name) => {
       const key = x.classesRef[name];
@@ -49,11 +51,8 @@
     engine.queueDialog({ name: DIALOG, steps });
     engine.action('SelectClass();', 'classes:apply');
     engine.clearQueues();
-    return {
-      alerts: engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ title: a.title, msg: a.msg })),
-      errors: engine.log.errors.filter((e) => e.seq > seq).map((e) => e.where + ': ' + e.msg),
-      dialogs: engine.log.dialogs.filter((d) => d.seq > seq).map((d) => d.name + '/' + d.answered),
-    };
+    const { alerts, errors, dialogs } = engine.logSince(seq);
+    return { alerts, errors, dialogs: dialogs.map((d) => d.name + '/' + d.answered) };
   }
 
   const api = { options, apply };

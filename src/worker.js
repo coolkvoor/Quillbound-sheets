@@ -84,12 +84,17 @@ let modelJSON = null;   // the sheet model as read from the PDF, for fresh copie
 let stateNow = null;    // engine.exportState() while nothing has changed since (the autosave asks for it too)
 let stopped = null;     // the dialog or question the last run stopped at
 function currentState() { return stateNow || (stateNow = engine.exportState()); }
+// a PDF without MPMB's scripts (Startup) or sheet version isn't an MPMB sheet
+function mustBeMpmb(model) { if (!model.docScripts.some((s) => s.name === 'Startup') || !model.info.SheetVersion) throw new Error('NOT_MPMB'); }
 // requests that only read: the saved state stays valid
-const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'parseModel', 'pageList', 'xpInfo', 'notesText', 'toolNames', 'spellSheet', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare', 'iconImage']);
+const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'parseModel', 'pageList', 'xpInfo', 'notesText', 'toolNames', 'spellSheet', 'spellKey', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare', 'iconImage']);
 
 function logSummary() {
   const l = engine.log;
-  return { alerts: l.alerts.slice(-40), dialogs: l.dialogs.slice(-40), menus: l.menus.slice(-20), errors: l.errors.slice(-40), unsupported: Object.assign({}, l.unsupported), urls: l.urls.slice(-10) };
+  // a dialog entry can hold what a probe captured (the spell dialog's lists: about 1 MB per caster); the page only
+  // shows which dialog was asked and how it was answered
+  const dialogs = l.dialogs.slice(-40).map((d) => ({ seq: d.seq, name: d.name, title: d.title, answered: d.answered, t: d.t }));
+  return { alerts: l.alerts.slice(-40), dialogs, menus: l.menus.slice(-20), errors: l.errors.slice(-40), unsupported: Object.assign({}, l.unsupported), urls: l.urls.slice(-10) };
 }
 
 // How many lines of each kind this sheet has, counted from its own fields (sheet types and versions differ: Printer
@@ -119,8 +124,7 @@ const ops = {
     sheetBytes = new Uint8Array(bytes); sheetDoc = null;
     const model = await MPMBLoader.load(sheetBytes, self.PDFLib, progress);
     const loadMs = Math.round(now() - t0);
-    const names = model.docScripts.map((s) => s.name);
-    if (names.indexOf('Startup') === -1 || !model.info.SheetVersion) throw new Error('NOT_MPMB');
+    mustBeMpmb(model);
     // the sheet as read, before MPMB changes anything: what a fresh copy starts from (replay, see run)
     modelJSON = JSON.stringify(model);
     progress(state ? 'Starting MPMB’s scripts with your character' : saved ? 'Starting MPMB’s scripts and your add-on content' : 'Starting MPMB’s scripts');
@@ -152,8 +156,7 @@ const ops = {
   // sheets side by side, as Acrobat opens the sheet to import from as a second document
   async parseModel({ bytes }) {
     const model = await MPMBLoader.load(new Uint8Array(bytes), self.PDFLib);
-    const names = model.docScripts.map((s) => s.name);
-    if (names.indexOf('Startup') === -1 || !model.info.SheetVersion) throw new Error('NOT_MPMB');
+    mustBeMpmb(model);
     return JSON.stringify(model);
   },
   // a spare copy, made ready in advance: the sheet model and the PDF, MPMB not started yet
@@ -217,7 +220,7 @@ const ops = {
       if (s.exists && !s.hidden && !s.checked) { engine.toggle(pre + '.Bullet.' + i); done = true; }
     }
     if (!done) { const n = Number(engine.snapshot(pre + 'Display.Amount').value) || 0; if (n > 0) engine.commit(pre + 'Display.Amount', String(n - 1)); }
-    return { alerts: engine.log.alerts.filter((a) => a.seq > seq).map((a) => ({ title: a.title, msg: a.msg })), ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
+    return { alerts: engine.logSince(seq).alerts, ms: Math.round(now() - t), changes: changesFor(engine.drainChanges()), log: logSummary() };
   },
   // level by experience points, by MPMB's own table
   xpInfo() { return JSON.parse(engine.evalExpr('JSON.stringify((function () { var lv = Number(What("Character Level")) || 0; var r = getCurrentLevelByXP(lv, What("Total Experience")); return { level: lv, xpLevel: r[0], table: ExperiencePointsList }; })())')); },
@@ -298,6 +301,7 @@ const ops = {
   // Spells (spells.js)
   spellOptions() { return MPMBSpells.options(engine); },
   spellSheet() { return MPMBSpells.sheet(engine); },
+  spellKey() { return MPMBSpells.key(engine); },
   spellDetails({ key }) { return MPMBSpells.details(engine, key); },
   chooseSpells({ picks }) { return spellOp(() => MPMBSpells.choose(engine, picks)); },
   removeSpells() { return spellOp(() => MPMBSpells.remove(engine)); },

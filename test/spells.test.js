@@ -96,13 +96,29 @@ check('remove: spell sheet gone', r.sheet.pages === 0 && r.sheet.rows.length ===
   check('Cleric: prepared spells on the list', prep.every((k) => ck.indexOf(k) !== -1) && ck.length === 9, ck.join(', '));
   check('Cleric: no script errors', c.log.errors.length === 0, c.log.errors.map((x) => x.where + ': ' + x.msg).join(' | '));
 
+  // the spell key: the app re-runs options() only when it changes
+  let k = spells.options(c).key;
+  const same = (label) => { const k2 = spells.key(c); check('key: same after ' + label, k2 === k, k + ' → ' + k2); };
+  const differs = (label) => { const k2 = spells.key(c); check('key: changes after ' + label, k2 !== k, k2); k = spells.options(c).key; check('key: options() gives it after ' + label, spells.key(c) === k, k); };
+  same('options()');
+  c.commit('HP Current', '5'); same('current HP');
+  c.commit('Adventuring Gear Row 1', 'Rope'); same('a gear line');
+  c.toggle('Condition.Poisoned'); same('a condition');
+  c.commit('Wis', '18'); differs('Wisdom 18 (prepared count)');
+  c.commit('Class and Levels', 'Cleric 4'); differs('a level up');
+  c.commit('Class and Levels', 'Cleric (Life Domain) 4'); differs('a subclass with spells');
+  for (let i = 0; i < 10; i++) c.commit('HP Current', String(i));
+  same('ten HP changes');
+
   // Magic Initiate [Wizard] on a Fighter: bonus spells, one pick per slot, through MPMB's own spell dialog
   const seqC = c.logSeq;
   c.commit('Class and Levels', 'Fighter 3');
   c.queueDialog({ name: 'ASK USER DIALOG', steps: [{ set: { r000: false, r001: false, r002: true } }] });   // Wizard
   c.queueDialog({ name: 'ASK USER DIALOG', steps: [{ set: { r000: true, r001: false, r002: false } }] });   // Intelligence
   c.commit('Feat Name 1', 'Magic Initiate');
-  const mi = spells.options(c).casters.filter((x) => /magic initiate/.test(x.key))[0];
+  const miOpts = spells.options(c);
+  check('key: changes after Magic Initiate', miOpts.key !== k, miOpts.key);
+  const mi = miOpts.casters.filter((x) => /magic initiate/.test(x.key))[0];
   check('Magic Initiate: three bonus slots', mi && mi.bonus && mi.bonus.length === 3 && mi.bonus[0].label === 'Cantrip' && mi.bonus[2].list.some((s) => s.key === 'magic missile'), mi && mi.bonus && mi.bonus.map((s) => s.label + ' (' + s.list.length + ')').join(', '));
   const seqG = c.logSeq;
   const mr = spells.choose(c, { [mi.key]: { cantrips: [], spells: [], prepared: [], bonus: ['fire bolt', 'light', 'magic missile'] } });

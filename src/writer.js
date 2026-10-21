@@ -195,20 +195,24 @@
       pages.splice(s, e - s + 1);
       report.deleted += removed.length;
     }
+    // A field node leaves its parent's kids, and so does every parent left without kids: Acrobat takes an empty node
+    // for a field without widgets, which broke MPMB's scripts in Acrobat (a removed companion page left 138 of them).
     function dropField(name) {
       const f = index.get(name) || nodes.get(name);
       if (!f) return;
-      const p = get(f.dict, 'Parent');
-      if (p) removeFrom(get(p, 'Kids'), f.ref); else removeFrom(topFields, f.ref);
       index.delete(name); nodes.delete(name);
+      const p = get(f.dict, 'Parent');
+      if (!p) { removeFrom(topFields, f.ref); return; }
+      const kids = get(p, 'Kids');
+      removeFrom(kids, f.ref);
+      const dot = name.lastIndexOf('.');
+      if (dot !== -1 && (!(kids instanceof PDFArray) || !kids.size()) && !has(p, 'Rect')) dropField(name.slice(0, dot));
     }
+    // Acrobat's removeField: the node and everything under it (MPMB removes a deleted page's "P5.AScomp" this way)
     function removeField(name) {
-      for (const n of Array.from(nodes.keys())) if (n === name || n.indexOf(name + '.') === 0) { if (index.has(n)) index.delete(n); nodes.delete(n); }
-      const node = nodes.get(name);
-      if (node) dropField(name);
-      // the node itself may already be gone from the maps: remove by walking the parents
-      const top = topFields.asArray();
-      for (const r of top) { const d = deref(r); if (d && strOf(get(d, 'T')) === name) removeFrom(topFields, r); }
+      if (nodes.has(name) || index.has(name)) dropField(name);
+      for (const n of Array.from(nodes.keys())) if (n.indexOf(name + '.') === 0) nodes.delete(n);
+      for (const n of Array.from(index.keys())) if (n.indexOf(name + '.') === 0) index.delete(n);
     }
 
     progress('Adding the extra pages');
