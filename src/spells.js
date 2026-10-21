@@ -32,7 +32,8 @@
     engine.evalExpr('AskUserSpellSheet(); SetStringifieds("spells");');
     engine.clearQueues();
     if (saved) engine.evalExpr('(function (s) { for (var i = 0; i < s.length; i++) if (CurrentSpells[s[i][0]]) { if (s[i][1] === null || s[i][1] === undefined) delete CurrentSpells[s[i][0]].typeList; else CurrentSpells[s[i][0]].typeList = s[i][1]; } SetStringifieds("spells"); })(' + JSON.stringify(saved) + ')');
-    return engine.logSince(seq).dialogs.filter((d) => d.data);
+    // taken out of the log: the lists are large (about 1 MB per caster) and the log keeps 200 entries
+    return engine.logSince(seq).dialogs.filter((d) => d.data).map((d) => { const out = { name: d.name, data: d.data }; delete d.data; return out; });
   }
 
   const RADIO = { 1: 'Spells up to the highest level I can cast', 2: 'All chosen spells, any level', 3: 'Prepared spells only', 4: 'The full class spell list' };

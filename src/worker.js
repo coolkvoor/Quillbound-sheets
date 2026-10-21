@@ -91,7 +91,10 @@ const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'par
 
 function logSummary() {
   const l = engine.log;
-  return { alerts: l.alerts.slice(-40), dialogs: l.dialogs.slice(-40), menus: l.menus.slice(-20), errors: l.errors.slice(-40), unsupported: Object.assign({}, l.unsupported), urls: l.urls.slice(-10) };
+  // a dialog entry can hold what a probe captured (the spell dialog's lists: about 1 MB per caster); the page only
+  // shows which dialog was asked and how it was answered
+  const dialogs = l.dialogs.slice(-40).map((d) => ({ seq: d.seq, name: d.name, title: d.title, answered: d.answered, t: d.t }));
+  return { alerts: l.alerts.slice(-40), dialogs, menus: l.menus.slice(-20), errors: l.errors.slice(-40), unsupported: Object.assign({}, l.unsupported), urls: l.urls.slice(-10) };
 }
 
 // How many lines of each kind this sheet has, counted from its own fields (sheet types and versions differ: Printer

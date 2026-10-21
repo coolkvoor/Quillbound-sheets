@@ -17,6 +17,7 @@
     const d = said.dialogs.filter((x) => x.name === DIALOG && x.data)[0];
     if (!d) return { available: false, alerts: said.alerts };
     const x = d.data;
+    delete d.data;   // read once; the log keeps 200 entries
     const names = (o) => Object.keys(o || {}).filter((k) => k.trim());
     const classes = names(x.classes).map((name) => {
       const key = x.classesRef[name];
