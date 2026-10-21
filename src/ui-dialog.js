@@ -22,6 +22,24 @@
     const chosen = (o) => { for (const e of entries(o)) { if (e.v && typeof e.v === 'object') { const c = chosen(e.v); if (c !== null) return c; } else if (Number(e.v) > 0) return e.k; } return null; };
     // MPMB writes line breaks in its dialog texts as "\n", sometimes as "\r" (Acrobat shows both)
     const textOf = (s) => String(s === undefined || s === null ? '' : s).replace(/\r\n?/g, '\n');
+    // MPMB ends list items with their source in superscript characters ("Paladin ˢʳᵈ'²⁴"). The app's fonts lack most
+    // of them, so the phone took each from another font at its own size and height. Shown here as plain letters in a
+    // small label instead; the item's name sent back to MPMB stays as it is.
+    const SUP = 'ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿᵀᵁⱽᵂ⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾';
+    const PLAIN = 'abcdefghijklmnoprstuvwxyzABDEGHIJKLMNOPRTUVW0123456789+-=()';
+    const SUP_TAIL = new RegExp('^(.*?\\S)\\s*([' + SUP + '][' + SUP + "'’ʼ.,:;\\- ]*)$");
+    function splitSource(name) {
+      const m = SUP_TAIL.exec(name);
+      if (!m || !/[^'’ʼ.,:;\- ]$/.test(m[2])) return null;
+      return { text: m[1], src: Array.from(m[2]).map((c) => { const i = SUP.indexOf(c); return i === -1 ? (c === 'ʼ' ? '’' : c) : PLAIN[i]; }).join('') };
+    }
+    // a list item's or group's label: the name, and its source as a small label
+    const itemLabel = (name) => {
+      const p = splitSource(name);
+      return p ? [document.createTextNode(p.text), el('span', { cls: 'md-src', text: p.src })] : [document.createTextNode(name.trim() ? name : '–')];
+    };
+    // the same for a drop-down's options, which can only hold text (capitals, as the label's small caps show it)
+    const optionText = (name) => { const p = splitSource(name); return p ? p.text + ' (' + p.src.toUpperCase() + ')' : name.trim() ? name : '–'; };
 
     function send(reply) {
       if (!cur || !cur.resolve || cur.waiting) return;
@@ -133,12 +151,12 @@
             it.input.textContent = '';
             const names = entries(list).map((x) => x.k);
             if (v && names.indexOf(String(v)) === -1) names.unshift(String(v));
-            for (const n of names) it.input.append(el('option', { value: n, text: n.trim() ? n : '–' }));
+            for (const n of names) it.input.append(el('option', { value: n, text: optionText(n) }));
           }
           if (document.activeElement !== it.input || !(id in cur.typed)) it.input.value = v === undefined || v === null ? '' : String(v);
         } else if (it.type === 'popup') {
           it.input.textContent = '';
-          for (const x of entries(v)) it.input.append(el('option', { value: x.k, text: x.k.trim() ? x.k : '–' }));
+          for (const x of entries(v)) it.input.append(el('option', { value: x.k, text: optionText(x.k) }));
           const c = chosen(v);
           if (c !== null) it.input.value = c;
         } else if (it.type === 'list_box' || it.type === 'hier_list_box') {
@@ -146,9 +164,9 @@
           ul.textContent = '';
           const add = (o, depth) => {
             for (const x of entries(o)) {
-              if (x.v && typeof x.v === 'object') { ul.append(el('li', { cls: 'md-group', style: '--d:' + depth, text: x.k })); add(x.v, depth + 1); continue; }
+              if (x.v && typeof x.v === 'object') { ul.append(el('li', { cls: 'md-group', style: '--d:' + depth }, itemLabel(x.k))); add(x.v, depth + 1); continue; }
               const on = Number(x.v) > 0;
-              ul.append(el('li', { 'data-item': x.k, role: 'option', 'aria-selected': on ? 'true' : 'false', style: '--d:' + depth, text: x.k.trim() ? x.k : '–' }));
+              ul.append(el('li', { 'data-item': x.k, role: 'option', 'aria-selected': on ? 'true' : 'false', style: '--d:' + depth }, itemLabel(x.k)));
             }
           };
           add(v, 0);
