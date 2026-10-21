@@ -57,6 +57,7 @@
       onAsk: null,      // (request) → Promise of the user's reply
       onIdle: null,     // a request finished: a dialog still on screen is over
       asks: !!sab,
+      userOps: new Set(),   // the requests a person starts (worker.js USER_OPS), sent with the worker's ready message
       call(op, args, transfer) {
         const id = ++seq;
         return new Promise((resolve, reject) => {
@@ -78,7 +79,7 @@
     w.onmessage = (e) => {
       const m = e.data || {};
       if (m.type === 'progress') { if (api.onProgress) api.onProgress(m.text); return; }
-      if (m.type === 'ready') return;
+      if (m.type === 'ready') { api.userOps = new Set(m.userOps || []); return; }
       if (m.type === 'ask') {
         asking++;
         Promise.resolve(api.onAsk ? api.onAsk(m.req) : null).catch(() => null)
@@ -874,8 +875,7 @@
   // answer, it stops there; the dialog is shown and every change the user makes in it runs MPMB's handler in the
   // stopped copy. Then a fresh copy starts from the character as it was before the change and makes the change again
   // with the user's answers, and becomes the live copy. On a page that can wait (cross-origin isolated) the worker asks
-  // the user directly instead (onAsk).
-  const USER_OPS = new Set(['commit', 'toggle', 'press', 'tap', 'shootAmmo', 'addPage', 'applyClasses', 'applyAbilities', 'chooseSpells', 'removeSpells', 'tapSpellRow', 'excludeItems']);
+  // the user directly instead (onAsk). Which requests count as a person's change: the worker's list (userOps).
   // a spare copy: a worker with the sheet model and the PDF, MPMB not started until it is needed
   function makeSpare() {
     if (state.spare || !state.modelJSON || !state.worker || state.worker.asks) return;
@@ -943,7 +943,7 @@
   async function send(op, args) {
     setBusy(1);
     try {
-      const res = await (USER_OPS.has(op) && state.worker && !state.worker.asks ? userChange(op, args) : state.worker.call(op, args));
+      const res = await (state.worker && state.worker.userOps.has(op) && !state.worker.asks ? userChange(op, args) : state.worker.call(op, args));
       for (const s of res.changes || []) apply(s);
       if (res.log) state.log = res.log;
       refreshDerived();
