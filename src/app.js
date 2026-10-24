@@ -10,7 +10,7 @@
   const {
     showIcon, refreshCompanions, refreshWildShapes, refreshLogs, kb, mpmbDialog,
     spellsSoon, pickPicture, syncCompanions, syncWildShapes, syncLogs, syncNotes, iconCache, renderCasters,
-    renderSpellList, renderContent, refreshSpells, wireContent, wireSpells, wireClassAbility, clearPageCards, wireImport
+    renderSpellList, renderContent, refreshSpells, showSpells, wireContent, wireSpells, wireClassAbility, clearPageCards, wireImport
   } = U;
   const APP_BUILD = 'development build';   // tools/build-single.js puts the name and version here ("Quillbound Sheets 1.0")
   const APP_BUILD_ID = '';   // and the build time: not shown, only compared with the site's version.json (wireUpdates)
@@ -165,6 +165,8 @@
     state.charKey = 'char:' + name + '|' + buf.byteLength;       // and so does the autosaved character
     const stored = await idbGet(state.sheetKey);
     const char = await idbGet(state.charKey);
+    const view = await idbGet('view:' + state.charKey);   // the app's own choices for this character (Spells section hidden)
+    state.hideSpells = !!(view && view.hideSpells);
     state.savedAt = char && char.date ? char.date : 0;
     let w = null;
     const t0 = performance.now();
@@ -804,6 +806,7 @@
       let extra = row.querySelector('.of'); if (n > 4) { if (!extra) { extra = el('span', { cls: 'hint of' }); row.append(extra); } extra.textContent = 'of ' + n; } else if (extra) extra.remove();
     }
     const none = $('#slots-none'); if (none) none.hidden = anySlots;
+    if (state.anySlots !== anySlots) { state.anySlots = anySlots; showSpells(); }
     // tools and languages: show the filled lines and the first empty one (and whichever is being typed in)
     for (const id of ['#tools', '#languages', '#resistances']) {
       let shownEmpty = false;
@@ -1032,7 +1035,6 @@
     };
     $('#hp-minus').addEventListener('click', () => hpStep(-1));
     $('#hp-plus').addEventListener('click', () => hpStep(1));
-    $('#comp-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'AScomp' }); await refreshPages(); });
     $('#notes-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'ASnotes' }); await refreshPages(); });
     $('#ws-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'WSfront' }); await refreshPages(); });
     $('#notes-clear-open').addEventListener('click', () => { if (state.worker) clearNotesPages(); });
@@ -1052,6 +1054,7 @@
       }
       armedNew = 0; clearTimeout(saveTimer);
       await idbDel(state.charKey);
+      await idbDel('view:' + state.charKey);
       state.savedAt = 0;
       $('#sheet').hidden = true; $('#start').hidden = false;
       openSheet(state.bytes.slice(0), state.fileName, false);
@@ -1419,7 +1422,7 @@
     for (const u of iconCache.values()) if (u) URL.revokeObjectURL(u);
     iconCache.clear();
     buildAbilities(); buildSkills(); buildHitDice(); buildAttacks(); buildLimited(); buildFeats(); buildActions(); buildSlots(); buildProfs(); buildDefense(); buildCoins(); buildMagicItems(); buildGear(); buildMods(); buildConditions(); buildAmmo();
-    state.spellOpts = null; state.sheet = null;
+    state.spellOpts = null; state.sheet = null; state.anySlots = undefined;
     clearPageCards();
     renderCasters(); renderSpellList();
     buildIndex();

@@ -248,7 +248,8 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .src.off .n { color: var(--muted); }
 .src-sub { margin-top: 16px; }
 .excl-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
-.excl-kinds .btn { min-height: 48px; text-align: left; justify-content: space-between; gap: 6px; }
+.excl-kinds .btn { min-height: 48px; min-width: 0; padding: 10px 12px; text-align: left; justify-content: space-between; gap: 6px; }
+.excl-kinds .btn > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .excl-kinds .chip { flex: none; }
 #content-hint { margin: 0; }
 
@@ -1066,8 +1067,6 @@ window.MPMBTheme = (() => {
 
     <section class="band" id="companion" aria-labelledby="t-companion">
       <h2 class="band-title" id="t-companion">Companion</h2>
-      <p class="note" id="comp-none" hidden>Your PDF has no companion page now. Add one for a familiar, mount or other companion: MPMB fills it in from the creature you pick.</p>
-      <button class="btn primary" id="comp-add" type="button" hidden>Add a companion page</button>
       <div id="comp-list"></div>
     </section>
 
@@ -1132,6 +1131,7 @@ window.MPMBTheme = (() => {
           <h3>Pages <button class="btn sm" type="button" data-bookmark="Functions/Set Pages Layout" data-title="Pages and layout" data-pages="1">Change</button></h3>
           <p class="note">The extra pages in your PDF, from MPMB's Set Pages Layout menu (it also has the sheet's colour, equipment and spell sheet options).</p>
           <ul class="list" id="page-list"></ul>
+          <ul class="list"><li><span class="grow"><span>Spells section</span><span class="hint" id="spells-why"></span></span><button class="btn sm" id="spells-toggle" type="button">Hide</button></li></ul>
           <button class="btn" id="notes-clear-open" type="button" hidden>Clear out Notes pages…</button>
         </div>
         <div class="card" id="mpmb-settings">
@@ -1153,10 +1153,10 @@ window.MPMBTheme = (() => {
     <ul>
       <li><a href="#main" data-tab="main" aria-current="true">Main</a></li>
       <li><a href="#combat" data-tab="combat">Combat</a></li>
-      <li><a href="#spells" data-tab="spells">Spells</a></li>
+      <li id="tab-spells"><a href="#spells" data-tab="spells">Spells</a></li>
       <li><a href="#features" data-tab="features">Features</a></li>
       <li><a href="#gear" data-tab="gear">Gear</a></li>
-      <li><a href="#companion" data-tab="companion"><span class="wide-only">Companion</span><span class="narrow-only">Comp.</span></a></li>
+      <li id="tab-companion"><a href="#companion" data-tab="companion"><span class="wide-only">Companion</span><span class="narrow-only">Comp.</span></a></li>
       <li id="tab-wildshape" hidden><a href="#wildshape" data-tab="wildshape"><span class="wide-only">Wild Shape</span><span class="narrow-only">Shape</span></a></li>
       <li id="tab-advlog" hidden><a href="#advlog" data-tab="advlog">Log</a></li>
       <li><a href="#sheetinfo" data-tab="sheetinfo">Sheet</a></li>

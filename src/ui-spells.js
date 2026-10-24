@@ -29,6 +29,21 @@
     const same = !opts && JSON.stringify(sheet) === JSON.stringify(state.sheet);
     state.sheet = sheet;
     if (!same) { renderCasters(); renderSpellList(); }
+    showSpells();
+  }
+  // The Spells section and its tab: hidden when the character has nothing to do with spells (no caster, no spells from a
+  // feat or item, no slots, no spell sheet), or when the user hid it (Sheet → Pages, kept per character).
+  function showSpells() {
+    const o = state.spellOpts, s = state.sheet;
+    if (!o) return;   // not worked out yet
+    const needed = !!(o.casters.length || (s && s.pages) || state.anySlots);
+    const show = needed && !state.hideSpells;
+    $('#spells').hidden = !show;
+    $('#tab-spells').hidden = !show;
+    $('#spells-why').textContent = !needed ? 'Hidden: this character has no spells. It shows once MPMB gives them some.' : state.hideSpells ? 'Hidden by you.' : '';
+    const b = $('#spells-toggle');
+    b.hidden = !needed;
+    b.textContent = state.hideSpells ? 'Show' : 'Hide';
   }
   // MPMB ends a spell's name with its marks: ® (or "(R)" without unicode) for a ritual, ◉ for a spell whose target must
   // be one you can see (reqLoS). The row shows them as labelled tags instead of tiny symbols.
@@ -258,6 +273,12 @@
     }
   }
   function wireSpells() {
+    $('#spells-toggle').addEventListener('click', async () => {
+      if (!state.charKey) return;
+      state.hideSpells = !state.hideSpells;
+      showSpells();
+      await U.idbPut('view:' + state.charKey, { hideSpells: state.hideSpells });
+    });
     $('#picker-list').addEventListener('change', (e) => {
       const s = e.target.closest('[data-bonus]');
       if (!s) return;
@@ -326,6 +347,6 @@
   }
 
   Object.assign(U, {
-    spellsSoon, renderCasters, renderSpellList, refreshSpells, wireSpells
+    spellsSoon, renderCasters, renderSpellList, refreshSpells, wireSpells, showSpells
   });
 })();
