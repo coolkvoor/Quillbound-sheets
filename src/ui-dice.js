@@ -189,7 +189,8 @@
     const g = solid(sides), q = rest(sides, 0), ps = g.verts.map((v) => rot(q, v));
     const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1]);
     const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-    return (FIT[k] = { scale: (2 / Math.max(x1 - x0, y1 - y0)) * (k === 6 ? 0.7 : 1), dx: -(x0 + x1) / 2, dy: -(y0 + y1) / 2 });
+    // a triangle centred by its outline looks low (its weight is in the base): the d4 sits halfway up to its centre
+    return (FIT[k] = { scale: (2 / Math.max(x1 - x0, y1 - y0)) * (k === 6 ? 0.7 : 1), dx: -(x0 + x1) / 2, dy: -(y0 + y1) / 2 * (k === 4 ? 0.5 : 1) });
   }
   function draw(ctx, cx, cy, px, d, q, pal) {
     const g = solid(d.sides), tone = pal[d.tone || 'plain'], fi = fit(d.sides);
