@@ -3,6 +3,7 @@
   'use strict';
   const U = window.MPMBUI;
   const { $, el, state, LEVEL_NAMES } = U;
+  const diced = (node) => { U.diceText(node); return node; };   // dice in a text roll when tapped (ui-dice.js)
   // from the other screen files (all loaded before anything runs)
   const send = (...a) => U.send(...a);
   const inlineMarkup = (...a) => U.inlineMarkup(...a);
@@ -67,7 +68,7 @@
     for (const c of o.casters) {
       const h = heads.filter((x) => x.key === c.key)[0];
       const figs = [];
-      if (h) figs.push('DC ' + h.dc, 'Attack ' + (/^[+-]/.test(h.attack) ? h.attack : '+' + h.attack));
+      if (h) figs.push('DC ' + h.dc);
       if (c.cantrips) figs.push('Cantrips ' + c.cantrips.chosen.length + '/' + c.cantrips.count);
       if (c.spells) figs.push((c.spells.book ? 'Spellbook ' : 'Spells ') + c.spells.chosen.length + (c.spells.book ? '' : '/' + c.spells.count));
       // "Prepared spells only" uses the picks; the other lists have a prepared box per spell
@@ -75,7 +76,12 @@
       if (c.prepared && c.prepared.count) figs.push('Prepared ' + (c.show && c.show.value === 3 ? c.prepared.chosen.length : ticked) + '/' + c.prepared.count);
       const btn = el('button', { cls: 'btn primary', type: 'button', text: 'Choose spells' });
       btn.addEventListener('click', () => openPicker(c.key));
-      box.append(el('div', { cls: 'caster' }, [el('b', { text: c.fullname || c.name }), el('div', { cls: 'figs num', text: figs.join(' · ') }), btn]));
+      // the spell attack rolls when tapped (ui-dice.js)
+      const atk = h ? el('button', { cls: 'roll', type: 'button', 'data-roll': 'd20', 'data-kind': 'spell', 'data-adv': 'Att Adv', 'data-what': (c.fullname || c.name) + ' · spell attack', 'aria-label': 'Roll a spell attack', text: /^[+-]/.test(h.attack) ? h.attack : '+' + h.attack }) : null;
+      if (atk) U.markRoll(atk);
+      const figBox = el('div', { cls: 'figs num' }, figs.map((t) => el('span', { text: t })));
+      if (atk) figBox.insertBefore(el('span', {}, [document.createTextNode('Attack '), atk]), figBox.children[1] || null);
+      box.append(el('div', { cls: 'caster' }, [el('b', { text: c.fullname || c.name }), figBox, btn]));
     }
   }
   function renderSpellList() {
@@ -119,7 +125,7 @@
         const save = r.save && !/^[–-]$/.test(r.save) ? r.save + ' save' : '';
         const meta = [r.time, r.range, r.components, r.duration, save, r.school.trim(), r.book ? r.book + ' ' + r.pageRef : ''].filter(Boolean).join(' · ');
         const opts = r.button ? el('button', { cls: 'btn sm more', type: 'button', 'data-mpmb': r.button, 'data-modifier': '1', 'data-title': r.name, 'aria-label': r.name + ': options', text: '⋯' }) : el('span');
-        into.append(el('li', { cls: 'spell' }, [left, el('div', {}, [el('div', {}, [nameBtn].concat(tags)), el('div', { cls: 'meta', text: meta }), el('div', { cls: 'desc', text: r.description })]), opts]));
+        into.append(el('li', { cls: 'spell' }, [left, el('div', {}, [el('div', {}, [nameBtn].concat(tags)), el('div', { cls: 'meta', text: meta }), diced(el('div', { cls: 'desc', text: r.description }))]), opts]));
       }
     }
     for (const d of box.querySelectorAll('.spell-more')) {
@@ -173,6 +179,7 @@
     for (const [k, v] of [['Casting time', d.time], ['Range', d.range], ['Components', d.components + (d.compMaterial ? ' (' + d.compMaterial + ')' : '')], ['Duration', d.duration], ['Save', d.save], ['Source', d.source]]) if (v) dl.append(el('dt', { text: k }), el('dd', { text: v }));
     body.append(dl);
     for (const p of String(d.text).replace(/\r\n?/g, '\n').split(/\n+/)) if (p.trim()) { const pe = el('p', { cls: 'notice-msg' }); inlineMarkup(p.trim(), pe); body.append(pe); }
+    U.diceText(body);
   }
 
   // Choosing spells: the class spell list in one place (cantrips, then each level up to the highest the character can
@@ -299,7 +306,7 @@
         const t = spellText.get(r.key);
         if (t) { const dl = [t.components, t.duration].filter(Boolean).join(' · '); if (dl) box.append(el('div', { cls: 'hint', text: dl })); for (const para of String(t.text).replace(/\r\n?/g, '\n').split(/\n+/)) if (para.trim()) { const pe = el('p'); inlineMarkup(para.trim(), pe); box.append(pe); } }
         else box.append(el('p', { cls: 'muted', text: d.description || 'Loading…' }));
-        li.append(box);
+        li.append(diced(box));
       }
       ul.append(li);
     }

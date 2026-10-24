@@ -4,7 +4,7 @@
   'use strict';
   const U = window.MPMBUI;
   const {
-    $, $$, el, typingIn, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
+    $, $$, el, rollOut, typingIn, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
     ACTIONS, LANGUAGES
   } = U;
   const {
@@ -261,11 +261,11 @@
     for (const [k, long] of ABILITIES) {
       const save = el('div', { cls: 'save' }, [
         el('button', { cls: 'dot sm', type: 'button', 'data-toggle': k + ' ST Prof', 'aria-pressed': 'false', 'aria-label': long + ' saving throw proficiency' }),
-        el('span', { text: 'Save ' }), el('b', { cls: 'num', 'data-out': k + ' ST Mod', text: '–' }),
+        el('span', { text: 'Save ' }), rollOut('num', k + ' ST Mod', 'd20', { 'data-kind': 'save', 'data-what': long + ' save', 'data-adv': k + ' ST Adv', 'aria-label': 'Roll a ' + long + ' save' }),
       ]);
       box.append(el('div', { cls: 'abi' }, [
         el('span', { cls: 'k', text: k.toUpperCase(), title: long }),
-        el('span', { cls: 'mod num', 'data-out': k + ' Mod', text: '–' }),
+        rollOut('mod num', k + ' Mod', 'd20', { 'data-kind': 'check', 'data-what': long + ' check', 'aria-label': 'Roll a ' + long + ' check' }),
         el('input', { 'data-f': k, id: 'f-abi-' + k, inputmode: 'numeric', autocomplete: 'off', 'aria-label': long + ' score', cls: 'num' }),
         save,
         // the sheet's two small Adv / Dis boxes beside the save; on their own line here, as a box is too narrow on a phone
@@ -275,11 +275,11 @@
     // MPMB's optional 7th ability, Honor or Sanity (Set Pages Layout → 1st page options → Ability Scores); shown while MPMB shows it
     box.append(el('div', { cls: 'abi', 'data-vis': 'HoS', hidden: '' }, [
       el('span', { cls: 'k up', 'data-out': 'HoSRememberState', text: '' }),
-      el('span', { cls: 'mod num', 'data-out': 'HoS Mod', text: '–' }),
+      rollOut('mod num', 'HoS Mod', 'd20', { 'data-kind': 'check', 'data-what': 'Honor or Sanity check', 'aria-label': 'Roll an Honor or Sanity check' }),
       el('input', { 'data-f': 'HoS', id: 'f-abi-HoS', inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Honor or Sanity score', cls: 'num' }),
       el('div', { cls: 'save' }, [
         el('button', { cls: 'dot sm', type: 'button', 'data-toggle': 'HoS ST Prof', 'aria-pressed': 'false', 'aria-label': 'Honor or Sanity saving throw proficiency' }),
-        el('span', { text: 'Save ' }), el('b', { cls: 'num', 'data-out': 'HoS ST Mod', text: '–' }),
+        el('span', { text: 'Save ' }), rollOut('num', 'HoS ST Mod', 'd20', { 'data-kind': 'save', 'data-what': 'Honor or Sanity save', 'data-adv': 'HoS ST Adv', 'aria-label': 'Roll an Honor or Sanity save' }),
       ]),
       advDis('HoS ST', 'Honor or Sanity save'),
     ]));
@@ -293,7 +293,7 @@
         el('span', { cls: 'n', text: name }),
         el('span', { cls: 'a', text: abi }),
         advDis(f, name),
-        el('span', { cls: 'v num', 'data-out': f, text: '–' }),
+        rollOut('v num', f, 'd20', { 'data-kind': 'check', 'data-what': name, 'data-adv': f + ' Adv', 'aria-label': 'Roll ' + name }),
       ]));
     }
     // the sheet's tool or custom skill line: MPMB takes its ability from the name, such as "Thieves' Tools (Dex)"
@@ -301,7 +301,7 @@
       el('button', { cls: 'dot sm', type: 'button', 'data-skill': 'Too', 'aria-pressed': 'false', 'aria-label': 'Tool proficiency' }),
       el('input', { cls: 'in n', 'data-f': 'Too Text', id: 'f-too-text', autocomplete: 'off', 'aria-label': 'Tool or custom skill, with its ability, such as Thieves’ Tools (Dex)' }),
       advDis('Too', 'Tool or custom skill'),
-      el('span', { cls: 'v num', 'data-out': 'Too', text: '–' }),
+      rollOut('v num', 'Too', 'd20', { 'data-kind': 'check', 'data-adv': 'Too Adv', 'aria-label': 'Roll the tool or custom skill' }),
     ]));
   }
   function buildHitDice() {
@@ -312,6 +312,7 @@
         el('span', { 'data-hd': String(i), text: 'Hit dice' }),
         el('label', { cls: 'hd-die' }, [el('span', { cls: 'hint', text: 'Die' }), el('input', { cls: 'num', 'data-f': 'HD' + i + ' Die', id: 'f-hdd' + i, inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Hit die size' })]),
         el('span', { cls: 'hint hd-con', 'data-hdcon': String(i) }),
+        el('button', { cls: 'btn sm hd-roll', type: 'button', 'data-roll': 'hd', 'data-die': 'HD' + i + ' Die', 'data-mod': 'HD' + i + ' Con Mod', 'aria-label': 'Roll a hit die', text: 'Roll' }),
         el('label', { cls: 'uses' }, [el('span', { cls: 'hint', text: 'Used' }), el('input', { cls: 'num', 'data-f': 'HD' + i + ' Used', id: 'f-hd' + i, inputmode: 'numeric', autocomplete: 'off', 'aria-label': 'Hit dice used' })]),
       ]));
     }
@@ -330,8 +331,8 @@
           lineMenu('Attack.Button.' + i, 'Attack ' + i),
         ]),
         el('div', { cls: 'figs', 'data-figs': String(i) }, [
-          el('span', {}, [el('span', { cls: 'muted', text: 'To hit ' }), el('b', { 'data-out': p + 'To Hit', text: '–' })]),
-          el('span', {}, [el('span', { cls: 'muted', text: 'Damage ' }), el('b', { 'data-out': p + 'Damage', text: '–' }), el('span', { text: ' ' }), el('span', { 'data-out': p + 'Damage Type', text: '' })]),
+          el('span', {}, [el('span', { cls: 'muted', text: 'To hit ' }), rollOut('', p + 'To Hit', 'd20', { 'data-kind': 'attack', 'data-adv': 'Att Adv', 'aria-label': 'Roll to hit' })]),
+          el('span', {}, [el('span', { cls: 'muted', text: 'Damage ' }), rollOut('', p + 'Damage', 'dice', { 'data-kind': 'damage', 'aria-label': 'Roll damage' }), el('span', { text: ' ' }), el('span', { 'data-out': p + 'Damage Type', text: '' })]),
           el('span', {}, [el('span', { cls: 'muted', text: 'Range ' }), el('b', { 'data-out': p + 'Range', text: '–' })]),
         ]),
         el('div', { cls: 'desc', 'data-out': p + 'Description', text: '' }),
@@ -630,6 +631,7 @@
       if (s.strikethrough) { const d = document.createElement('s'); d.append(n); n = d; }
       node.append(n);
     }
+    U.diceText(node);
   }
   // MPMB's feature texts (Class Features, Racial Traits) as a list: one entry per feature, its description folded.
   // MPMB's markup: "**Wizard, level 3:**" heads a class; "#◆ Name# (Wizard 1, SRD'24 77) #[usage]#" starts a class
@@ -668,6 +670,7 @@
       for (const t of it.text) { const p = el('p'); inlineMarkup(t, p); body.append(p); }
       if (!it.text.length) body.append(el('p', { cls: 'muted', text: 'No description on the sheet.' }));
       d.append(body);
+      U.diceText(d);
       node.append(d);
     }
   }
@@ -718,7 +721,12 @@
       if (document.activeElement !== n) { const x = snap.exists ? (Array.isArray(snap.value) ? snap.value.join(', ') : snap.value) : ''; n.value = n.dataset.blank && String(x).toLowerCase() === n.dataset.blank ? '' : x; }
       n.readOnly = !!snap.readonly;
     }
-    for (const n of sel('data-out')) { const t = shown(snap); n.textContent = t === '' && n.classList.contains('v') ? '–' : t; }
+    for (const n of sel('data-out')) {
+      const t = shown(snap);
+      n.textContent = t === '' && n.classList.contains('v') ? '–' : t;
+      if (n.dataset.roll) U.markRoll(n);
+      else if (n.classList.contains('desc')) U.diceText(n);   // an attack's notes: "Versatile (1d8)"
+    }
     for (const n of sel('data-rich')) { if (n.dataset.features) renderFeatures(n, snap); else renderRich(n, snap); }
     for (const n of sel('data-tip')) renderTip(n, snap);
     for (const n of sel('data-toggle')) n.setAttribute('aria-pressed', snap.checked ? 'true' : 'false');
@@ -861,6 +869,7 @@
       row.querySelector('[data-hd]').textContent = has ? 'Hit dice ' + lv + ' × ' + (die.indexOf('d') === 0 ? die : 'd' + die) : 'Hit dice: none yet';
       row.querySelector('.uses').hidden = !has;
       row.querySelector('.hd-die').hidden = !has;
+      row.querySelector('.hd-roll').hidden = !has;
       const con = v('HD' + i + ' Con Mod');
       row.querySelector('[data-hdcon]').textContent = has && con !== '' ? (Number(con) < 0 ? '' : '+') + con + ' each' : '';
     }
@@ -1536,6 +1545,7 @@
   wireContent();
   wireImport();
   U.wireSuggest();
+  U.wireDice();
   wireSpells();
   wireClassAbility();
   wireLooks();
