@@ -585,9 +585,23 @@
   function renderTip(node, snap) {
     const lines = String(snap.tooltip || '').split(/\r\n|\r|\n/).slice(1).filter((l) => l.trim());
     node.hidden = !snap.exists || !lines.length;
-    node.textContent = '';
+    for (const old of node.querySelectorAll(':scope > ul')) old.remove();   // the <summary> stays
     if (node.hidden) return;
-    if (node.dataset.tipTitle) node.append(el('span', { cls: 'k', text: node.dataset.tipTitle }));
+    // a fold (<details>): closed or open as the user left it for this character (view:<charKey> tipsClosed)
+    if (node.tagName === 'DETAILS') {
+      node.open = !(state.view && state.view.tipsClosed && state.view.tipsClosed[snap.name]);
+      if (!node.dataset.wired) {
+        node.dataset.wired = '1';
+        node.addEventListener('toggle', () => {
+          if (!state.view || !state.charKey) return;
+          const closed = Object.assign({}, state.view.tipsClosed);
+          if (!!closed[node.dataset.tip] === !node.open) return;
+          if (node.open) delete closed[node.dataset.tip]; else closed[node.dataset.tip] = true;
+          state.view.tipsClosed = closed;
+          idbPut('view:' + state.charKey, state.view);
+        });
+      }
+    }
     const ul = el('ul');
     for (const l of lines) {
       const li = el('li');
