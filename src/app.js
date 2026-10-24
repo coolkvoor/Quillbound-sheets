@@ -1032,7 +1032,6 @@
     };
     $('#hp-minus').addEventListener('click', () => hpStep(-1));
     $('#hp-plus').addEventListener('click', () => hpStep(1));
-    $('#comp-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'AScomp' }); await refreshPages(); });
     $('#notes-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'ASnotes' }); await refreshPages(); });
     $('#ws-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'WSfront' }); await refreshPages(); });
     $('#notes-clear-open').addEventListener('click', () => { if (state.worker) clearNotesPages(); });

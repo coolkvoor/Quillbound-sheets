@@ -191,8 +191,9 @@
     const prefixes = pagePrefixes(list, 'AScomp');
     if (JSON.stringify(prefixes) === JSON.stringify(compPrefixes) && $('#comp-list').childElementCount === prefixes.length) return;
     compPrefixes = prefixes.slice();
-    $('#comp-none').hidden = prefixes.length > 0;
-    $('#comp-add').hidden = prefixes.length > 0;
+    // no companion page: no band and no tab (Sheet → Pages → Change adds one again)
+    $('#companion').hidden = !prefixes.length;
+    $('#tab-companion').hidden = !prefixes.length;
     await rebuildPages($('#comp-list'), prefixes, buildCompanion, prefixes.map((P) => P + 'Comp.Use.Ability.Str.Mod'));
   }
   function refreshCompanions(v) {
