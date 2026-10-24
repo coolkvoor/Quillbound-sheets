@@ -92,9 +92,19 @@
     for (const ck of casterOrder) {
       const h = heads.filter((x) => x.key === ck)[0];
       if (casterOrder.length > 1 || h) box.append(el('div', { cls: 'caster-head', text: h ? h.title : ck }));
-      let level = null, ul = null;
+      let level = null, ul = null, more = null;
       for (const r of rows.filter((x) => x.caster === ck)) {
-        if (r.level !== level || !ul) { level = r.level; box.append(el('div', { cls: 'spell-level', text: level === null ? 'Other' : LEVEL_NAMES[level] })); ul = el('ul', { cls: 'spells-ul' }); box.append(ul); }
+        if (r.level !== level || !ul) {
+          level = r.level; box.append(el('div', { cls: 'spell-level', text: level === null ? 'Other' : LEVEL_NAMES[level] })); ul = el('ul', { cls: 'spells-ul' }); box.append(ul);
+          // spells MPMB lists with an empty prepare box (a High Elf's Wizard cantrips to swap to, a whole class list)
+          // fold away under the prepared ones; the fold stays open across redraws
+          const key = ck + '|' + level;
+          more = el('details', { cls: 'spell-more' }, [el('summary'), el('ul', { cls: 'spells-ul' })]);
+          more.open = openFolds.has(key);
+          more.addEventListener('toggle', () => { if (more.open) openFolds.add(key); else openFolds.delete(key); });
+          box.append(more);
+        }
+        const into = r.toggles === 'prepared' && !r.on ? more.querySelector('ul') : ul;
         const marked = spellMarks(r.name);
         // the first column: prepared (checkbox) or used (once per rest), toggled by MPMB's own button
         let left = el('span');
@@ -108,11 +118,18 @@
         const tags = marked.tags.concat(tagText ? [el('span', { cls: 'tag', text: tagText + (r.toggles === 'used' && r.on ? ', used' : '') })] : []);
         const save = r.save && !/^[–-]$/.test(r.save) ? r.save + ' save' : '';
         const meta = [r.time, r.range, r.components, r.duration, save, r.school.trim(), r.book ? r.book + ' ' + r.pageRef : ''].filter(Boolean).join(' · ');
-        const more = r.button ? el('button', { cls: 'btn sm more', type: 'button', 'data-mpmb': r.button, 'data-modifier': '1', 'data-title': r.name, 'aria-label': r.name + ': options', text: '⋯' }) : el('span');
-        ul.append(el('li', { cls: 'spell' }, [left, el('div', {}, [el('div', {}, [nameBtn].concat(tags)), el('div', { cls: 'meta', text: meta }), el('div', { cls: 'desc', text: r.description })]), more]));
+        const opts = r.button ? el('button', { cls: 'btn sm more', type: 'button', 'data-mpmb': r.button, 'data-modifier': '1', 'data-title': r.name, 'aria-label': r.name + ': options', text: '⋯' }) : el('span');
+        into.append(el('li', { cls: 'spell' }, [left, el('div', {}, [el('div', {}, [nameBtn].concat(tags)), el('div', { cls: 'meta', text: meta }), el('div', { cls: 'desc', text: r.description })]), opts]));
       }
     }
+    for (const d of box.querySelectorAll('.spell-more')) {
+      const n = d.querySelector('ul').children.length;
+      if (!n) { d.remove(); continue; }
+      d.querySelector('summary').textContent = 'Not prepared (' + n + ')';
+      if (!d.previousElementSibling.children.length) d.previousElementSibling.remove();   // nothing prepared at this level
+    }
   }
+  const openFolds = new Set();
   async function showSpell(key, name) {
     const dlg = $('#spell-info');
     $('#si-title').textContent = name;
