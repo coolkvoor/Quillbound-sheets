@@ -189,11 +189,12 @@
   // build (or rebuild) the companion cards when the companion pages change, and watch their fields
   async function syncCompanions(list) {
     const prefixes = pagePrefixes(list, 'AScomp');
-    if (JSON.stringify(prefixes) === JSON.stringify(compPrefixes) && $('#comp-list').childElementCount === prefixes.length) return;
-    compPrefixes = prefixes.slice();
-    // no companion page: no band and no tab (Sheet → Pages → Change adds one again)
+    // no companion page: no band and no tab (Sheet → Pages → Change adds one again). Before the check below: a character
+    // reopened without one has nothing to rebuild, but the band is still shown from the last one.
     $('#companion').hidden = !prefixes.length;
     $('#tab-companion').hidden = !prefixes.length;
+    if (JSON.stringify(prefixes) === JSON.stringify(compPrefixes) && $('#comp-list').childElementCount === prefixes.length) return;
+    compPrefixes = prefixes.slice();
     await rebuildPages($('#comp-list'), prefixes, buildCompanion, prefixes.map((P) => P + 'Comp.Use.Ability.Str.Mod'));
   }
   function refreshCompanions(v) {
