@@ -103,7 +103,9 @@
     });
     const col = ab.opts.cols[ab.col];
     $('#ap-colname').textContent = col.name;
-    $('#ap-colnote').textContent = COL_NOTES[col.type] || 'Your own column.';
+    // MPMB doesn't fill the background column (the player splits the bonus); it keeps the background's text, which names the abilities
+    const bg = col.type === 'background' && ab.opts.bg;
+    $('#ap-colnote').textContent = bg ? bg.name + ': ' + bg.txt + '.' : COL_NOTES[col.type] || 'Your own column.';
     const box = $('#ap-rows');
     box.textContent = '';
     const n = ab.opts.hos ? 7 : 6;
@@ -118,7 +120,8 @@
       plus.addEventListener('click', () => setV(ab.scores[ab.col][s] + 1));
       const p = ab.preview && ab.preview[s];
       box.append(el('div', { cls: 'ap-row' }, [
-        el('span', {}, [el('b', { text: name }), el('div', { cls: 'hint', text: 'Now ' + (ab.opts.current[s] || '–') })]),
+        el('span', {}, [el('b', { text: name }), el('div', { cls: 'hint' }, [document.createTextNode('Now ' + (ab.opts.current[s] || '–')),
+          bg && bg.txt.indexOf(name) !== -1 ? el('span', { cls: 'chip ap-bg', text: bg.name }) : ''])]),
         el('span', { cls: 'stepper' }, [minus, input, plus]),
         el('span', { cls: 'tot num', 'data-tot': String(s) }, [document.createTextNode(p ? String(p.total) : '–'), el('small', { text: p ? 'max ' + p.max : '' })]),
       ]));

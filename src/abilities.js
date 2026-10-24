@@ -14,7 +14,7 @@
     engine.evalExpr('initiateCurrentStats(); AbilityScores_Button(true);');   // also refreshes MPMB's explanation
     const o = json(engine, '{ cols: CurrentStats.cols.map(function (c) { return { type: c.type, name: c.name, scores: c.scores.slice(0, 7), editable: !c.notUserEditable }; }),' +
       ' current: AbilityScores.abbreviations.map(function (a) { return Number(What(a)) || 0; }), names: AbilityScores.names.slice(0, 6), hos: What("HoSRememberState") || "",' +
-      ' explain: Who("Str") || "", pointBuy: [8,9,10,11,12,13,14,15].map(function (n) { return [n, Number(ASCalcPointBuy(n))]; }) }');
+      ' explain: Who("Str") || "", bg: CurrentBackground && CurrentBackground.name && CurrentBackground.scorestxt ? { name: CurrentBackground.name, txt: CurrentBackground.scorestxt } : null, pointBuy: [8,9,10,11,12,13,14,15].map(function (n) { return [n, Number(ASCalcPointBuy(n))]; }) }');
     // MPMB hyphenates names for its narrow dialog ("Backgr-\nound") and marks footnotes with ¹ ²
     for (const c of o.cols) c.name = c.name.replace(/-\n/g, '').replace(/\n/g, ' ').replace(/[¹²]/g, '').trim();
     o.preview = preview(engine, o.cols.map((c) => c.scores));
