@@ -504,9 +504,13 @@
         ]),
         el('div', { cls: 'sub' }, [
           el('span', { cls: 'att', 'data-att': String(i) }, [el('button', { cls: 'dot sm', type: 'button', 'data-toggle': p + 'Attuned ' + i, 'aria-pressed': 'false', 'aria-label': 'Attuned' }), el('span', { text: 'Attuned' })]),
-          el('span', {}, [el('span', { cls: 'muted', text: 'Weight ' }), el('b', { cls: 'num', 'data-out': p + 'Weight ' + i })]),
+          el('label', { cls: 'mi-w' }, [el('span', { cls: 'muted', text: 'Weight ' }), el('input', { cls: 'in num', 'data-f': p + 'Weight ' + i, id: 'f-miw' + i, inputmode: 'decimal', autocomplete: 'off', 'aria-label': 'Magic item ' + i + ' weight' })]),
         ]),
+        // the description: MPMB fills it for an item it knows (shown formatted); for one it doesn't (homebrew typed in)
+        // it's a box to type in, as in Acrobat, and a filled one can be edited too
         el('div', { cls: 'rich hint', 'data-rich': p + 'Description ' + i }),
+        el('textarea', { cls: 'in mi-desc', 'data-f': p + 'Description ' + i, id: 'f-mid' + i, rows: '3', placeholder: 'What it does (charges, effects, attunement…)', 'aria-label': 'Magic item ' + i + ' description', hidden: '' }),
+        el('button', { cls: 'btn sm mi-edit', type: 'button', 'data-midesc': String(i), hidden: '' }, [document.createTextNode('Edit description')]),
         el('input', { cls: 'in', 'data-f': p + 'Note ' + i, id: 'f-min' + i, autocomplete: 'off', placeholder: 'Notes (charges, who has it…)', 'aria-label': 'Magic item ' + i + ' notes' }),
       ]));
     }
@@ -724,7 +728,16 @@
       const att = state.snap.get('Extra.Magic Item Attuned ' + i);
       row.querySelector('[data-att]').hidden = !has || !att || !att.exists || !!att.hidden;
       if (has && att && att.checked) attuned++;
-      for (const n of row.querySelectorAll('.sub, .rich, [data-f$="Note ' + i + '"]')) n.hidden = !has;
+      for (const n of row.querySelectorAll('.sub, [data-f$="Note ' + i + '"]')) n.hidden = !has;
+      // description: formatted when MPMB filled it, a box to type in when it's empty or being edited
+      const d = state.snap.get('Extra.Magic Item Description ' + i) || {};
+      const box = row.querySelector('.mi-desc');
+      const typing = row.dataset.editing === '1' || document.activeElement === box;
+      const empty = v('Extra.Magic Item Description ' + i) === '';
+      const canType = !!d.exists && !d.readonly;
+      row.querySelector('.rich').hidden = !has || empty || typing;
+      box.hidden = !has || !canType || !(empty || typing);
+      row.querySelector('.mi-edit').hidden = !has || !canType || empty || typing;
     });
     $('#attuned-chip').textContent = attuned + ' attuned';
     showFilled('[data-gear]', (i) => 'Adventuring Gear Row ' + i);
@@ -967,6 +980,22 @@
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && e.target.matches && e.target.matches('input[data-f]')) { e.preventDefault(); e.target.blur(); }
+    });
+    // a magic item's description: Edit description shows the box; leaving the box shows the text again
+    document.addEventListener('click', (e) => {
+      const b = e.target.closest && e.target.closest('[data-midesc]');
+      if (!b) return;
+      const row = b.closest('[data-mi]');
+      row.dataset.editing = '1';
+      refreshDerived();
+      const box = row.querySelector('.mi-desc');
+      box.focus();
+      box.setSelectionRange(box.value.length, box.value.length);
+    });
+    document.addEventListener('focusout', (e) => {
+      if (!e.target.matches || !e.target.matches('.mi-desc')) return;
+      const row = e.target.closest('[data-mi]');
+      setTimeout(() => { delete row.dataset.editing; refreshDerived(); }, 0);
     });
     document.addEventListener('click', async (e) => {
       const t = e.target.closest && e.target.closest('[data-toggle],[data-skill],[data-tab],[data-goto],[data-mpmb],[data-bookmark],[data-step],[data-shoot]');
