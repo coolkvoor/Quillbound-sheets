@@ -299,6 +299,10 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .md-list li { padding: 10px 10px 10px calc(10px + var(--d, 0) * 16px); border-radius: 6px; cursor: pointer; min-height: 44px; display: flex; align-items: center; overflow-wrap: anywhere; }
 .md-list li[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
 .md-list li.md-group { font-weight: 700; color: var(--muted); cursor: default; }
+/* suggestions under a text box (ui-suggest.js), in place of the browser's datalist popup */
+.suggest { position: absolute; z-index: 60; margin: 0; padding: 4px; list-style: none; overflow: auto; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.35); overscroll-behavior: contain; }
+.suggest li { padding: 10px 12px; min-height: 44px; display: flex; align-items: center; border-radius: 6px; cursor: pointer; overflow-wrap: anywhere; }
+.suggest li:hover, .suggest li:active { background: var(--accent-soft); }
 .md-src { font-family: var(--font-display); font-weight: 400; font-size: 0.8em; letter-spacing: 0.04em; margin-left: 0.45em; opacity: 0.7; white-space: nowrap; }
 .md-list.off li { cursor: default; }
 .md-foot { flex-wrap: wrap; }
@@ -1363,4 +1367,5 @@ window.MPMBTheme = (() => {
 <script src="ui-content.js"></script>
 <script src="ui-import.js"></script>
 <script src="ui-backup.js"></script>
+<script src="ui-suggest.js"></script>
 <script src="app.js"></script>
