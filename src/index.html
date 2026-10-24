@@ -474,12 +474,8 @@ button.roll:disabled { background: none; box-shadow: none; cursor: default; min-
 .dice-tray { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; min-height: 76px; align-items: center; padding: 4px 0; max-width: 100%; }
 .die { display: block; }
 .die.dropped { opacity: 0.35; }
-.die.drop { animation: dice-drop 0.34s cubic-bezier(0.25, 0.8, 0.35, 1.25) both; }
-@keyframes dice-drop {
-  0% { transform: translate(0, -34px) scale(0.6); opacity: 0; }
-  60% { transform: translate(0, 4px) scale(1.04); opacity: 1; }
-  100% { transform: none; }
-}
+/* the layer the dice fly across while thrown (over the whole screen, never in the way of a tap) */
+.dice-fly { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 10; }
 .dice-total { font-size: 3.2rem; font-weight: 800; line-height: 1; min-height: 1em; color: var(--accent); }
 .dice-total.pop { animation: dice-pop 0.35s ease-out both; }
 @keyframes dice-pop { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: none; opacity: 1; } }
@@ -506,7 +502,7 @@ button.roll:disabled { background: none; box-shadow: none; cursor: default; min-
 .dice-hist .dh-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dice-hist .dh-total { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 1.4rem; }
 .dice-hist .dh-sum { grid-column: 1; overflow-wrap: anywhere; }
-@media (prefers-reduced-motion: reduce) { .die.drop, .dice-total.pop { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .dice-total.pop { animation: none; } }
 
 /* class and ability panels */
 .cp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }

@@ -176,29 +176,29 @@
     const surface = read('--surface');
     // on a dark page the faces take more of the colour, so the dice stand out from it
     const strong = surface[0] * 0.3 + surface[1] * 0.59 + surface[2] * 0.11 < 128 ? 0.5 : 0.28;
-    const tone = (c) => { const face = mix(surface, c, strong); return { face, shadow: mix(face, [0, 0, 0], 0.45), edge: css(c) }; };
+    const tone = (c) => { const face = mix(surface, c, strong); return { face, shadow: mix(face, [0, 0, 0], 0.62), edge: css(mix(face, c, 0.7)) }; };
     return { ink: css(read('--ink')), font: getComputedStyle(document.body).fontFamily, plain: tone(read('--accent')), crit: tone(read('--good')), fumble: tone(read('--bad')) };
   }
-  const LIGHT = unit([-0.45, 0.6, 0.75]);
-  // draws a die on its canvas, turned by q; d: { sides, front (a face index), frontLabel, tone }
-  function paint(cv, d, q, pal) {
-    const ctx = cv.getContext('2d'), px = cv.width, g = solid(d.sides), tone = pal[d.tone || 'plain'];
-    ctx.clearRect(0, 0, px, px);
-    const R = px * 0.44, f = 6;
-    const pt = (v) => { const r = rot(q, v), s = f / (f - r[2]); return [px / 2 + r[0] * R * s, px / 2 - r[1] * R * s]; };
+  const LIGHT = unit([-0.35, 0.65, 0.68]);   // from above, so the top (the result's face) is the brightest
+  // draws a die px wide centred on (cx, cy), turned by q; d: { sides, front (a face index), frontLabel, tone }
+  function draw(ctx, cx, cy, px, d, q, pal) {
+    const g = solid(d.sides), tone = pal[d.tone || 'plain'];
+    const R = px * 0.42, f = 4.5;
+    const pt = (v) => { const r = rot(q, v), s = f / (f - r[2]); return [cx + r[0] * R * s, cy - r[1] * R * s]; };
     const pts = g.verts.map(pt);
     const vis = [];
     g.faces.forEach((fc, i) => { const n = rot(q, fc.n); if (n[2] > 0.01) vis.push([fc, i, n]); });
     vis.sort((a, b) => a[2][2] - b[2][2]);
     ctx.lineJoin = 'round';
-    ctx.lineWidth = Math.max(1, px * 0.022);
+    ctx.lineWidth = Math.max(1, px * 0.016);
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (const [fc, i, n] of vis) {
       ctx.beginPath();
       fc.idx.forEach((j, k) => (k ? ctx.lineTo(pts[j][0], pts[j][1]) : ctx.moveTo(pts[j][0], pts[j][1])));
       ctx.closePath();
-      ctx.fillStyle = css(mix(tone.shadow, tone.face, 0.2 + 0.8 * Math.max(0, dot(n, LIGHT))));
+      const lit = Math.max(0, dot(n, LIGHT));
+      ctx.fillStyle = css(mix(tone.shadow, tone.face, 0.1 + 0.9 * lit * lit));
       ctx.fill();
       ctx.strokeStyle = tone.edge;
       ctx.stroke();
@@ -214,6 +214,13 @@
       ctx.globalAlpha = 1;
     }
   }
+  // draws a die filling its own canvas
+  function paint(cv, d, q, pal) {
+    const ctx = cv.getContext('2d');
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    shadow(ctx, cv.width / 2, cv.height / 2, cv.width, 0);
+    draw(ctx, cv.width / 2, cv.height / 2, cv.width, d, q, pal);
+  }
   function canvasFor(cssPx, cls) {
     const dpr = Math.min(3, window.devicePixelRatio || 1);
     const cv = el('canvas', { cls: 'die' + (cls ? ' ' + cls : ''), 'aria-hidden': 'true' });
@@ -221,8 +228,31 @@
     cv.style.width = cv.style.height = cssPx + 'px';
     return cv;
   }
-  // where a die comes to rest: its result face to the front, a little turned so it looks like a solid
-  const rest = (sides, front) => mul(turn([1, -0.7, 0], 0.36), mul(turn([0, 0, 1], (die(41) - 21) / 100), facing(solid(sides).faces[front].n)));
+  // The table: a die lies on it with the result's face up (as you read a real die), turned at random about its upright
+  // axis; every die is seen by the same camera, looking down at the table from the front (TILT from straight above).
+  const TABLE = turn([1, 0, 0], -0.62);
+  function rest(sides, front, yaw) {
+    const g = solid(sides);
+    if (yaw === undefined) yaw = random() * 2 * Math.PI;
+    if (shapeFor(sides) !== 4) return mul(TABLE, mul(turn([0, 0, 1], yaw), facing(g.faces[front].n)));
+    // a d4 has a corner on top: it sits on another face, with the result's face turned to the viewer
+    const down = mul(turn([1, 0, 0], Math.PI), facing(g.faces[(front + 1) % 4].n));
+    const m = rot(down, g.faces[front].n);
+    return mul(TABLE, mul(turn([0, 0, 1], -Math.PI / 2 - Math.atan2(m[1], m[0]) + 0.5 + (yaw % 0.3)), down));
+  }
+  // the soft shadow a die casts on the table; lift (0 on the table) moves it out and fades it
+  function shadow(ctx, x, y, px, lift) {
+    const rx = px * 0.4 * (1 - lift * 0.3), ry = px * 0.11 * (1 - lift * 0.3);
+    const cx = x + lift * px * 0.3, cy = y + px * 0.37;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rx);
+    g.addColorStop(0, 'rgba(0, 0, 0, ' + (0.3 * (1 - lift * 0.6)).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.save();
+    ctx.translate(cx, cy); ctx.scale(1, ry / rx); ctx.translate(-cx, -cy);
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(cx, cy, rx, 0, 2 * Math.PI); ctx.fill();
+    ctx.restore();
+  }
   const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 
   // the small die in a chip or on the top bar button
@@ -265,7 +295,7 @@
     const pal = palette();
     for (const b of document.querySelectorAll('#dice-pads [data-pad]')) {
       const s = Number(b.dataset.pad), front = s === 100 ? 0 : s - 1;
-      paint(b.querySelector('canvas'), { sides: s, front, frontLabel: s === 100 ? '%' : undefined }, mul(turn([1, -0.7, 0], 0.36), facing(solid(s).faces[front].n)), pal);
+      paint(b.querySelector('canvas'), { sides: s, front, frontLabel: s === 100 ? '%' : undefined }, rest(s, front, 0.6), pal);
     }
   }
   function open() {
@@ -273,17 +303,24 @@
     loadHistory();
     if (!dlg.open) { dlg.showModal(); paintPads(); }
   }
-  // roll and show it: the dice drop in spinning and land on their results (a third of a second), then the total pops up.
-  // Dice kept from the last roll (advantage after a normal roll) lie still.
-  const SPIN_MS = 340;
+  // roll and show it: the dice are thrown in from below the screen, bounce across it spinning, and land in the tray on
+  // their results (half a second), then the total pops up. They fly on a layer over the whole screen (.dice-fly); each
+  // die's own canvas in the tray shows once it has landed. Dice kept from the last roll (advantage) lie still.
+  const FLY_MS = 500;
+  function flyLayer() {
+    let c = $('#dice .dice-fly');
+    if (!c) { c = el('canvas', { cls: 'dice-fly', 'aria-hidden': 'true' }); $('#dice').append(c); }
+    return c;
+  }
+  const bezier = (a, b, c, d, u) => [0, 1].map((k) => (1 - u) ** 3 * a[k] + 3 * (1 - u) ** 2 * u * b[k] + 3 * (1 - u) * u * u * c[k] + u ** 3 * d[k]);
   function rollAndShow(spec) {
     const r = roll(spec);
     if (!r) { U.toast('Nothing to roll there'); return; }
     open();
     keep(r);
     cancelAnimationFrame(frame);
-    const body = $('#dice .panel-body');
-    if (body.scrollTop) body.scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
+    // back to the top at once, so the tray is where the dice land
+    $('#dice .panel-body').scrollTop = 0;
     const tray = $('#dice-tray');
     tray.textContent = '';
     const n = r.groups.reduce((a, g) => a + g.rolls.length, 0);
@@ -294,20 +331,19 @@
       const d = { sides: g.sides, front: faceOf(g.sides, v), frontLabel: g.sides === 100 || !ownFaces(g.sides) ? v : undefined,
         tone: r.d20 && i !== g.drop && v === 20 ? 'crit' : r.d20 && i !== g.drop && v === 1 ? 'fumble' : 'plain' };
       const still = i < g.kept || reduceMotion();
-      const cv = canvasFor(size, (i === g.drop ? 'dropped' : '') + (still ? '' : ' drop'));
+      const cv = canvasFor(size, i === g.drop ? 'dropped' : '');
       const end = rest(g.sides, d.front);
-      // a random axis, two to three turns, slowing to rest
-      const axis = unit([random() - 0.5, random() - 0.5, random() - 0.5]), turns = (2 + random()) * 2 * Math.PI;
-      const delay = still ? 0 : Math.min(dice.length, 6) * 22;
-      if (!still) cv.style.animationDelay = delay + 'ms';
       tray.append(cv);
-      dice.push({ cv, d, end, axis, turns, delay, still });
-      paint(cv, d, still ? end : mul(end, turn(axis, turns)), pal);
+      if (still) paint(cv, d, end, pal); else cv.style.visibility = 'hidden';
+      // a random axis, three to four turns, slowing to rest
+      dice.push({ cv, d, end, still, axis: unit([random() - 0.5, random() - 0.5, random() - 0.5]), turns: (3 + random()) * 2 * Math.PI, delay: still ? 0 : Math.min(dice.length, 8) * 25 });
     });
     $('#dice-what').textContent = (spec.what || r.expr) + (r.spec.mode !== 'normal' ? ' · ' + MODE_NAME[r.spec.mode] : '') + (spec.crit ? ' · critical' : '');
     const total = $('#dice-total'), sum = $('#dice-sum'), nt = $('#dice-note');
+    const fly = flyLayer(), ctx = fly.getContext('2d');
     const settle = () => {
-      for (const x of dice) paint(x.cv, x.d, x.end, pal);
+      ctx.clearRect(0, 0, fly.width, fly.height);
+      for (const x of dice) { x.cv.style.visibility = ''; paint(x.cv, x.d, x.end, pal); }
       total.textContent = String(r.total);
       total.classList.remove('pop'); void total.offsetWidth; total.classList.add('pop');
       sum.textContent = breakdown(r);
@@ -315,16 +351,34 @@
       nt.className = 'dice-note' + (r.nat === 20 ? ' good' : r.nat === 1 ? ' bad' : '');
       renderActs(r);
     };
-    if (dice.every((x) => x.still)) { settle(); return; }
+    const moving = dice.filter((x) => !x.still);
+    if (!moving.length) { settle(); return; }
     total.textContent = ''; sum.textContent = ''; nt.textContent = '';
-    const t0 = performance.now(), end = Math.max(...dice.map((x) => x.delay)) + SPIN_MS;
+    const W = window.innerWidth, H = window.innerHeight, dpr = Math.min(3, window.devicePixelRatio || 1);
+    fly.width = Math.round(W * dpr); fly.height = Math.round(H * dpr);
+    // each die: from below the screen, through two random points anywhere on it, to its place in the tray
+    for (const x of moving) {
+      const b = x.cv.getBoundingClientRect();
+      x.to = [b.left + b.width / 2, b.top + b.height / 2];
+      x.from = [random() * W, H + size];
+      x.p1 = [random() * W, H * (0.15 + 0.6 * random())];
+      x.p2 = [random() * W, H * (0.1 + 0.5 * random())];
+    }
+    const t0 = performance.now(), last = Math.max(...moving.map((x) => x.delay)) + FLY_MS;
     const step = (now) => {
       const at = now - t0;
-      if (at >= end) { settle(); return; }
-      for (const x of dice) {
-        if (x.still) continue;
-        const t = Math.max(0, Math.min(1, (at - x.delay) / SPIN_MS));
-        paint(x.cv, x.d, mul(x.end, turn(x.axis, x.turns * (1 - easeOut(t)))), pal);
+      if (at >= last) { settle(); return; }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      for (const x of moving) {
+        const t = (at - x.delay) / FLY_MS;
+        if (t <= 0) continue;
+        if (t >= 1) { if (x.cv.style.visibility) { x.cv.style.visibility = ''; paint(x.cv, x.d, x.end, pal); } continue; }
+        const u = 1 - (1 - t) ** 2, pos = bezier(x.from, x.p1, x.p2, x.to, u);
+        // bounces that die down as it slows; higher = larger and further from its shadow
+        const hop = Math.abs(Math.sin(u * Math.PI * 3)) * (1 - u) ** 1.5;
+        shadow(ctx, pos[0], pos[1], size, hop);
+        draw(ctx, pos[0], pos[1] - hop * size * 0.9, size * (1 + 0.45 * hop), x.d, mul(x.end, turn(x.axis, x.turns * (1 - easeOut(t)))), pal);
       }
       frame = requestAnimationFrame(step);
     };
@@ -486,7 +540,7 @@
     $('#dice-open').innerHTML = ICON.replace('<svg ', '<svg width="22" height="22" ');
     $('#dice-open').addEventListener('click', open);
     $('#dice-close').addEventListener('click', () => dlg.close());
-    dlg.addEventListener('close', () => cancelAnimationFrame(frame));
+    dlg.addEventListener('close', () => { cancelAnimationFrame(frame); const f = $('#dice .dice-fly'); if (f) f.getContext('2d').clearRect(0, 0, f.width, f.height); });
     buildPads();
     $('#dice-expr').addEventListener('input', padCounts);
     $('#dice-expr').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#dice-roll').click(); } });
