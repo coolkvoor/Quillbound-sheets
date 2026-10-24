@@ -1131,6 +1131,7 @@ window.MPMBTheme = (() => {
           <h3>Pages <button class="btn sm" type="button" data-bookmark="Functions/Set Pages Layout" data-title="Pages and layout" data-pages="1">Change</button></h3>
           <p class="note">The extra pages in your PDF, from MPMB's Set Pages Layout menu (it also has the sheet's colour, equipment and spell sheet options).</p>
           <ul class="list" id="page-list"></ul>
+          <ul class="list"><li><span class="grow"><span>Spells section</span><span class="hint" id="spells-why"></span></span><button class="btn sm" id="spells-toggle" type="button">Hide</button></li></ul>
           <button class="btn" id="notes-clear-open" type="button" hidden>Clear out Notes pages…</button>
         </div>
         <div class="card" id="mpmb-settings">
@@ -1152,7 +1153,7 @@ window.MPMBTheme = (() => {
     <ul>
       <li><a href="#main" data-tab="main" aria-current="true">Main</a></li>
       <li><a href="#combat" data-tab="combat">Combat</a></li>
-      <li><a href="#spells" data-tab="spells">Spells</a></li>
+      <li id="tab-spells"><a href="#spells" data-tab="spells">Spells</a></li>
       <li><a href="#features" data-tab="features">Features</a></li>
       <li><a href="#gear" data-tab="gear">Gear</a></li>
       <li id="tab-companion"><a href="#companion" data-tab="companion"><span class="wide-only">Companion</span><span class="narrow-only">Comp.</span></a></li>
