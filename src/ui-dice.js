@@ -134,8 +134,8 @@
       return { idx, n };
     }) };
   }
-  // how big a number fits on a face, as a share of the die's radius
-  const LABEL = { 4: 0.36, 6: 0.52, 8: 0.36, 10: 0.32, 12: 0.36, 20: 0.28 };
+  // a number's size, as a share of the die's box: about the same on every die, a little smaller where the face is small
+  const LABEL = { 4: 0.27, 6: 0.3, 8: 0.27, 10: 0.24, 12: 0.27, 20: 0.22 };
   const SOLIDS = {};
   // an unusual die (d3, d7…) borrows the next solid up and shows only its result
   const shapeFor = (sides) => (sides === 100 ? 10 : sides <= 4 ? 4 : sides <= 6 ? 6 : sides <= 8 ? 8 : sides <= 10 ? 10 : sides <= 12 ? 12 : 20);
@@ -180,10 +180,21 @@
   }
   const LIGHT = unit([0, 0.3, 0.95]);   // from the front, a little above: the result's face brightest, faces below it darkest
   // draws a die px wide centred on (cx, cy), turned by q; d: { sides, front (a face index), frontLabel, tone }
+  // each die's size and middle as it lies at rest, so every die sits centred in its box at one size: its outline spans
+  // the same width or height (a d6's square, which fills its box, a little less), its middle on the box's middle
+  const FIT = {};
+  function fit(sides) {
+    const k = shapeFor(sides);
+    if (FIT[k]) return FIT[k];
+    const g = solid(sides), q = rest(sides, 0), ps = g.verts.map((v) => rot(q, v));
+    const xs = ps.map((p) => p[0]), ys = ps.map((p) => p[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    return (FIT[k] = { scale: (2 / Math.max(x1 - x0, y1 - y0)) * (k === 6 ? 0.7 : 1), dx: -(x0 + x1) / 2, dy: -(y0 + y1) / 2 });
+  }
   function draw(ctx, cx, cy, px, d, q, pal) {
-    const g = solid(d.sides), tone = pal[d.tone || 'plain'];
-    const R = px * 0.42, f = 12;   // little perspective, as in a drawn die
-    const pt = (v) => { const r = rot(q, v), s = f / (f - r[2]); return [cx + r[0] * R * s, cy - r[1] * R * s]; };
+    const g = solid(d.sides), tone = pal[d.tone || 'plain'], fi = fit(d.sides);
+    const R = px * 0.42 * fi.scale, f = 12;   // little perspective, as in a drawn die
+    const pt = (v) => { const r = rot(q, v), s = f / (f - r[2]); return [cx + (r[0] * s + fi.dx) * R, cy - (r[1] * s + fi.dy) * R]; };
     const pts = g.verts.map(pt);
     const vis = [];
     g.faces.forEach((fc, i) => { const n = rot(q, fc.n); if (n[2] > 0.01) vis.push([fc, i, n]); });
@@ -203,7 +214,7 @@
       if (i !== d.front || n[2] < 0.3) continue;
       const label = d.frontLabel !== undefined ? String(d.frontLabel) : labelOf(d.sides, i);
       if (!label) continue;
-      const c = pt(fc.c), size = R * g.label * 1.6 * Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.85 : 1);
+      const c = pt(fc.c), size = px * g.label * Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.85 : 1);
       ctx.globalAlpha = Math.min(1, (n[2] - 0.3) / 0.4);
       ctx.fillStyle = tone.ink;
       ctx.font = '800 ' + size.toFixed(1) + 'px ' + pal.font;
