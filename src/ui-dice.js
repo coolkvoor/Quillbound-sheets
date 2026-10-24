@@ -159,13 +159,12 @@
     g.label = LABEL[k];
     return (SOLIDS[k] = g);
   }
-  const ownFaces = (sides) => sides === 100 || solid(sides).faces.length === sides;
-  // the face that shows a value (a d100 the face of its tens), and what each face says
+  const ownFaces = (sides) => solid(sides).faces.length === sides;
+  // the face that shows a value, and what each face says (an unusual die shows only its result)
   function faceOf(sides, value) {
-    if (sides === 100) return Math.floor((value % 100) / 10);
     return ownFaces(sides) ? value - 1 : die(solid(sides).faces.length) - 1;
   }
-  const labelOf = (sides, i) => (sides === 100 ? String(i * 10).padStart(2, '0') : ownFaces(sides) ? String(i + 1) : '');
+  const labelOf = (sides, i) => (ownFaces(sides) ? String(i + 1) : '');
   // the page's colours, read through a probe (the custom properties can be hex, rgb() or color-mix())
   const rgbOf = (s) => { const n = (String(s).match(/[\d.]+/g) || ['0', '0', '0']).slice(0, 3).map(Number); return /color\(/.test(s) ? n.map((x) => x * 255) : n; };
   const mix = (a, b, t) => [0, 1, 2].map((i) => Math.round(a[i] * (1 - t) + b[i] * t));
@@ -212,12 +211,23 @@
       ctx.globalAlpha = 1;
     }
   }
+  // a d100 is two d10s, as at the table: the tens (00–90) behind, the ones (0–9) in front. d.pair holds the two, and
+  // q is then a pair of turns
+  function pairOf(value, tone) {
+    const tens = Math.floor((value % 100) / 10), ones = value % 10;
+    return { pair: [{ sides: 10, front: tens, frontLabel: tens + '0', tone }, { sides: 10, front: ones, frontLabel: String(ones), tone }] };
+  }
+  function drawAny(ctx, cx, cy, px, d, q, pal) {
+    if (!d.pair) { draw(ctx, cx, cy, px, d, q, pal); return; }
+    draw(ctx, cx - px * 0.16, cy - px * 0.14, px * 0.72, d.pair[0], q[0], pal);
+    draw(ctx, cx + px * 0.14, cy + px * 0.12, px * 0.72, d.pair[1], q[1], pal);
+  }
   // draws a die filling its own canvas
   function paint(cv, d, q, pal) {
     const ctx = cv.getContext('2d');
     ctx.clearRect(0, 0, cv.width, cv.height);
     shadow(ctx, cv.width / 2, cv.height / 2, cv.width, 0);
-    draw(ctx, cv.width / 2, cv.height / 2, cv.width, d, q, pal);
+    drawAny(ctx, cv.width / 2, cv.height / 2, cv.width, d, q, pal);
   }
   function canvasFor(cssPx, cls) {
     const dpr = Math.min(3, window.devicePixelRatio || 1);
@@ -296,8 +306,9 @@
   function paintPads() {
     const pal = palette();
     for (const b of document.querySelectorAll('#dice-pads [data-pad]')) {
-      const s = Number(b.dataset.pad), front = s === 100 ? 0 : s - 1;
-      paint(b.querySelector('canvas'), { sides: s, front, frontLabel: s === 100 ? '%' : undefined }, rest(s, front), pal);
+      const s = Number(b.dataset.pad);
+      if (s === 100) paint(b.querySelector('canvas'), pairOf(100), [rest(10, 0), rest(10, 0)], pal);
+      else paint(b.querySelector('canvas'), { sides: s, front: s - 1 }, rest(s, s - 1), pal);
     }
   }
   function open() {
@@ -331,15 +342,16 @@
     const pal = palette();
     const dice = [];
     for (const g of r.groups) g.rolls.forEach((v, i) => {
-      const d = { sides: g.sides, front: faceOf(g.sides, v), frontLabel: g.sides === 100 || !ownFaces(g.sides) ? v : undefined,
-        tone: r.d20 && i !== g.drop && v === 20 ? 'crit' : r.d20 && i !== g.drop && v === 1 ? 'fumble' : 'plain' };
+      const tone = r.d20 && i !== g.drop && v === 20 ? 'crit' : r.d20 && i !== g.drop && v === 1 ? 'fumble' : 'plain';
+      const d = g.sides === 100 ? pairOf(v, tone) : { sides: g.sides, front: faceOf(g.sides, v), frontLabel: ownFaces(g.sides) ? undefined : v, tone };
       const still = i < g.kept || reduceMotion();
       const cv = canvasFor(size, i === g.drop ? 'dropped' : '');
-      const end = rest(g.sides, d.front);
+      const end = d.pair ? d.pair.map((p) => rest(10, p.front)) : rest(g.sides, d.front);
       tray.append(cv);
       if (still) paint(cv, d, end, pal); else cv.style.visibility = 'hidden';
       // a random axis, three to four turns, slowing to rest
-      dice.push({ cv, d, end, still, axis: unit([random() - 0.5, random() - 0.5, random() - 0.5]), turns: (3 + random()) * 2 * Math.PI, delay: still ? 0 : Math.min(dice.length, 8) * 25 });
+      const axis = () => unit([random() - 0.5, random() - 0.5, random() - 0.5]);
+      dice.push({ cv, d, end, still, axis: axis(), axis2: axis(), turns: (3 + random()) * 2 * Math.PI, delay: still ? 0 : Math.min(dice.length, 8) * 25 });
     });
     $('#dice-what').textContent = (spec.what || r.expr) + (r.spec.mode !== 'normal' ? ' · ' + MODE_NAME[r.spec.mode] : '');
     const total = $('#dice-total'), sum = $('#dice-sum'), nt = $('#dice-note');
@@ -381,7 +393,8 @@
         // bounces that die down as it slows; higher = larger and further from its shadow
         const hop = Math.abs(Math.sin(u * Math.PI * 3)) * (1 - u) ** 1.5;
         shadow(ctx, pos[0], pos[1], size, hop);
-        draw(ctx, pos[0], pos[1] - hop * size * 0.9, size * (1 + 0.45 * hop), x.d, mul(x.end, turn(x.axis, x.turns * (1 - easeOut(t)))), pal);
+        const a = x.turns * (1 - easeOut(t));
+        drawAny(ctx, pos[0], pos[1] - hop * size * 0.9, size * (1 + 0.45 * hop), x.d, x.d.pair ? [mul(x.end[0], turn(x.axis2, a)), mul(x.end[1], turn(x.axis, a))] : mul(x.end, turn(x.axis, a)), pal);
       }
       frame = requestAnimationFrame(step);
     };
