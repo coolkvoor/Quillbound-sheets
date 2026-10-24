@@ -344,9 +344,6 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .spell .meta { font-size: 0.85rem; color: var(--muted); }
 .spell .desc { font-size: 0.92rem; }
 .spell .tag { font-size: 0.75rem; color: var(--accent); border: 1px solid currentColor; border-radius: 6px; padding: 0 5px; margin-left: 6px; white-space: nowrap; }
-.picker-tabs { display: flex; gap: 6px; padding: 8px 12px 0; overflow-x: auto; border-bottom: 1px solid var(--line); }
-.picker-tabs button { border: 0; background: none; padding: 8px 10px 10px; font-weight: 700; color: var(--muted); border-bottom: 3px solid transparent; white-space: nowrap; cursor: pointer; }
-.picker-tabs button[aria-selected="true"] { color: var(--accent); border-color: var(--accent); }
 .picker-tools { display: flex; gap: 8px; align-items: center; }
 .picker-tools .in { flex: 1; }
 .picker-bar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
@@ -465,6 +462,14 @@ select option, select optgroup { background-color: var(--surface); color: var(--
 .stepper { display: inline-flex; align-items: center; gap: 4px; }
 .stepper .btn { min-width: 44px; min-height: 44px; padding: 0; font-size: 1.3rem; }
 .stepper .in { width: 3.6rem; text-align: center; }
+.ap-label { margin: 0 0 6px; font-size: 0.85rem; color: var(--muted); }
+.ap-cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 6px; }
+.ap-cols button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 48px; padding: 6px 10px; text-align: left; border: 1px solid var(--line); border-radius: 10px; background: var(--btn); color: var(--btn-ink); cursor: pointer; }
+.ap-cols button small { font-size: 0.75rem; color: var(--muted); overflow-wrap: anywhere; }
+.ap-cols button[aria-pressed="true"] { border: 2px solid var(--accent); padding: 5px 9px; background: var(--accent-soft); }
+.ap-cols button[aria-pressed="true"] b { color: var(--accent); }
+.ap-colname { margin: 16px 0 0; color: var(--accent); }
+.ap-colname + .hint { margin-top: 2px; }
 .ap-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 3.4rem; gap: 8px; align-items: center; min-height: 52px; border-bottom: 1px solid var(--line); }
 .ap-row .tot { text-align: right; font-size: 1.4rem; font-weight: 700; }
 .ap-row .tot small { display: block; font-size: 0.75rem; font-weight: 400; color: var(--muted); }
@@ -1332,8 +1337,10 @@ window.MPMBTheme = (() => {
 <!-- MPMB's Ability Scores dialog: one column at a time, the totals always shown -->
 <dialog class="panel full" id="abil-panel" aria-labelledby="ap-title">
   <div class="panel-head"><h3 id="ap-title">Ability scores</h3><button class="btn sm" id="ap-close" type="button">Cancel</button></div>
-  <div class="picker-tabs" id="ap-cols" role="tablist" aria-label="Column"></div>
   <div class="panel-body">
+    <p class="ap-label" id="ap-cols-label">Pick a column to change</p>
+    <div class="ap-cols" id="ap-cols" role="group" aria-labelledby="ap-cols-label"></div>
+    <h4 class="ap-colname" id="ap-colname"></h4>
     <p class="hint" id="ap-colnote"></p>
     <div id="ap-rows"></div>
     <p class="note" id="ap-pb"></p>
