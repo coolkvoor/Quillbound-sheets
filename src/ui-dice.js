@@ -9,7 +9,6 @@
 
   const PADS = [4, 6, 8, 10, 12, 20, 100];
   const MAX_DICE = 100, KEEP = 50;
-  const SVGNS = 'http://www.w3.org/2000/svg';
 
   // ---------------------------------------------------------------- rolling
   // a fair die: the browser's random numbers, without the bias a plain modulo gives
@@ -41,9 +40,13 @@
     if (p.mod || !parts.length) parts.push((parts.length ? (p.mod < 0 ? ' − ' : ' + ') : p.mod < 0 ? '−' : '') + Math.abs(p.mod));
     return parts.join('');
   }
+  // a spec to roll anew: without the dice kept from the last roll
+  const fresh = (spec) => { const c = Object.assign({}, spec); delete c.prev; return c; };
+  const random = () => die(10000) / 10000;
   const bonus = (n) => (n < 0 ? '−' : '+') + Math.abs(n);
-  // spec: { expr, what, kind, mode ('normal' | 'adv' | 'dis'), crit, damage (an attack's damage spec) }
-  // advantage takes the higher of two d20s (disadvantage the lower) for a roll with one d20; a critical rolls the dice twice
+  // spec: { expr, what, kind, mode ('normal' | 'adv' | 'dis'), crit, damage (an attack's damage spec), prev }
+  // advantage takes the higher of two d20s (disadvantage the lower) for a roll with one d20; a critical rolls the dice twice.
+  // prev: the d20s already rolled, kept when switching to advantage or disadvantage (only the missing one is rolled)
   function roll(spec) {
     const p = parse(spec.expr);
     if (!p) return null;
@@ -52,15 +55,16 @@
     const groups = p.dice.map((d) => {
       const n = d.n * (spec.crit ? 2 : 1);
       const rolls = [];
-      for (let i = 0; i < (mode === 'normal' ? n : 2); i++) rolls.push(die(d.sides));
+      const kept = d20 && spec.prev ? spec.prev.slice(0, mode === 'normal' ? 1 : 2) : [];
+      for (let i = 0; i < (mode === 'normal' ? n : 2); i++) rolls.push(i < kept.length ? kept[i] : die(d.sides));
       let drop = -1;
       if (mode !== 'normal') drop = (mode === 'adv') === (rolls[0] < rolls[1]) ? 0 : 1;
-      return { sides: d.sides, sign: d.sign, rolls, drop };
+      return { sides: d.sides, sign: d.sign, rolls, drop, kept: kept.length };
     });
     let total = p.mod;
     for (const g of groups) g.rolls.forEach((r, i) => { if (i !== g.drop) total += g.sign * r; });
     const nat = d20 ? groups[0].rolls[groups[0].drop === 0 ? 1 : 0] : null;
-    return { spec: Object.assign({}, spec, { mode }), expr: format(spec.crit ? { dice: p.dice.map((d) => Object.assign({}, d, { n: d.n * 2 })), mod: p.mod } : p), d20, groups, mod: p.mod, total, nat, at: Date.now() };
+    return { spec: Object.assign(fresh(spec), { mode }), expr: format(spec.crit ? { dice: p.dice.map((d) => Object.assign({}, d, { n: d.n * 2 })), mod: p.mod } : p), d20, groups, mod: p.mod, total, nat, at: Date.now() };
   }
   function breakdown(r) {
     const parts = [];
@@ -80,36 +84,152 @@
     return '';
   }
 
-  // ---------------------------------------------------------------- drawing dice
-  // flat outlines, one per die size (d100 a circle); the d20 as in the app's icon
-  const SHAPES = {
-    4: ['M50 8 L94 88 L6 88 Z', 64],
-    6: ['M14 14 H86 V86 H14 Z', 58],
-    8: ['M50 4 L94 50 L50 96 L6 50 Z', 58],
-    10: ['M50 4 L94 44 L50 96 L6 44 Z', 56],
-    12: ['M50 5 L95 38 L78 92 L22 92 L5 38 Z', 60],
-    20: ['M50 4 L92 28 L92 72 L50 96 L8 72 L8 28 Z', 56],
+  // ---------------------------------------------------------------- drawing dice: small 3D solids on a canvas
+  // Each die is its own solid (d4 tetrahedron, d6 cube, d8 octahedron, d10 pentagonal trapezohedron, d12 dodecahedron,
+  // d20 icosahedron; d100 a d10 counting in tens), flat-shaded with a light from the top left. A roll spins it about a
+  // random axis, slowing down until the face with the result looks straight at you. Numbers stay upright on screen.
+  const PHI = (1 + Math.sqrt(5)) / 2;
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const unit = (a) => { const l = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+  // turns as quaternions [w, x, y, z]; mul(a, b) turns by b, then by a
+  const turn = (axis, ang) => { const s = Math.sin(ang / 2), n = unit(axis); return [Math.cos(ang / 2), n[0] * s, n[1] * s, n[2] * s]; };
+  const mul = (a, b) => [a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3], a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+    a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1], a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]];
+  const rot = (q, v) => {
+    const [w, x, y, z] = q, t = [2 * (y * v[2] - z * v[1]), 2 * (z * v[0] - x * v[2]), 2 * (x * v[1] - y * v[0])];
+    return [v[0] + w * t[0] + y * t[2] - z * t[1], v[1] + w * t[1] + z * t[0] - x * t[2], v[2] + w * t[2] + x * t[1] - y * t[0]];
   };
-  function dieSvg(sides, value, cls) {
-    const svg = document.createElementNS(SVGNS, 'svg');
-    svg.setAttribute('viewBox', '0 0 100 100');
-    svg.setAttribute('class', 'die' + (cls ? ' ' + cls : ''));
-    svg.setAttribute('aria-hidden', 'true');
-    const add = (tag, attrs) => { const n = document.createElementNS(SVGNS, tag); for (const k in attrs) n.setAttribute(k, attrs[k]); svg.append(n); return n; };
-    const s = SHAPES[sides];
-    if (s) add('path', { d: s[0], class: 'face' });
-    else add('circle', { cx: 50, cy: 50, r: 44, class: 'face' });
-    if (sides === 20) add('path', { d: 'M50 17 L85 73 L15 73 Z', class: 'edge' });
-    const t = add('text', { x: 50, y: s ? s[1] : 56, 'text-anchor': 'middle', 'dominant-baseline': 'middle', class: 'val' });
-    t.textContent = value;
-    if (String(value).length > 2) t.setAttribute('class', 'val long');
-    return svg;
+  // the turn that points direction n at the viewer (+z)
+  function facing(n) {
+    if (n[2] > 0.9999) return [1, 0, 0, 0];
+    if (n[2] < -0.9999) return turn([1, 0, 0], Math.PI);
+    return turn(cross(n, [0, 0, 1]), Math.acos(n[2]));
   }
+  // a convex solid's faces from its dual: each direction's face holds the vertices furthest along it, in order around it
+  function faces(verts, dirs) {
+    return dirs.map((d0) => {
+      const n = unit(d0), dots = verts.map((v) => dot(v, n)), top = Math.max(...dots);
+      const idx = [];
+      dots.forEach((x, i) => { if (x > top - 1e-4) idx.push(i); });
+      const p = verts[idx[0]], u = unit([p[0] - n[0] * top, p[1] - n[1] * top, p[2] - n[2] * top]), w = cross(n, u);
+      const ang = (i) => Math.atan2(dot(verts[i], w), dot(verts[i], u));
+      idx.sort((a, b) => ang(a) - ang(b));
+      return { idx, n };
+    });
+  }
+  // the d10: two rings of five, half a step apart, and two tips; c keeps the kites flat
+  function trapezohedron() {
+    const a = 0.1, c = a * (1 + Math.cos(Math.PI / 5)) / (1 - Math.cos(Math.PI / 5));
+    const verts = [[0, 0, c], [0, 0, -c]];
+    for (let k = 0; k < 5; k++) verts.push([Math.cos(k * 2 * Math.PI / 5), Math.sin(k * 2 * Math.PI / 5), a]);
+    for (let k = 0; k < 5; k++) verts.push([Math.cos(k * 2 * Math.PI / 5 + Math.PI / 5), Math.sin(k * 2 * Math.PI / 5 + Math.PI / 5), -a]);
+    const fs = [];
+    for (let k = 0; k < 5; k++) fs.push([0, 2 + k, 7 + k, 2 + (k + 1) % 5], [1, 7 + k, 2 + (k + 1) % 5, 7 + (k + 1) % 5]);
+    return { verts, faces: fs.map((idx) => {
+      const [p, q, r] = idx.map((i) => verts[i]);
+      let n = unit(cross([q[0] - p[0], q[1] - p[1], q[2] - p[2]], [r[0] - p[0], r[1] - p[1], r[2] - p[2]]));
+      const m = idx.reduce((s, i) => [s[0] + verts[i][0], s[1] + verts[i][1], s[2] + verts[i][2]], [0, 0, 0]);
+      if (dot(n, m) < 0) n = n.map((x) => -x);
+      return { idx, n };
+    }) };
+  }
+  // how big a number fits on a face, as a share of the die's radius
+  const LABEL = { 4: 0.36, 6: 0.52, 8: 0.36, 10: 0.32, 12: 0.36, 20: 0.28 };
+  const SOLIDS = {};
+  // an unusual die (d3, d7…) borrows the next solid up and shows only its result
+  const shapeFor = (sides) => (sides === 100 ? 10 : sides <= 4 ? 4 : sides <= 6 ? 6 : sides <= 8 ? 8 : sides <= 10 ? 10 : sides <= 12 ? 12 : 20);
+  function solid(sides) {
+    const k = shapeFor(sides);
+    if (SOLIDS[k]) return SOLIDS[k];
+    const cube = [], ico = [], dod = [], t = 1 / PHI;
+    for (const x of [-1, 1]) for (const y of [-1, 1]) for (const z of [-1, 1]) cube.push([x, y, z]);
+    for (const a of [-1, 1]) for (const b of [-1, 1]) ico.push([0, a, b * PHI], [a, b * PHI, 0], [a * PHI, 0, b]);
+    dod.push(...cube);
+    // turned to match the icosahedron: each one's vertices point at the other's faces
+    for (const a of [-1, 1]) for (const b of [-1, 1]) dod.push([0, a * PHI, b * t], [a * t, 0, b * PHI], [a * PHI, b * t, 0]);
+    const octa = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+    const tet = [[1, 1, 1], [1, -1, -1], [-1, 1, -1], [-1, -1, 1]];
+    const g = k === 4 ? { verts: tet, faces: faces(tet, tet.map((v) => v.map((x) => -x))) } : k === 6 ? { verts: cube, faces: faces(cube, octa) }
+      : k === 8 ? { verts: octa, faces: faces(octa, cube) } : k === 12 ? { verts: dod, faces: faces(dod, ico) }
+      : k === 20 ? { verts: ico, faces: faces(ico, dod) } : trapezohedron();
+    const r = Math.max(...g.verts.map((v) => Math.hypot(v[0], v[1], v[2])));
+    g.verts = g.verts.map((v) => v.map((x) => x / r));
+    for (const f of g.faces) f.c = f.idx.reduce((s, i) => [s[0] + g.verts[i][0] / f.idx.length, s[1] + g.verts[i][1] / f.idx.length, s[2] + g.verts[i][2] / f.idx.length], [0, 0, 0]);
+    g.label = LABEL[k];
+    return (SOLIDS[k] = g);
+  }
+  const ownFaces = (sides) => sides === 100 || solid(sides).faces.length === sides;
+  // the face that shows a value (a d100 the face of its tens), and what each face says
+  function faceOf(sides, value) {
+    if (sides === 100) return Math.floor((value % 100) / 10);
+    return ownFaces(sides) ? value - 1 : die(solid(sides).faces.length) - 1;
+  }
+  const labelOf = (sides, i) => (sides === 100 ? String(i * 10).padStart(2, '0') : ownFaces(sides) ? String(i + 1) : '');
+  // the page's colours, read through a probe (the custom properties can be hex, rgb() or color-mix())
+  const rgbOf = (s) => { const n = (String(s).match(/[\d.]+/g) || ['0', '0', '0']).slice(0, 3).map(Number); return /color\(/.test(s) ? n.map((x) => x * 255) : n; };
+  const mix = (a, b, t) => [0, 1, 2].map((i) => Math.round(a[i] * (1 - t) + b[i] * t));
+  const css = (c) => 'rgb(' + c.join(',') + ')';
+  function palette() {
+    const host = $('#dice') || document.body;
+    const read = (name) => { const p = el('span', { hidden: '' }); p.style.color = 'var(' + name + ')'; host.append(p); const c = getComputedStyle(p).color; p.remove(); return rgbOf(c); };
+    const surface = read('--surface');
+    // on a dark page the faces take more of the colour, so the dice stand out from it
+    const strong = surface[0] * 0.3 + surface[1] * 0.59 + surface[2] * 0.11 < 128 ? 0.5 : 0.28;
+    const tone = (c) => { const face = mix(surface, c, strong); return { face, shadow: mix(face, [0, 0, 0], 0.45), edge: css(c) }; };
+    return { ink: css(read('--ink')), font: getComputedStyle(document.body).fontFamily, plain: tone(read('--accent')), crit: tone(read('--good')), fumble: tone(read('--bad')) };
+  }
+  const LIGHT = unit([-0.45, 0.6, 0.75]);
+  // draws a die on its canvas, turned by q; d: { sides, front (a face index), frontLabel, tone }
+  function paint(cv, d, q, pal) {
+    const ctx = cv.getContext('2d'), px = cv.width, g = solid(d.sides), tone = pal[d.tone || 'plain'];
+    ctx.clearRect(0, 0, px, px);
+    const R = px * 0.44, f = 6;
+    const pt = (v) => { const r = rot(q, v), s = f / (f - r[2]); return [px / 2 + r[0] * R * s, px / 2 - r[1] * R * s]; };
+    const pts = g.verts.map(pt);
+    const vis = [];
+    g.faces.forEach((fc, i) => { const n = rot(q, fc.n); if (n[2] > 0.01) vis.push([fc, i, n]); });
+    vis.sort((a, b) => a[2][2] - b[2][2]);
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = Math.max(1, px * 0.022);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const [fc, i, n] of vis) {
+      ctx.beginPath();
+      fc.idx.forEach((j, k) => (k ? ctx.lineTo(pts[j][0], pts[j][1]) : ctx.moveTo(pts[j][0], pts[j][1])));
+      ctx.closePath();
+      ctx.fillStyle = css(mix(tone.shadow, tone.face, 0.2 + 0.8 * Math.max(0, dot(n, LIGHT))));
+      ctx.fill();
+      ctx.strokeStyle = tone.edge;
+      ctx.stroke();
+      const label = i === d.front && d.frontLabel !== undefined ? String(d.frontLabel) : labelOf(d.sides, i);
+      if (!label || n[2] < 0.3) continue;
+      // the result's face reads first: its number larger, the others smaller and fainter
+      const front = i === d.front;
+      const c = pt(fc.c), size = R * g.label * Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.88 : 1) * (front ? 1.2 : 0.8);
+      ctx.globalAlpha = Math.min(1, (n[2] - 0.3) / 0.4) * (front ? 1 : 0.65);
+      ctx.fillStyle = pal.ink;
+      ctx.font = '800 ' + size.toFixed(1) + 'px ' + pal.font;
+      ctx.fillText(label, c[0], c[1] + size * 0.04);
+      ctx.globalAlpha = 1;
+    }
+  }
+  function canvasFor(cssPx, cls) {
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const cv = el('canvas', { cls: 'die' + (cls ? ' ' + cls : ''), 'aria-hidden': 'true' });
+    cv.width = cv.height = Math.round(cssPx * dpr);
+    cv.style.width = cv.style.height = cssPx + 'px';
+    return cv;
+  }
+  // where a die comes to rest: its result face to the front, a little turned so it looks like a solid
+  const rest = (sides, front) => mul(turn([1, -0.7, 0], 0.36), mul(turn([0, 0, 1], (die(41) - 21) / 100), facing(solid(sides).faces[front].n)));
+  const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+
   // the small die in a chip or on the top bar button
   const ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2.5 L20.5 7.25 V16.75 L12 21.5 L3.5 16.75 V7.25 Z"/><path d="M12 7 L16.5 15 H7.5 Z M12 2.5 V7 M3.5 7.25 L12 7 L20.5 7.25 M3.5 16.75 L7.5 15 M20.5 16.75 L16.5 15 M12 21.5 L7.5 15 M12 21.5 L16.5 15"/></svg>';
 
   // ---------------------------------------------------------------- the dice screen
-  let last = null, hist = [], histKey = null, timer = 0;
+  let hist = [], histKey = null, frame = 0;
   async function loadHistory() {
     const key = 'dice:' + (state.charKey || '');
     if (key === histKey) return;
@@ -140,54 +260,75 @@
       ol.append(el('li', {}, [b]));
     });
   }
+  // the pads show each die with its highest number in front, in the page's colours (drawn when the screen opens)
+  function paintPads() {
+    const pal = palette();
+    for (const b of document.querySelectorAll('#dice-pads [data-pad]')) {
+      const s = Number(b.dataset.pad), front = s === 100 ? 0 : s - 1;
+      paint(b.querySelector('canvas'), { sides: s, front, frontLabel: s === 100 ? '%' : undefined }, mul(turn([1, -0.7, 0], 0.36), facing(solid(s).faces[front].n)), pal);
+    }
+  }
   function open() {
     const dlg = $('#dice');
     loadHistory();
-    if (!dlg.open) dlg.showModal();
+    if (!dlg.open) { dlg.showModal(); paintPads(); }
   }
-  // roll and show it: the dice tumble in, their faces flicker, then settle and the total pops up
+  // roll and show it: the dice drop in spinning and land on their results (a third of a second), then the total pops up.
+  // Dice kept from the last roll (advantage after a normal roll) lie still.
+  const SPIN_MS = 340;
   function rollAndShow(spec) {
     const r = roll(spec);
     if (!r) { U.toast('Nothing to roll there'); return; }
     open();
-    last = r;
     keep(r);
-    clearInterval(timer);
+    cancelAnimationFrame(frame);
+    const body = $('#dice .panel-body');
+    if (body.scrollTop) body.scrollTo({ top: 0, behavior: reduceMotion() ? 'auto' : 'smooth' });
     const tray = $('#dice-tray');
     tray.textContent = '';
     const n = r.groups.reduce((a, g) => a + g.rolls.length, 0);
-    tray.className = 'dice-tray' + (n > 30 ? ' tiny' : n > 12 ? ' small' : '');
+    const size = n > 30 ? 34 : n > 12 ? 48 : 72;
+    const pal = palette();
     const dice = [];
     for (const g of r.groups) g.rolls.forEach((v, i) => {
-      const cls = [i === g.drop ? 'dropped' : '', r.d20 && i !== g.drop && v === 20 ? 'crit' : '', r.d20 && i !== g.drop && v === 1 ? 'fumble' : ''].filter(Boolean).join(' ');
-      const s = dieSvg(g.sides, v, cls);
-      s.style.setProperty('--r', (die(2) === 1 ? -1 : 1) * (200 + die(300)) + 'deg');
-      s.style.setProperty('--dx', (die(81) - 41) + 'px');
-      s.style.animationDelay = Math.min(dice.length, 12) * 35 + 'ms';
-      tray.append(s);
-      dice.push([s, g.sides, v]);
+      const d = { sides: g.sides, front: faceOf(g.sides, v), frontLabel: g.sides === 100 || !ownFaces(g.sides) ? v : undefined,
+        tone: r.d20 && i !== g.drop && v === 20 ? 'crit' : r.d20 && i !== g.drop && v === 1 ? 'fumble' : 'plain' };
+      const still = i < g.kept || reduceMotion();
+      const cv = canvasFor(size, (i === g.drop ? 'dropped' : '') + (still ? '' : ' drop'));
+      const end = rest(g.sides, d.front);
+      // a random axis, two to three turns, slowing to rest
+      const axis = unit([random() - 0.5, random() - 0.5, random() - 0.5]), turns = (2 + random()) * 2 * Math.PI;
+      const delay = still ? 0 : Math.min(dice.length, 6) * 22;
+      if (!still) cv.style.animationDelay = delay + 'ms';
+      tray.append(cv);
+      dice.push({ cv, d, end, axis, turns, delay, still });
+      paint(cv, d, still ? end : mul(end, turn(axis, turns)), pal);
     });
     $('#dice-what').textContent = (spec.what || r.expr) + (r.spec.mode !== 'normal' ? ' · ' + MODE_NAME[r.spec.mode] : '') + (spec.crit ? ' · critical' : '');
     const total = $('#dice-total'), sum = $('#dice-sum'), nt = $('#dice-note');
     const settle = () => {
-      clearInterval(timer);
-      for (const [s, , v] of dice) { s.classList.remove('spin'); s.querySelector('text').textContent = v; }
+      for (const x of dice) paint(x.cv, x.d, x.end, pal);
       total.textContent = String(r.total);
       total.classList.remove('pop'); void total.offsetWidth; total.classList.add('pop');
       sum.textContent = breakdown(r);
-      const t = note(r);
-      nt.textContent = t;
+      nt.textContent = note(r);
       nt.className = 'dice-note' + (r.nat === 20 ? ' good' : r.nat === 1 ? ' bad' : '');
       renderActs(r);
     };
-    if (reduceMotion()) { settle(); return; }
-    total.textContent = ''; sum.textContent = ''; nt.textContent = ''; $('#dice-acts').textContent = '';
-    for (const [s] of dice) s.classList.add('spin');
-    const until = Date.now() + 650;
-    timer = setInterval(() => {
-      if (Date.now() >= until) { settle(); return; }
-      for (const [s, sides] of dice) s.querySelector('text').textContent = die(sides);
-    }, 70);
+    if (dice.every((x) => x.still)) { settle(); return; }
+    total.textContent = ''; sum.textContent = ''; nt.textContent = '';
+    const t0 = performance.now(), end = Math.max(...dice.map((x) => x.delay)) + SPIN_MS;
+    const step = (now) => {
+      const at = now - t0;
+      if (at >= end) { settle(); return; }
+      for (const x of dice) {
+        if (x.still) continue;
+        const t = Math.max(0, Math.min(1, (at - x.delay) / SPIN_MS));
+        paint(x.cv, x.d, mul(x.end, turn(x.axis, x.turns * (1 - easeOut(t)))), pal);
+      }
+      frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
   }
   // what to do next: advantage or not (a d20), the attack's damage (normal or critical), a critical, the same again
   function renderActs(r) {
@@ -198,8 +339,9 @@
     if (r.d20) {
       const seg = el('div', { cls: 'seg', role: 'group', 'aria-label': 'Roll with' });
       for (const [m, t] of [['normal', 'Normal'], ['adv', 'Advantage'], ['dis', 'Disadvantage']]) {
+        // switching keeps the d20 already rolled (the same mode again rolls anew)
         const b = el('button', { type: 'button', 'aria-pressed': s.mode === m ? 'true' : 'false', text: t });
-        b.addEventListener('click', () => rollAndShow(Object.assign({}, s, { mode: m })));
+        b.addEventListener('click', () => rollAndShow(m === s.mode ? fresh(s) : Object.assign({}, s, { mode: m, prev: r.groups[0].rolls })));
         seg.append(b);
       }
       box.append(seg);
@@ -207,9 +349,9 @@
     if (s.kind === 'attack' && s.damage) {
       box.append(btn('Damage', s.damage, r.nat === 20 ? '' : 'primary'), btn('Critical damage', Object.assign({}, s.damage, { crit: true }), r.nat === 20 ? 'primary' : ''));
     } else if (!r.d20 && r.groups.length) {
-      box.append(btn(s.crit ? 'Not critical' : 'Critical', Object.assign({}, s, { crit: !s.crit })));
+      box.append(btn(s.crit ? 'Not critical' : 'Critical', Object.assign(fresh(s), { crit: !s.crit })));
     }
-    box.append(btn('Roll again', s, s.kind === 'attack' && s.damage ? '' : 'primary'));
+    box.append(btn('Roll again', fresh(s), s.kind === 'attack' && s.damage ? '' : 'primary'));
   }
 
   // the builder: a tap on a die adds one to the box; − and + change the number; the box can be typed in too
@@ -241,7 +383,7 @@
     const pads = $('#dice-pads');
     pads.textContent = '';
     for (const s of PADS) {
-      const b = el('button', { cls: 'pad', type: 'button', 'data-pad': String(s), 'aria-label': 'Add a d' + s }, [dieSvg(s, s === 100 ? '%' : s), el('span', { cls: 'pad-k', text: 'd' + (s === 100 ? '100' : s) }), el('span', { cls: 'cnt', hidden: '' })]);
+      const b = el('button', { cls: 'pad', type: 'button', 'data-pad': String(s), 'aria-label': 'Add a d' + s }, [canvasFor(52), el('span', { cls: 'pad-k', text: 'd' + s }), el('span', { cls: 'cnt', hidden: '' })]);
       b.addEventListener('click', () => addDie(s));
       pads.append(b);
     }
@@ -344,7 +486,7 @@
     $('#dice-open').innerHTML = ICON.replace('<svg ', '<svg width="22" height="22" ');
     $('#dice-open').addEventListener('click', open);
     $('#dice-close').addEventListener('click', () => dlg.close());
-    dlg.addEventListener('close', () => clearInterval(timer));
+    dlg.addEventListener('close', () => cancelAnimationFrame(frame));
     buildPads();
     $('#dice-expr').addEventListener('input', padCounts);
     $('#dice-expr').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#dice-roll').click(); } });
@@ -358,7 +500,7 @@
       if (!p) { U.toast('Couldn’t read that: try 2d6 + 3'); return; }
       rollAndShow({ expr: $('#dice-expr').value, what: '', kind: '' });
     });
-    $('#dice-hist').addEventListener('click', (e) => { const b = e.target.closest('[data-again]'); if (b && hist[b.dataset.again]) rollAndShow(hist[b.dataset.again].spec); });
+    $('#dice-hist').addEventListener('click', (e) => { const b = e.target.closest('[data-again]'); if (b && hist[b.dataset.again]) rollAndShow(fresh(hist[b.dataset.again].spec)); });
     $('#dice-hist-clear').addEventListener('click', () => { hist = []; if (histKey) idbPut(histKey, hist).catch(() => {}); renderHistory(); });
     // a tap on a number or dice anywhere on the sheet rolls it (inside a fold's heading too, without folding it)
     document.addEventListener('click', (e) => {
