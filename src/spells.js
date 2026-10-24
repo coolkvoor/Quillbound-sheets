@@ -88,7 +88,9 @@
   }
 
   // picks: { caster: { cantrips: [keys], spells: [keys], prepared: [keys], show: 1-4, bonus: [key per slot] } }
-  function choose(engine, picks) {
+  // opts.glossary: MPMB's Glossary tick box in its spell list dialog (a picture explaining the columns and marks); MPMB
+  // only remembers it until the sheet is closed, so the app passes it every time
+  function choose(engine, picks, opts) {
     const seq = engine.logSeq;
     // Bonus spells go through MPMB's own spell dialog, as if picked there: its commit works out the rest (which spells
     // are bonus spells, a "once per long rest" first column). Each slot's drop-down takes the spell's name as the
@@ -123,7 +125,7 @@
     // answers them as loaded (OK) instead of showing them; the spellbook dialogs would page through spells beyond the
     // first 20, confirmed as loaded too
     for (let i = 0; i < 12; i++) { engine.queueDialog({ name: SELECT, steps: [] }); engine.queueDialog({ name: PREPARED, steps: [] }); engine.queueDialog({ name: BOOK, steps: [{ end: 'ok' }] }); }
-    engine.queueDialog({ name: ORDER, steps: [] });
+    engine.queueDialog({ name: ORDER, steps: opts && opts.glossary !== undefined ? [{ set: { Glos: !!opts.glossary } }] : [] });
     engine.action('GenerateSpellSheet();', 'spells:generate');
     engine.clearQueues();
     return report(engine, seq);
@@ -178,7 +180,10 @@
     }
     const levels = rows.length ? json(engine, '(function (ks) { var o = {}; for (var i = 0; i < ks.length; i++) if (SpellsList[ks[i]]) o[ks[i]] = SpellsList[ks[i]].level; return o; })(' + JSON.stringify(rows.map((r) => r.key)) + ')') : {};
     for (const r of rows) r.level = levels[r.key] !== undefined ? levels[r.key] : null;
-    return { pages: pages.length, casters, rows };
+    // the glossary: a picture button on a spell sheet page, shown when MPMB's Glossary option is on
+    let glossary = null;
+    for (const p of pages) { const g = val(p.prefix + 'spellsgloss.Image'); if (g && !g.hidden) { glossary = g.name; break; } }
+    return { pages: pages.length, casters, rows, glossary };
   }
 
   // Full text of one spell, for the details view

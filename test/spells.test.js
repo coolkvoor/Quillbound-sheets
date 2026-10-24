@@ -44,6 +44,13 @@ check('sheet: row details from MPMB', mm && mm.range && mm.time && mm.descriptio
 [r] = time(() => spells.choose(e, { wizard: { cantrips: ['fire bolt', 'mage hand', 'ray of frost'], spells: book, prepared: prep.slice(0, 5).concat(['thunderwave']), show: 3 } }));
 const keys2 = r.sheet.rows.map((x) => x.key);
 check('regenerate: new picks replace the old', keys2.indexOf('ray of frost') !== -1 && keys2.indexOf('light') === -1 && keys2.indexOf('thunderwave') !== -1 && r.sheet.pages === 1, r.sheet.pages + ' page(s); ' + r.alerts.map((a) => a.title).join(', '));
+check('no glossary unless asked', r.sheet.glossary === null, r.sheet.glossary);
+// MPMB's Glossary option: a picture on the spell sheet page, on and off again
+[r] = time(() => spells.choose(e, {}, { glossary: true }));
+check('glossary: shown on the spell sheet', /^P\d+\.SSfront\.spellsgloss\.Image$/.test(r.sheet.glossary || '') && e.snapshot(r.sheet.glossary).icon, r.sheet.glossary);
+check('glossary: the spells stay', r.sheet.rows.map((x) => x.key).join() === keys2.join(), r.sheet.rows.length + ' rows');
+[r] = time(() => spells.choose(e, {}, { glossary: false }));
+check('glossary: removed again', r.sheet.glossary === null, r.sheet.glossary);
 // the spellbook list (show 1) has a prepared box per spell: MPMB's row button ticks it
 [r] = time(() => spells.choose(e, { wizard: { show: 1 } }));
 const row = r.sheet.rows.filter((x) => x.key === 'thunderwave')[0];

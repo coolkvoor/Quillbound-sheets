@@ -4,7 +4,7 @@
   'use strict';
   const U = window.MPMBUI;
   const {
-    $, $$, el, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
+    $, $$, el, typingIn, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
     ACTIONS, LANGUAGES
   } = U;
   const {
@@ -166,7 +166,8 @@
     const stored = await idbGet(state.sheetKey);
     const char = await idbGet(state.charKey);
     const view = await idbGet('view:' + state.charKey);   // the app's own choices for this character (Spells section hidden)
-    state.hideSpells = !!(view && view.hideSpells);
+    state.view = view || {};   // { hideSpells, inspCount (the counter is on), insp (points) }
+    state.hideSpells = !!state.view.hideSpells;
     state.savedAt = char && char.date ? char.date : 0;
     let w = null;
     const t0 = performance.now();
@@ -569,6 +570,51 @@
     return Array.from(s);
   }
   const shown = (snap) => { if (!snap || !snap.exists) return ''; const d = snap.display !== undefined ? snap.display : snap.value; return Array.isArray(d) ? d.join(', ') : String(d === null || d === undefined ? '' : d); };
+  // data-tip: a field's tooltip, where MPMB keeps some lists (Acr Prof: where skill proficiencies come from). The first
+  // line is its heading; MPMB writes names in Unicode bold letters (toUni), shown as bold text; "•" lines as a list.
+  function plainUni(s) {
+    let out = '';
+    for (const ch of s) {
+      const c = ch.codePointAt(0);
+      if (c >= 0x1D400 && c <= 0x1D6A3) { const l = (c - 0x1D400) % 52; out += String.fromCharCode(l < 26 ? 65 + l : 71 + l); }
+      else if (c >= 0x1D7CE && c <= 0x1D7FF) out += String((c - 0x1D7CE) % 10);
+      else out += ch;
+    }
+    return out;
+  }
+  function renderTip(node, snap) {
+    const lines = String(snap.tooltip || '').split(/\r\n|\r|\n/).slice(1).filter((l) => l.trim());
+    node.hidden = !snap.exists || !lines.length;
+    for (const old of node.querySelectorAll(':scope > ul')) old.remove();   // the <summary> stays
+    if (node.hidden) return;
+    // a fold (<details>): closed or open as the user left it for this character (view:<charKey> tipsClosed)
+    if (node.tagName === 'DETAILS') {
+      node.open = !(state.view && state.view.tipsClosed && state.view.tipsClosed[snap.name]);
+      if (!node.dataset.wired) {
+        node.dataset.wired = '1';
+        node.addEventListener('toggle', () => {
+          if (!state.view || !state.charKey) return;
+          const closed = Object.assign({}, state.view.tipsClosed);
+          if (!!closed[node.dataset.tip] === !node.open) return;
+          if (node.open) delete closed[node.dataset.tip]; else closed[node.dataset.tip] = true;
+          state.view.tipsClosed = closed;
+          idbPut('view:' + state.charKey, state.view);
+        });
+      }
+    }
+    const ul = el('ul');
+    for (const l of lines) {
+      const li = el('li');
+      // runs of Unicode bold letters (with the spaces, colons and brackets between them) become one <b>
+      for (const part of l.replace(/^\s*•\s*/, '').split(/((?:[\u{1D400}-\u{1D6A3}\u{1D7CE}-\u{1D7FF}][\s:()'’-]*)+)/u)) {
+        if (!part) continue;
+        if (/[\u{1D400}-\u{1D6A3}]/u.test(part)) li.append(el('b', { text: plainUni(part) }));
+        else li.append(document.createTextNode(part));
+      }
+      ul.append(li);
+    }
+    node.append(ul);
+  }
   function renderRich(node, snap) {
     node.textContent = '';
     if (!snap || !snap.exists) return;
@@ -674,6 +720,7 @@
     }
     for (const n of sel('data-out')) { const t = shown(snap); n.textContent = t === '' && n.classList.contains('v') ? '–' : t; }
     for (const n of sel('data-rich')) { if (n.dataset.features) renderFeatures(n, snap); else renderRich(n, snap); }
+    for (const n of sel('data-tip')) renderTip(n, snap);
     for (const n of sel('data-toggle')) n.setAttribute('aria-pressed', snap.checked ? 'true' : 'false');
     for (const n of sel('data-mpmb')) n.hidden = !snap.exists || !!snap.hidden;
     for (const n of sel('data-vis')) n.hidden = !snap.exists || !!snap.hidden;
@@ -689,7 +736,32 @@
     const w = n.closest('.f, .tg, .stat, .ad-wrap') || n;   // .ad-wrap: a label with its Adv / Dis boxes (none on Printer Friendly)
     if (gone) { if (!w.hidden) { w.hidden = true; w.dataset.absent = '1'; } } else if (w.dataset.absent) { w.hidden = false; delete w.dataset.absent; }
   }
+  // Inspiration points: the app's own counter for a table that lets a character hold more than one (Sheet → House
+  // rules). MPMB's sheet has one check box; it is ticked while there is at least one point. The box changed elsewhere
+  // (MPMB, Acrobat, an import) wins: ticked with no points counts 1, unticked counts 0.
+  function showInspiration() {
+    const on = !!(state.view && state.view.inspCount);
+    const checked = !!(state.snap.get('Inspiration') || {}).checked;
+    let n = on ? Number(state.view.insp) || 0 : 0;
+    if (on && checked && !n) n = 1;
+    if (on && !checked) n = 0;
+    $('#insp-dot').hidden = on;
+    $('#insp-count').hidden = !on;
+    $('#insp-n').textContent = String(n);
+    $('#insp-house').textContent = on ? 'On' : 'Off';
+    $('#insp-house').setAttribute('aria-pressed', on ? 'true' : 'false');
+    return n;
+  }
+  async function stepInspiration(d) {
+    if (!state.worker || !state.charKey) return;
+    const n = Math.max(0, showInspiration() + d);
+    state.view.insp = n;
+    showInspiration();
+    await idbPut('view:' + state.charKey, state.view);
+    if (!!(state.snap.get('Inspiration') || {}).checked !== n > 0) await send('toggle', { name: 'Inspiration' });
+  }
   function refreshDerived() {
+    showInspiration();
     const v = (n) => shown(state.snap.get(n)).trim();
     const name = v('PC Name');
     $('#hdr-name').textContent = name || 'Unnamed character';
@@ -727,7 +799,7 @@
       let first = true;
       for (const row of $$(sel)) {
         const i = row.dataset.mi || row.dataset.gear || row.dataset.xgear;
-        const has = v(field(i)) !== '' || row.contains(document.activeElement);
+        const has = v(field(i)) !== '' || typingIn(row);
         row.hidden = !has && !first;
         row.querySelector('.more').hidden = !has;
         if (extra) extra(row, i, has);
@@ -760,7 +832,7 @@
     // feats: filled lines plus the first empty one, to pick a new feat
     let featEmpty = true;
     for (const li of $$('[data-feat]')) {
-      const has = v('Feat Name ' + li.dataset.feat) !== '' || li.contains(document.activeElement);
+      const has = v('Feat Name ' + li.dataset.feat) !== '' || typingIn(li);
       li.hidden = !has && !featEmpty;
       li.querySelector('.more').hidden = !has;
       li.querySelector('.note').hidden = !(v('Feat Name ' + li.dataset.feat) !== '');
@@ -774,7 +846,7 @@
     // attacks: filled rows plus the first empty one
     let firstEmpty = true;
     for (const row of $$('[data-attack]')) {
-      const has = v('Attack.' + row.dataset.attack + '.Weapon Selection') !== '' || row.contains(document.activeElement);
+      const has = v('Attack.' + row.dataset.attack + '.Weapon Selection') !== '' || typingIn(row);
       row.hidden = !has && !firstEmpty;
       for (const x of row.querySelectorAll('[data-figs]')) x.hidden = !has;
       row.querySelector('.more').hidden = !has;
@@ -1033,6 +1105,15 @@
       const max = Number(shown(state.snap.get('HP Max'))) || Infinity;
       send('commit', { name: 'HP Current', value: String(Math.max(0, Math.min(max, cur + d))) });
     };
+    $('#insp-minus').addEventListener('click', () => stepInspiration(-1));
+    $('#insp-plus').addEventListener('click', () => stepInspiration(1));
+    $('#insp-house').addEventListener('click', async () => {
+      if (!state.charKey) return;
+      state.view.inspCount = !state.view.inspCount;
+      state.view.insp = state.view.inspCount && (state.snap.get('Inspiration') || {}).checked ? 1 : 0;
+      showInspiration();
+      await idbPut('view:' + state.charKey, state.view);
+    });
     $('#hp-minus').addEventListener('click', () => hpStep(-1));
     $('#hp-plus').addEventListener('click', () => hpStep(1));
     $('#notes-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'ASnotes' }); await refreshPages(); });
@@ -1055,6 +1136,7 @@
       armedNew = 0; clearTimeout(saveTimer);
       await idbDel(state.charKey);
       await idbDel('view:' + state.charKey);
+      if (state.view && state.view.inspCount) await idbPut('view:' + state.charKey, { inspCount: true });   // the table's house rule stays
       state.savedAt = 0;
       $('#sheet').hidden = true; $('#start').hidden = false;
       openSheet(state.bytes.slice(0), state.fileName, false);

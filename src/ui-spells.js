@@ -92,9 +92,19 @@
     for (const ck of casterOrder) {
       const h = heads.filter((x) => x.key === ck)[0];
       if (casterOrder.length > 1 || h) box.append(el('div', { cls: 'caster-head', text: h ? h.title : ck }));
-      let level = null, ul = null;
+      let level = null, ul = null, more = null;
       for (const r of rows.filter((x) => x.caster === ck)) {
-        if (r.level !== level || !ul) { level = r.level; box.append(el('div', { cls: 'spell-level', text: level === null ? 'Other' : LEVEL_NAMES[level] })); ul = el('ul', { cls: 'spells-ul' }); box.append(ul); }
+        if (r.level !== level || !ul) {
+          level = r.level; box.append(el('div', { cls: 'spell-level', text: level === null ? 'Other' : LEVEL_NAMES[level] })); ul = el('ul', { cls: 'spells-ul' }); box.append(ul);
+          // spells MPMB lists with an empty prepare box (a High Elf's Wizard cantrips to swap to, a whole class list)
+          // fold away under the prepared ones; the fold stays open across redraws
+          const key = ck + '|' + level;
+          more = el('details', { cls: 'spell-more' }, [el('summary'), el('ul', { cls: 'spells-ul' })]);
+          more.open = openFolds.has(key);
+          more.addEventListener('toggle', () => { if (more.open) openFolds.add(key); else openFolds.delete(key); });
+          box.append(more);
+        }
+        const into = r.toggles === 'prepared' && !r.on ? more.querySelector('ul') : ul;
         const marked = spellMarks(r.name);
         // the first column: prepared (checkbox) or used (once per rest), toggled by MPMB's own button
         let left = el('span');
@@ -108,11 +118,44 @@
         const tags = marked.tags.concat(tagText ? [el('span', { cls: 'tag', text: tagText + (r.toggles === 'used' && r.on ? ', used' : '') })] : []);
         const save = r.save && !/^[–-]$/.test(r.save) ? r.save + ' save' : '';
         const meta = [r.time, r.range, r.components, r.duration, save, r.school.trim(), r.book ? r.book + ' ' + r.pageRef : ''].filter(Boolean).join(' · ');
-        const more = r.button ? el('button', { cls: 'btn sm more', type: 'button', 'data-mpmb': r.button, 'data-modifier': '1', 'data-title': r.name, 'aria-label': r.name + ': options', text: '⋯' }) : el('span');
-        ul.append(el('li', { cls: 'spell' }, [left, el('div', {}, [el('div', {}, [nameBtn].concat(tags)), el('div', { cls: 'meta', text: meta }), el('div', { cls: 'desc', text: r.description })]), more]));
+        const opts = r.button ? el('button', { cls: 'btn sm more', type: 'button', 'data-mpmb': r.button, 'data-modifier': '1', 'data-title': r.name, 'aria-label': r.name + ': options', text: '⋯' }) : el('span');
+        into.append(el('li', { cls: 'spell' }, [left, el('div', {}, [el('div', {}, [nameBtn].concat(tags)), el('div', { cls: 'meta', text: meta }), el('div', { cls: 'desc', text: r.description })]), opts]));
       }
     }
+    for (const d of box.querySelectorAll('.spell-more')) {
+      const n = d.querySelector('ul').children.length;
+      if (!n) { d.remove(); continue; }
+      d.querySelector('summary').textContent = 'Not prepared (' + n + ')';
+      if (!d.previousElementSibling.children.length) d.previousElementSibling.remove();   // nothing prepared at this level
+    }
+    // the abbreviations in MPMB's short spell texts, from its spell sheet glossary (its first line, the marks, the
+    // app shows as tags), folded under the list
+    const g = el('details', { cls: 'spell-more spell-gloss' }, [el('summary', { text: 'Abbreviations' }),
+      el('dl', {}, [].concat(...GLOSSARY.map(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })])))]);
+    g.open = openFolds.has('glossary');
+    g.addEventListener('toggle', () => { if (g.open) openFolds.add('glossary'); else openFolds.delete('glossary'); });
+    box.append(g);
   }
+  const openFolds = new Set();
+  const GLOSSARY = [
+    ['+1d6/SL', '+1d6 for each spell slot level above the spell’s level'],
+    ['30-ft rad', '30-foot radius sphere centred on a point within range'],
+    ['S:30-ft rad', 'Self: 30-foot radius emanation centred on the caster'],
+    ['20-ft cu', 'Cube, 20 ft a side'],
+    ['5-ft sq', 'Square, 5 ft a side'],
+    ['all (crea)', 'All creatures within the spell’s area'],
+    ['any (crea)', 'Any creatures you choose within the spell’s area'],
+    ['Conc, 1 min', 'Concentration, up to 1 minute'],
+    ['M† / Mƒ', 'Costly material component; †: consumed, ƒ: not consumed'],
+    ['25gp cons', 'Material component worth 25 gp, consumed by the spell'],
+    ['see B / book', 'The short description is far from complete: check the book'],
+    ['cast/enter/end', 'Takes effect when cast, when a target enters the area or ends its turn there, or when the area enters its space; once per turn per target'],
+    ['Act', 'Action'], ['Bns', 'Bonus action'], ['React', 'Reaction'],
+    ['Adv / Dis', '(Dis)advantage'], ['atk', 'Attack (roll)'], ['chk / check', 'Ability check'], ['dmg', 'Damage'],
+    ['CL', 'Character level'], ['SL', 'Spell slot level'], ['PR', 'Prepared'],
+    ['rnd', 'Round(s)'], ['SoT', 'Start of turn'], ['EoT', 'End of turn'],
+    ['obj', 'Object(s)'], ['obsc', 'Obscured'], ['dif. ter.', 'Difficult terrain'],
+  ];
   async function showSpell(key, name) {
     const dlg = $('#spell-info');
     $('#si-title').textContent = name;
@@ -277,7 +320,8 @@
       if (!state.charKey) return;
       state.hideSpells = !state.hideSpells;
       showSpells();
-      await U.idbPut('view:' + state.charKey, { hideSpells: state.hideSpells });
+      state.view.hideSpells = state.hideSpells;
+      await U.idbPut('view:' + state.charKey, state.view);
     });
     $('#picker-list').addEventListener('change', (e) => {
       const s = e.target.closest('[data-bonus]');
@@ -335,8 +379,10 @@
     }
     return picks;
   }
-  async function makeSpellList(picks) {
-    const res = await send('chooseSpells', { picks: picks || {} });
+  // glossary: MPMB's Glossary option, kept as the list has it unless changed
+  async function makeSpellList(picks, glossary) {
+    if (glossary === undefined) glossary = !!(state.sheet && state.sheet.glossary);
+    const res = await send('chooseSpells', { picks: picks || {}, glossary });
     if (!res) return;
     state.sheet = res.sheet;
     renderSpellList();

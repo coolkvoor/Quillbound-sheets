@@ -81,24 +81,38 @@
     feats: 'Bonuses from feats.', levels: 'Ability Score Improvements from class levels.', items: 'Bonuses from magic items.',
     override: 'A magical score that replaces the total, such as a Headband of Intellect (19).', maximum: 'The highest the total can go (normally 20).',
   };
+  // what a column holds, short enough for its button: "15 14 13 12 10 8", "Str +2, Con +1", "Int 19", "none"
+  function colSummary(i) {
+    const c = ab.opts.cols[i], v = ab.scores[i];
+    const n = ab.opts.hos ? 7 : 6;
+    const short = (s) => (s < 6 ? ab.opts.names[s] : ab.opts.hos).slice(0, 3);
+    if (c.type === 'base') return v.slice(0, n).every((x) => !x) ? 'not set' : v.slice(0, n).join(' · ');
+    if (c.type === 'maximum' && v.slice(0, n).every((x) => x === v[0])) return 'all ' + v[0];
+    const set = [];
+    for (let s = 0; s < n; s++) if (v[s]) set.push(short(s) + ' ' + (c.type === 'override' || c.type === 'maximum' || v[s] < 0 ? v[s] : '+' + v[s]));
+    return set.length ? set.join(', ') : 'none';
+  }
   function renderAbilities() {
     const tabs = $('#ap-cols');
     tabs.textContent = '';
     ab.opts.cols.forEach((c, i) => {
       if (!c.editable) return;
-      const t = el('button', { type: 'button', role: 'tab', 'aria-selected': i === ab.col ? 'true' : 'false', text: c.name });
+      const t = el('button', { type: 'button', 'aria-pressed': i === ab.col ? 'true' : 'false' }, [el('b', { text: c.name }), el('small', { 'data-sum': String(i), text: colSummary(i) })]);
       t.addEventListener('click', () => { ab.col = i; renderAbilities(); });
       tabs.append(t);
     });
     const col = ab.opts.cols[ab.col];
-    $('#ap-colnote').textContent = COL_NOTES[col.type] || 'Your own column.';
+    $('#ap-colname').textContent = col.name;
+    // MPMB doesn't fill the background column (the player splits the bonus); it keeps the background's text, which names the abilities
+    const bg = col.type === 'background' && ab.opts.bg;
+    $('#ap-colnote').textContent = bg ? bg.name + ': ' + bg.txt + '.' : COL_NOTES[col.type] || 'Your own column.';
     const box = $('#ap-rows');
     box.textContent = '';
     const n = ab.opts.hos ? 7 : 6;
     for (let s = 0; s < n; s++) {
       const name = s < 6 ? ab.opts.names[s] : ab.opts.hos;
       const input = el('input', { cls: 'in num', inputmode: 'numeric', value: String(ab.scores[ab.col][s]), 'aria-label': name + ', ' + col.name });
-      const setV = (v) => { ab.scores[ab.col][s] = v; input.value = String(v); previewSoon(); };
+      const setV = (v) => { ab.scores[ab.col][s] = v; input.value = String(v); $('#ap-cols [data-sum="' + ab.col + '"]').textContent = colSummary(ab.col); previewSoon(); };
       input.addEventListener('change', () => setV(Number(input.value) || 0));
       const minus = el('button', { cls: 'btn', type: 'button', text: '−', 'aria-label': name + ' one less' });
       const plus = el('button', { cls: 'btn', type: 'button', text: '+', 'aria-label': name + ' one more' });
@@ -106,7 +120,8 @@
       plus.addEventListener('click', () => setV(ab.scores[ab.col][s] + 1));
       const p = ab.preview && ab.preview[s];
       box.append(el('div', { cls: 'ap-row' }, [
-        el('span', {}, [el('b', { text: name }), el('div', { cls: 'hint', text: 'Now ' + (ab.opts.current[s] || '–') })]),
+        el('span', {}, [el('b', { text: name }), el('div', { cls: 'hint' }, [document.createTextNode('Now ' + (ab.opts.current[s] || '–')),
+          bg && bg.txt.indexOf(name) !== -1 ? el('span', { cls: 'chip ap-bg', text: bg.name }) : ''])]),
         el('span', { cls: 'stepper' }, [minus, input, plus]),
         el('span', { cls: 'tot num', 'data-tot': String(s) }, [document.createTextNode(p ? String(p.total) : '–'), el('small', { text: p ? 'max ' + p.max : '' })]),
       ]));

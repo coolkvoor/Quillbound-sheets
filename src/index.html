@@ -339,14 +339,15 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .spell-level { font-family: var(--font-display); font-weight: 700; color: var(--accent); margin: 12px 0 2px; font-size: 1rem; }
 .caster-head { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; margin-top: 6px; }
 .spells-ul { list-style: none; margin: 0; padding: 0; }
+.spell-gloss dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 4px 0 8px; font-size: 0.9rem; }
+.spell-gloss dt { font-weight: 700; white-space: nowrap; }
+.spell-gloss dd { margin: 0; color: var(--muted); }
+.spell-more > summary { cursor: pointer; color: var(--accent); min-height: 40px; display: flex; align-items: center; font-size: 0.9rem; }
 .spell { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 0 8px; align-items: start; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .spell .sp-name { border: 0; background: none; padding: 0; font-weight: 700; text-align: left; cursor: pointer; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
 .spell .meta { font-size: 0.85rem; color: var(--muted); }
 .spell .desc { font-size: 0.92rem; }
 .spell .tag { font-size: 0.75rem; color: var(--accent); border: 1px solid currentColor; border-radius: 6px; padding: 0 5px; margin-left: 6px; white-space: nowrap; }
-.picker-tabs { display: flex; gap: 6px; padding: 8px 12px 0; overflow-x: auto; border-bottom: 1px solid var(--line); }
-.picker-tabs button { border: 0; background: none; padding: 8px 10px 10px; font-weight: 700; color: var(--muted); border-bottom: 3px solid transparent; white-space: nowrap; cursor: pointer; }
-.picker-tabs button[aria-selected="true"] { color: var(--accent); border-color: var(--accent); }
 .picker-tools { display: flex; gap: 8px; align-items: center; }
 .picker-tools .in { flex: 1; }
 .picker-bar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
@@ -465,10 +466,26 @@ select option, select optgroup { background-color: var(--surface); color: var(--
 .stepper { display: inline-flex; align-items: center; gap: 4px; }
 .stepper .btn { min-width: 44px; min-height: 44px; padding: 0; font-size: 1.3rem; }
 .stepper .in { width: 3.6rem; text-align: center; }
+.insp-count { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; }
+.insp-count .btn { min-width: 30px; min-height: 32px; padding: 0; font-size: 1.1rem; }
+.insp-count b { min-width: 1.4em; text-align: center; font-size: 1.3rem; }
+.skill-from { margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 0.9rem; }
+.skill-from > summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; color: var(--accent); }
+.skill-from ul { margin: 4px 0 0; padding-left: 1.1rem; }
+.skill-from li { margin: 3px 0; }
+.ap-label { margin: 0 0 6px; font-size: 0.85rem; color: var(--muted); }
+.ap-cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(8.5rem, 1fr)); gap: 6px; }
+.ap-cols button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 48px; padding: 6px 10px; text-align: left; border: 1px solid var(--line); border-radius: 10px; background: var(--btn); color: var(--btn-ink); cursor: pointer; }
+.ap-cols button small { font-size: 0.75rem; color: var(--muted); overflow-wrap: anywhere; }
+.ap-cols button[aria-pressed="true"] { border: 2px solid var(--accent); padding: 5px 9px; background: var(--accent-soft); }
+.ap-cols button[aria-pressed="true"] b { color: var(--accent); }
+.ap-colname { margin: 16px 0 0; color: var(--accent); }
+.ap-colname + .hint { margin-top: 2px; }
 .ap-row { display: grid; grid-template-columns: minmax(0, 1fr) auto 3.4rem; gap: 8px; align-items: center; min-height: 52px; border-bottom: 1px solid var(--line); }
 .ap-row .tot { text-align: right; font-size: 1.4rem; font-weight: 700; }
 .ap-row .tot small { display: block; font-size: 0.75rem; font-weight: 400; color: var(--muted); }
 .ap-explain summary { cursor: pointer; color: var(--accent); min-height: 40px; display: flex; align-items: center; }
+.ap-bg { margin-left: 6px; padding: 0 8px; font-size: 0.75rem; color: var(--accent); border-color: currentColor; }
 
 /* advantage / disadvantage marks */
 .ad { display: inline-flex; gap: 2px; flex: none; }
@@ -778,7 +795,8 @@ window.MPMBTheme = (() => {
           <div class="stats">
             <div class="stat"><span class="k">Level</span><span class="v num" data-out="Character Level">–</span></div>
             <div class="stat"><span class="k">Proficiency</span><span class="v num" data-out="Proficiency Bonus">–</span></div>
-            <div class="stat"><span class="k">Inspiration</span><button class="dot" type="button" data-toggle="Inspiration" aria-pressed="false" aria-label="Heroic inspiration"></button></div>
+            <div class="stat"><span class="k">Inspiration</span><button class="dot" id="insp-dot" type="button" data-toggle="Inspiration" aria-pressed="false" aria-label="Heroic inspiration"></button>
+              <span class="insp-count" id="insp-count" hidden><button class="btn" id="insp-minus" type="button" aria-label="Spend an inspiration point">−</button><b class="num" id="insp-n" aria-live="polite">0</b><button class="btn" id="insp-plus" type="button" aria-label="Gain an inspiration point">+</button></span></div>
           </div>
         </div>
         <div class="card">
@@ -799,6 +817,7 @@ window.MPMBTheme = (() => {
         </div>
         <div class="card span-2">
           <h3>Skills <button class="btn sm" type="button" data-mpmb="SkillsClick" data-title="Skill options">Options</button></h3>
+          <details class="skill-from" data-tip="Acr Prof" hidden><summary>Where your skills come from</summary></details>
           <p class="hint">Tap a dot for proficiency, again for expertise.</p>
           <div class="skills two" id="skills"></div>
         </div>
@@ -1134,6 +1153,11 @@ window.MPMBTheme = (() => {
           <ul class="list"><li><span class="grow"><span>Spells section</span><span class="hint" id="spells-why"></span></span><button class="btn sm" id="spells-toggle" type="button">Hide</button></li></ul>
           <button class="btn" id="notes-clear-open" type="button" hidden>Clear out Notes pages…</button>
         </div>
+        <div class="card" id="house-rules">
+          <h3>House rules</h3>
+          <p class="note">The app's own extras for your table. They stay in the app on this device; the PDF keeps only what MPMB's sheet has.</p>
+          <ul class="list"><li><span class="grow"><span>Inspiration points</span><span class="hint">Hold more than one: a counter in place of the Inspiration dot. The sheet's box is ticked while you have at least one.</span></span><button class="btn sm" id="insp-house" type="button" aria-pressed="false">Off</button></li></ul>
+        </div>
         <div class="card" id="mpmb-settings">
           <h3>Sheet settings</h3>
           <p class="note">MPMB's own settings dialogs, from its Functions menu. Text options change fonts, font size and lines in the PDF (as Acrobat shows it); the app keeps its own look.</p>
@@ -1332,8 +1356,10 @@ window.MPMBTheme = (() => {
 <!-- MPMB's Ability Scores dialog: one column at a time, the totals always shown -->
 <dialog class="panel full" id="abil-panel" aria-labelledby="ap-title">
   <div class="panel-head"><h3 id="ap-title">Ability scores</h3><button class="btn sm" id="ap-close" type="button">Cancel</button></div>
-  <div class="picker-tabs" id="ap-cols" role="tablist" aria-label="Column"></div>
   <div class="panel-body">
+    <p class="ap-label" id="ap-cols-label">Pick a column to change</p>
+    <div class="ap-cols" id="ap-cols" role="group" aria-labelledby="ap-cols-label"></div>
+    <h4 class="ap-colname" id="ap-colname"></h4>
     <p class="hint" id="ap-colnote"></p>
     <div id="ap-rows"></div>
     <p class="note" id="ap-pb"></p>
