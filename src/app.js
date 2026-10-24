@@ -166,7 +166,8 @@
     const stored = await idbGet(state.sheetKey);
     const char = await idbGet(state.charKey);
     const view = await idbGet('view:' + state.charKey);   // the app's own choices for this character (Spells section hidden)
-    state.hideSpells = !!(view && view.hideSpells);
+    state.view = view || {};   // { hideSpells, inspCount (the counter is on), insp (points) }
+    state.hideSpells = !!state.view.hideSpells;
     state.savedAt = char && char.date ? char.date : 0;
     let w = null;
     const t0 = performance.now();
@@ -721,7 +722,32 @@
     const w = n.closest('.f, .tg, .stat, .ad-wrap') || n;   // .ad-wrap: a label with its Adv / Dis boxes (none on Printer Friendly)
     if (gone) { if (!w.hidden) { w.hidden = true; w.dataset.absent = '1'; } } else if (w.dataset.absent) { w.hidden = false; delete w.dataset.absent; }
   }
+  // Inspiration points: the app's own counter for a table that lets a character hold more than one (Sheet → House
+  // rules). MPMB's sheet has one check box; it is ticked while there is at least one point. The box changed elsewhere
+  // (MPMB, Acrobat, an import) wins: ticked with no points counts 1, unticked counts 0.
+  function showInspiration() {
+    const on = !!(state.view && state.view.inspCount);
+    const checked = !!(state.snap.get('Inspiration') || {}).checked;
+    let n = on ? Number(state.view.insp) || 0 : 0;
+    if (on && checked && !n) n = 1;
+    if (on && !checked) n = 0;
+    $('#insp-dot').hidden = on;
+    $('#insp-count').hidden = !on;
+    $('#insp-n').textContent = String(n);
+    $('#insp-house').textContent = on ? 'On' : 'Off';
+    $('#insp-house').setAttribute('aria-pressed', on ? 'true' : 'false');
+    return n;
+  }
+  async function stepInspiration(d) {
+    if (!state.worker || !state.charKey) return;
+    const n = Math.max(0, showInspiration() + d);
+    state.view.insp = n;
+    showInspiration();
+    await idbPut('view:' + state.charKey, state.view);
+    if (!!(state.snap.get('Inspiration') || {}).checked !== n > 0) await send('toggle', { name: 'Inspiration' });
+  }
   function refreshDerived() {
+    showInspiration();
     const v = (n) => shown(state.snap.get(n)).trim();
     const name = v('PC Name');
     $('#hdr-name').textContent = name || 'Unnamed character';
@@ -1065,6 +1091,15 @@
       const max = Number(shown(state.snap.get('HP Max'))) || Infinity;
       send('commit', { name: 'HP Current', value: String(Math.max(0, Math.min(max, cur + d))) });
     };
+    $('#insp-minus').addEventListener('click', () => stepInspiration(-1));
+    $('#insp-plus').addEventListener('click', () => stepInspiration(1));
+    $('#insp-house').addEventListener('click', async () => {
+      if (!state.charKey) return;
+      state.view.inspCount = !state.view.inspCount;
+      state.view.insp = state.view.inspCount && (state.snap.get('Inspiration') || {}).checked ? 1 : 0;
+      showInspiration();
+      await idbPut('view:' + state.charKey, state.view);
+    });
     $('#hp-minus').addEventListener('click', () => hpStep(-1));
     $('#hp-plus').addEventListener('click', () => hpStep(1));
     $('#notes-add').addEventListener('click', async () => { if (!state.worker) return; await send('addPage', { key: 'ASnotes' }); await refreshPages(); });
@@ -1087,6 +1122,7 @@
       armedNew = 0; clearTimeout(saveTimer);
       await idbDel(state.charKey);
       await idbDel('view:' + state.charKey);
+      if (state.view && state.view.inspCount) await idbPut('view:' + state.charKey, { inspCount: true });   // the table's house rule stays
       state.savedAt = 0;
       $('#sheet').hidden = true; $('#start').hidden = false;
       openSheet(state.bytes.slice(0), state.fileName, false);

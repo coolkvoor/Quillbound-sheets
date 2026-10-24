@@ -462,6 +462,9 @@ select option, select optgroup { background-color: var(--surface); color: var(--
 .stepper { display: inline-flex; align-items: center; gap: 4px; }
 .stepper .btn { min-width: 44px; min-height: 44px; padding: 0; font-size: 1.3rem; }
 .stepper .in { width: 3.6rem; text-align: center; }
+.insp-count { display: inline-flex; align-items: center; gap: 2px; max-width: 100%; }
+.insp-count .btn { min-width: 30px; min-height: 32px; padding: 0; font-size: 1.1rem; }
+.insp-count b { min-width: 1.4em; text-align: center; font-size: 1.3rem; }
 .skill-from { margin: 0 0 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; font-size: 0.9rem; }
 .skill-from ul { margin: 4px 0 0; padding-left: 1.1rem; }
 .skill-from li { margin: 3px 0; }
@@ -787,7 +790,8 @@ window.MPMBTheme = (() => {
           <div class="stats">
             <div class="stat"><span class="k">Level</span><span class="v num" data-out="Character Level">–</span></div>
             <div class="stat"><span class="k">Proficiency</span><span class="v num" data-out="Proficiency Bonus">–</span></div>
-            <div class="stat"><span class="k">Inspiration</span><button class="dot" type="button" data-toggle="Inspiration" aria-pressed="false" aria-label="Heroic inspiration"></button></div>
+            <div class="stat"><span class="k">Inspiration</span><button class="dot" id="insp-dot" type="button" data-toggle="Inspiration" aria-pressed="false" aria-label="Heroic inspiration"></button>
+              <span class="insp-count" id="insp-count" hidden><button class="btn" id="insp-minus" type="button" aria-label="Spend an inspiration point">−</button><b class="num" id="insp-n" aria-live="polite">0</b><button class="btn" id="insp-plus" type="button" aria-label="Gain an inspiration point">+</button></span></div>
           </div>
         </div>
         <div class="card">
@@ -1143,6 +1147,11 @@ window.MPMBTheme = (() => {
           <ul class="list" id="page-list"></ul>
           <ul class="list"><li><span class="grow"><span>Spells section</span><span class="hint" id="spells-why"></span></span><button class="btn sm" id="spells-toggle" type="button">Hide</button></li></ul>
           <button class="btn" id="notes-clear-open" type="button" hidden>Clear out Notes pages…</button>
+        </div>
+        <div class="card" id="house-rules">
+          <h3>House rules</h3>
+          <p class="note">The app's own extras for your table. They stay in the app on this device; the PDF keeps only what MPMB's sheet has.</p>
+          <ul class="list"><li><span class="grow"><span>Inspiration points</span><span class="hint">Hold more than one: a counter in place of the Inspiration dot. The sheet's box is ticked while you have at least one.</span></span><button class="btn sm" id="insp-house" type="button" aria-pressed="false">Off</button></li></ul>
         </div>
         <div class="card" id="mpmb-settings">
           <h3>Sheet settings</h3>

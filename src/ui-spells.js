@@ -277,7 +277,8 @@
       if (!state.charKey) return;
       state.hideSpells = !state.hideSpells;
       showSpells();
-      await U.idbPut('view:' + state.charKey, { hideSpells: state.hideSpells });
+      state.view.hideSpells = state.hideSpells;
+      await U.idbPut('view:' + state.charKey, state.view);
     });
     $('#picker-list').addEventListener('change', (e) => {
       const s = e.target.closest('[data-bonus]');
