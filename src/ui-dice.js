@@ -173,13 +173,13 @@
   function palette() {
     const host = $('#dice') || document.body;
     const read = (name) => { const p = el('span', { hidden: '' }); p.style.color = 'var(' + name + ')'; host.append(p); const c = getComputedStyle(p).color; p.remove(); return rgbOf(c); };
-    const surface = read('--surface');
-    // on a dark page the faces take more of the colour, so the dice stand out from it
-    const strong = surface[0] * 0.3 + surface[1] * 0.59 + surface[2] * 0.11 < 128 ? 0.5 : 0.28;
-    const tone = (c) => { const face = mix(surface, c, strong); return { face, shadow: mix(face, [0, 0, 0], 0.62), edge: css(mix(face, c, 0.7)) }; };
-    return { ink: css(read('--ink')), font: getComputedStyle(document.body).fontFamily, plain: tone(read('--accent')), crit: tone(read('--good')), fumble: tone(read('--bad')) };
+        // a die in solid colour: lit faces a little lighter, faces turned away darker; its number white or near-black,
+    // whichever reads on it
+    const lum = (c) => c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11;
+    const tone = (c) => ({ face: mix(c, [255, 255, 255], 0.16), shadow: mix(c, [0, 0, 0], 0.6), ink: lum(c) > 150 ? '#160f1a' : '#ffffff' });
+    return { font: getComputedStyle(document.body).fontFamily, plain: tone(read('--accent')), crit: tone(read('--good')), fumble: tone(read('--bad')) };
   }
-  const LIGHT = unit([-0.35, 0.65, 0.68]);   // from above, so the top (the result's face) is the brightest
+  const LIGHT = unit([-0.15, 0.35, 0.92]);   // from the front and a little above: the result's face is the brightest
   // draws a die px wide centred on (cx, cy), turned by q; d: { sides, front (a face index), frontLabel, tone }
   function draw(ctx, cx, cy, px, d, q, pal) {
     const g = solid(d.sides), tone = pal[d.tone || 'plain'];
@@ -190,7 +190,7 @@
     g.faces.forEach((fc, i) => { const n = rot(q, fc.n); if (n[2] > 0.01) vis.push([fc, i, n]); });
     vis.sort((a, b) => a[2][2] - b[2][2]);
     ctx.lineJoin = 'round';
-    ctx.lineWidth = Math.max(1, px * 0.016);
+    ctx.lineWidth = 1;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     for (const [fc, i, n] of vis) {
@@ -198,17 +198,15 @@
       fc.idx.forEach((j, k) => (k ? ctx.lineTo(pts[j][0], pts[j][1]) : ctx.moveTo(pts[j][0], pts[j][1])));
       ctx.closePath();
       const lit = Math.max(0, dot(n, LIGHT));
-      ctx.fillStyle = css(mix(tone.shadow, tone.face, 0.1 + 0.9 * lit * lit));
+      ctx.fillStyle = ctx.strokeStyle = css(mix(tone.shadow, tone.face, 0.1 + 0.9 * lit * lit));
       ctx.fill();
-      ctx.strokeStyle = tone.edge;
       ctx.stroke();
-      const label = i === d.front && d.frontLabel !== undefined ? String(d.frontLabel) : labelOf(d.sides, i);
-      if (!label || n[2] < 0.3) continue;
-      // the result's face reads first: its number larger, the others smaller and fainter
-      const front = i === d.front;
-      const c = pt(fc.c), size = R * g.label * Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.88 : 1) * (front ? 1.2 : 0.8);
-      ctx.globalAlpha = Math.min(1, (n[2] - 0.3) / 0.4) * (front ? 1 : 0.65);
-      ctx.fillStyle = pal.ink;
+      if (i !== d.front || n[2] < 0.3) continue;
+      const label = d.frontLabel !== undefined ? String(d.frontLabel) : labelOf(d.sides, i);
+      if (!label) continue;
+      const c = pt(fc.c), size = R * g.label * 1.3 * Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.85 : 1);
+      ctx.globalAlpha = Math.min(1, (n[2] - 0.3) / 0.4);
+      ctx.fillStyle = tone.ink;
       ctx.font = '800 ' + size.toFixed(1) + 'px ' + pal.font;
       ctx.fillText(label, c[0], c[1] + size * 0.04);
       ctx.globalAlpha = 1;
@@ -228,17 +226,17 @@
     cv.style.width = cv.style.height = cssPx + 'px';
     return cv;
   }
-  // The table: a die lies on it with the result's face up (as you read a real die), turned at random about its upright
-  // axis; every die is seen by the same camera, looking down at the table from the front (TILT from straight above).
-  const TABLE = turn([1, 0, 0], -0.62);
-  function rest(sides, front, yaw) {
-    const g = solid(sides);
-    if (yaw === undefined) yaw = random() * 2 * Math.PI;
-    if (shapeFor(sides) !== 4) return mul(TABLE, mul(turn([0, 0, 1], yaw), facing(g.faces[front].n)));
-    // a d4 has a corner on top: it sits on another face, with the result's face turned to the viewer
-    const down = mul(turn([1, 0, 0], Math.PI), facing(g.faces[(front + 1) % 4].n));
-    const m = rot(down, g.faces[front].n);
-    return mul(TABLE, mul(turn([0, 0, 1], -Math.PI / 2 - Math.atan2(m[1], m[0]) + 0.5 + (yaw % 0.3)), down));
+  // At rest a die shows its result's face straight at you, upright (a corner on top; a d6 square on its edge), tipped
+  // back a little so the faces around it show, like a die on a table seen from the front.
+  const TIP = turn([1, 0, 0], -0.2);
+  function rest(sides, front) {
+    const g = solid(sides), f = g.faces[front], q = facing(f.n);
+    // the face's corner furthest from its middle (the tip of a d10's kite) turned to the top
+    let far = f.idx[0], best = -1;
+    for (const i of f.idx) { const v = g.verts[i], dd = Math.hypot(v[0] - f.c[0], v[1] - f.c[1], v[2] - f.c[2]); if (dd > best + 1e-6) { best = dd; far = i; } }
+    const v = rot(q, g.verts[far]), c = rot(q, f.c);
+    const up = Math.PI / 2 - Math.atan2(v[1] - c[1], v[0] - c[0]) + (f.idx.length === 4 && shapeFor(sides) === 6 ? Math.PI / 4 : 0);
+    return mul(TIP, mul(turn([0, 0, 1], up), q));
   }
   // the soft shadow a die casts on the table; lift (0 on the table) moves it out and fades it
   function shadow(ctx, x, y, px, lift) {
@@ -295,7 +293,7 @@
     const pal = palette();
     for (const b of document.querySelectorAll('#dice-pads [data-pad]')) {
       const s = Number(b.dataset.pad), front = s === 100 ? 0 : s - 1;
-      paint(b.querySelector('canvas'), { sides: s, front, frontLabel: s === 100 ? '%' : undefined }, rest(s, front, 0.6), pal);
+      paint(b.querySelector('canvas'), { sides: s, front, frontLabel: s === 100 ? '%' : undefined }, rest(s, front), pal);
     }
   }
   function open() {
