@@ -15,12 +15,12 @@
   function panel() {
     if (!box) {
       box = el('ul', { cls: 'suggest', role: 'listbox', hidden: '' });
-      // pointerdown, not click: the box must not lose focus (and the list close) before the pick
-      box.addEventListener('pointerdown', (e) => {
+      // a tap picks (click); a swipe scrolls the list and picks nothing. mousedown (also sent for a tap on a phone,
+      // never for a swipe) is cancelled so the box keeps focus, and with it the keyboard and the list
+      box.addEventListener('mousedown', (e) => e.preventDefault());
+      box.addEventListener('click', (e) => {
         const li = e.target.closest('li[data-v]');
-        if (!li) return;
-        e.preventDefault();
-        pick(li.dataset.v);
+        if (li) pick(li.dataset.v);
       });
       document.body.append(box);
     }
