@@ -3,8 +3,6 @@
   'use strict';
   const U = window.MPMBUI;
   const { $, el } = U;
-  // from the other screen files (all loaded before anything runs)
-  const send = (...a) => U.send(...a);
 
   // ---------------------------------------------------------------- MPMB's dialogs (app.execDialog), drawn from their description
   // The worker sends the dialog's description once, then after every step its values, what is enabled or shown, red

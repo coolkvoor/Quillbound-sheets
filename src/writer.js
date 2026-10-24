@@ -16,7 +16,6 @@
   const AF = { hidden: 2, print: 4, noView: 32 };
   const FIELD_KEYS = ['FT', 'Ff', 'V', 'DV', 'Opt', 'DA', 'Q', 'MaxLen', 'TU', 'TM', 'TI', 'RV', 'DS'];
   const FIELD_EVENTS = { K: 1, F: 1, V: 1, C: 1 };
-  const TRIGGERS = { Keystroke: 'K', Validate: 'V', Calculate: 'C', Format: 'F', MouseUp: 'A', MouseDown: 'D', MouseEnter: 'E', MouseExit: 'X', OnFocus: 'Fo', OnBlur: 'Bl' };
 
   async function write(bytes, state, PDFLib, onProgress) {
     const { PDFDocument, PDFName, PDFDict, PDFArray, PDFString, PDFHexString, PDFNumber, PDFRef, PDFPage, PDFPageLeaf, PDFBool } = PDFLib;

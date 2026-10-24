@@ -8,7 +8,7 @@
     ACTIONS, LANGUAGES
   } = U;
   const {
-    applyClasses, applyAbilities, showIcon, refreshCompanions, refreshWildShapes, refreshLogs, kb, mpmbDialog,
+    showIcon, refreshCompanions, refreshWildShapes, refreshLogs, kb, mpmbDialog,
     spellsSoon, pickPicture, syncCompanions, syncWildShapes, syncLogs, syncNotes, iconCache, renderCasters,
     renderSpellList, renderContent, refreshSpells, wireContent, wireSpells, wireClassAbility, clearPageCards, wireImport
   } = U;
@@ -755,13 +755,11 @@
       if (!has) firstEmpty = false;
     }
     // hit dice
-    let shownHd = 0;
     for (const row of $$('#hitdice [data-row]')) {
       const i = row.dataset.row.slice(2, 3);
       const lv = v('HD' + i + ' Level'), die = v('HD' + i + ' Die');
       const has = lv !== '' && lv !== '0';
       row.hidden = !has && !(i === '1');
-      if (has) shownHd++;
       row.querySelector('[data-hd]').textContent = has ? 'Hit dice ' + lv + ' × ' + (die.indexOf('d') === 0 ? die : 'd' + die) : 'Hit dice: none yet';
       row.querySelector('.uses').hidden = !has;
       row.querySelector('.hd-die').hidden = !has;

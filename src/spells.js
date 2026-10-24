@@ -7,7 +7,7 @@
 (function (root) {
   'use strict';
   const SELECT = 'SPELL SELECTION DIALOG', PREPARED = 'PREPARED SPELLS DIALOG', ORDER = 'SPELL LIST GENERATION DIALOG', BOOK = 'EXTRA SPELLBOOK SPELLS DIALOG';
-  const ZW = /[​-‍﻿]/g;
+  const ZW = /[\u200B-\u200D\uFEFF]/g;   // zero-width spaces and joiners
 
   function json(engine, code) { return JSON.parse(engine.evalExpr('JSON.stringify(' + code + ')') || 'null'); }
 
