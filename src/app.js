@@ -569,6 +569,37 @@
     return Array.from(s);
   }
   const shown = (snap) => { if (!snap || !snap.exists) return ''; const d = snap.display !== undefined ? snap.display : snap.value; return Array.isArray(d) ? d.join(', ') : String(d === null || d === undefined ? '' : d); };
+  // data-tip: a field's tooltip, where MPMB keeps some lists (Acr Prof: where skill proficiencies come from). The first
+  // line is its heading; MPMB writes names in Unicode bold letters (toUni), shown as bold text; "•" lines as a list.
+  function plainUni(s) {
+    let out = '';
+    for (const ch of s) {
+      const c = ch.codePointAt(0);
+      if (c >= 0x1D400 && c <= 0x1D6A3) { const l = (c - 0x1D400) % 52; out += String.fromCharCode(l < 26 ? 65 + l : 71 + l); }
+      else if (c >= 0x1D7CE && c <= 0x1D7FF) out += String((c - 0x1D7CE) % 10);
+      else out += ch;
+    }
+    return out;
+  }
+  function renderTip(node, snap) {
+    const lines = String(snap.tooltip || '').split(/\r\n|\r|\n/).slice(1).filter((l) => l.trim());
+    node.hidden = !snap.exists || !lines.length;
+    node.textContent = '';
+    if (node.hidden) return;
+    if (node.dataset.tipTitle) node.append(el('span', { cls: 'k', text: node.dataset.tipTitle }));
+    const ul = el('ul');
+    for (const l of lines) {
+      const li = el('li');
+      // runs of Unicode bold letters (with the spaces, colons and brackets between them) become one <b>
+      for (const part of l.replace(/^\s*•\s*/, '').split(/((?:[\u{1D400}-\u{1D6A3}\u{1D7CE}-\u{1D7FF}][\s:()'’-]*)+)/u)) {
+        if (!part) continue;
+        if (/[\u{1D400}-\u{1D6A3}]/u.test(part)) li.append(el('b', { text: plainUni(part) }));
+        else li.append(document.createTextNode(part));
+      }
+      ul.append(li);
+    }
+    node.append(ul);
+  }
   function renderRich(node, snap) {
     node.textContent = '';
     if (!snap || !snap.exists) return;
@@ -674,6 +705,7 @@
     }
     for (const n of sel('data-out')) { const t = shown(snap); n.textContent = t === '' && n.classList.contains('v') ? '–' : t; }
     for (const n of sel('data-rich')) { if (n.dataset.features) renderFeatures(n, snap); else renderRich(n, snap); }
+    for (const n of sel('data-tip')) renderTip(n, snap);
     for (const n of sel('data-toggle')) n.setAttribute('aria-pressed', snap.checked ? 'true' : 'false');
     for (const n of sel('data-mpmb')) n.hidden = !snap.exists || !!snap.hidden;
     for (const n of sel('data-vis')) n.hidden = !snap.exists || !!snap.hidden;

@@ -28,7 +28,7 @@
   // data-opts: a drop-down filled with the combo box's items; data-prof: a skill dot for a not/proficient/expertise box
   // data-pick: a drop-down of a combo box's items by position, for items that share an export value (Size Category)
   // data-icon: the picture one of MPMB's buttons shows (portrait, symbol, companion)
-  const BOUND = ['data-f', 'data-out', 'data-rich', 'data-toggle', 'data-items', 'data-mpmb', 'data-vis', 'data-opts', 'data-prof', 'data-pick', 'data-icon'];
+  const BOUND = ['data-f', 'data-out', 'data-rich', 'data-toggle', 'data-items', 'data-mpmb', 'data-vis', 'data-opts', 'data-prof', 'data-pick', 'data-icon', 'data-tip'];
 
   // how many lines of a kind the app shows: its own number, but never more than this sheet has (the sheets differ:
   // Printer Friendly and Letter have fewer attacks, feats, actions and gear lines than Colorful A4). state.rowCounts
