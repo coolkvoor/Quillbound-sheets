@@ -1450,6 +1450,7 @@
   wireEvents();
   wireContent();
   wireImport();
+  U.wireSuggest();
   wireSpells();
   wireClassAbility();
   wireLooks();
