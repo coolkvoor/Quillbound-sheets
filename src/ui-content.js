@@ -74,7 +74,7 @@
     kinds.textContent = '';
     for (const [type, label] of EXCL_KINDS) {
       const n = (c.excluded && c.excluded[type]) || 0;
-      const b = el('button', { cls: 'btn sm', type: 'button', 'data-excl': type, title: n ? n + ' left out' : 'All in use' }, [el('span', { text: label })]);
+      const b = el('button', { cls: 'btn sm', type: 'button', 'data-excl': type, title: n ? n + ' left out' : 'All in use' }, [el('span', { text: label.replace('/', '/​') })]);   // may break after the slash
       if (n) b.append(el('span', { cls: 'chip', text: n + ' out' }));
       kinds.append(b);
     }

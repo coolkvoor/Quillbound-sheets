@@ -248,7 +248,8 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .src.off .n { color: var(--muted); }
 .src-sub { margin-top: 16px; }
 .excl-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
-.excl-kinds .btn { min-height: 48px; text-align: left; justify-content: space-between; gap: 6px; }
+.excl-kinds .btn { min-height: 48px; min-width: 0; padding: 10px 12px; text-align: left; justify-content: space-between; gap: 6px; }
+.excl-kinds .btn > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .excl-kinds .chip { flex: none; }
 #content-hint { margin: 0; }
 
