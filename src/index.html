@@ -339,6 +339,9 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .spell-level { font-family: var(--font-display); font-weight: 700; color: var(--accent); margin: 12px 0 2px; font-size: 1rem; }
 .caster-head { font-family: var(--font-display); font-weight: 700; font-size: 1.05rem; margin-top: 6px; }
 .spells-ul { list-style: none; margin: 0; padding: 0; }
+.spell-gloss .hint { margin: 0 0 4px; }
+.spell-gloss-pic { margin: 4px 0 0; overflow-x: auto; overscroll-behavior-x: contain; border-radius: 6px; }
+.spell-gloss-pic img { display: block; width: 1100px; max-width: none; height: auto; background: #fff; }
 .spell-more > summary { cursor: pointer; color: var(--accent); min-height: 40px; display: flex; align-items: center; font-size: 0.9rem; }
 .spell { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 0 8px; align-items: start; padding: 8px 0; border-bottom: 1px solid var(--line); }
 .spell .sp-name { border: 0; background: none; padding: 0; font-weight: 700; text-align: left; cursor: pointer; color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 3px; }
@@ -930,6 +933,7 @@ window.MPMBTheme = (() => {
           <div id="spell-list"><p class="note">Tap Choose spells: the spells you prepare (and your cantrips) show here, with MPMB's details.</p></div>
           <div class="row" id="spell-actions" hidden>
             <button class="btn" id="spells-update" type="button">Update spell list</button>
+            <button class="btn" id="spells-gloss" type="button">Add glossary</button>
             <button class="btn" id="spells-remove" type="button">Remove spell list</button>
           </div>
         </div>

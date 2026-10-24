@@ -84,6 +84,7 @@
     box.textContent = '';
     const rows = (s && s.rows) || [];
     $('#spell-actions').hidden = !(s && s.pages);
+    $('#spells-gloss').textContent = s && s.glossary ? 'Remove glossary' : 'Add glossary';
     $('#spell-count').textContent = rows.length ? rows.length + (rows.length === 1 ? ' spell' : ' spells') : 'None yet';
     if (!rows.length) { box.append(el('p', { cls: 'note', text: s && s.pages ? 'The spell list is empty.' : 'Tap Choose spells: the spells you prepare (and your cantrips) show here, with MPMB’s details.' })); return; }
     const heads = s.casters;
@@ -127,6 +128,15 @@
       if (!n) { d.remove(); continue; }
       d.querySelector('summary').textContent = 'Not prepared (' + n + ')';
       if (!d.previousElementSibling.children.length) d.previousElementSibling.remove();   // nothing prepared at this level
+    }
+    // MPMB's glossary (what the columns and marks mean): its picture from the spell sheet page, folded
+    if (s.glossary) {
+      const fig = el('figure', { cls: 'spell-gloss-pic', 'data-width': '2400' }, [el('img', { alt: 'Spell sheet glossary' })]);
+      const g = el('details', { cls: 'spell-more spell-gloss' }, [el('summary', { text: 'Glossary' }), el('p', { cls: 'hint', text: 'Swipe sideways to read it all.' }), fig]);
+      g.open = openFolds.has('glossary');
+      g.addEventListener('toggle', () => { if (g.open) openFolds.add('glossary'); else openFolds.delete('glossary'); });
+      box.append(g);
+      U.showIcon(fig, { exists: true, name: s.glossary, icon: 'own:' + s.glossary });
     }
   }
   const openFolds = new Set();
@@ -332,6 +342,7 @@
       await makeSpellList(currentPicks());
     });
     $('#spells-update').addEventListener('click', () => makeSpellList(showPrepared({})));
+    $('#spells-gloss').addEventListener('click', () => makeSpellList(showPrepared({}), !(state.sheet && state.sheet.glossary)));
     $('#spells-remove').addEventListener('click', async () => {
       const res = await send('removeSpells', {});
       if (res) { state.sheet = res.sheet; renderSpellList(); toast('Spell list removed.'); }
@@ -353,8 +364,10 @@
     }
     return picks;
   }
-  async function makeSpellList(picks) {
-    const res = await send('chooseSpells', { picks: picks || {} });
+  // glossary: MPMB's Glossary option, kept as the list has it unless changed
+  async function makeSpellList(picks, glossary) {
+    if (glossary === undefined) glossary = !!(state.sheet && state.sheet.glossary);
+    const res = await send('chooseSpells', { picks: picks || {}, glossary });
     if (!res) return;
     state.sheet = res.sheet;
     renderSpellList();

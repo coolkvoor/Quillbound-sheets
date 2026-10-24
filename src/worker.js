@@ -303,7 +303,7 @@ const ops = {
   spellSheet() { return MPMBSpells.sheet(engine); },
   spellKey() { return MPMBSpells.key(engine); },
   spellDetails({ key }) { return MPMBSpells.details(engine, key); },
-  chooseSpells({ picks }) { return spellOp(() => MPMBSpells.choose(engine, picks)); },
+  chooseSpells({ picks, glossary }) { return spellOp(() => MPMBSpells.choose(engine, picks, { glossary })); },
   removeSpells() { return spellOp(() => MPMBSpells.remove(engine)); },
   // Classes and ability scores: MPMB's dialogs, edited on the app's screens (classes.js, abilities.js)
   classOptions() { return MPMBClasses.options(engine); },
