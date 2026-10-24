@@ -84,7 +84,6 @@
     box.textContent = '';
     const rows = (s && s.rows) || [];
     $('#spell-actions').hidden = !(s && s.pages);
-    $('#spells-gloss').textContent = s && s.glossary ? 'Remove glossary' : 'Add glossary';
     $('#spell-count').textContent = rows.length ? rows.length + (rows.length === 1 ? ' spell' : ' spells') : 'None yet';
     if (!rows.length) { box.append(el('p', { cls: 'note', text: s && s.pages ? 'The spell list is empty.' : 'Tap Choose spells: the spells you prepare (and your cantrips) show here, with MPMB’s details.' })); return; }
     const heads = s.casters;
@@ -129,17 +128,34 @@
       d.querySelector('summary').textContent = 'Not prepared (' + n + ')';
       if (!d.previousElementSibling.children.length) d.previousElementSibling.remove();   // nothing prepared at this level
     }
-    // MPMB's glossary (what the columns and marks mean): its picture from the spell sheet page, folded
-    if (s.glossary) {
-      const fig = el('figure', { cls: 'spell-gloss-pic', 'data-width': '2400' }, [el('img', { alt: 'Spell sheet glossary' })]);
-      const g = el('details', { cls: 'spell-more spell-gloss' }, [el('summary', { text: 'Glossary' }), el('p', { cls: 'hint', text: 'Swipe sideways to read it all.' }), fig]);
-      g.open = openFolds.has('glossary');
-      g.addEventListener('toggle', () => { if (g.open) openFolds.add('glossary'); else openFolds.delete('glossary'); });
-      box.append(g);
-      U.showIcon(fig, { exists: true, name: s.glossary, icon: 'own:' + s.glossary });
-    }
+    // the abbreviations in MPMB's short spell texts, from its spell sheet glossary (its first line, the marks, the
+    // app shows as tags), folded under the list
+    const g = el('details', { cls: 'spell-more spell-gloss' }, [el('summary', { text: 'Abbreviations' }),
+      el('dl', {}, [].concat(...GLOSSARY.map(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })])))]);
+    g.open = openFolds.has('glossary');
+    g.addEventListener('toggle', () => { if (g.open) openFolds.add('glossary'); else openFolds.delete('glossary'); });
+    box.append(g);
   }
   const openFolds = new Set();
+  const GLOSSARY = [
+    ['+1d6/SL', '+1d6 for each spell slot level above the spell’s level'],
+    ['30-ft rad', '30-foot radius sphere centred on a point within range'],
+    ['S:30-ft rad', 'Self: 30-foot radius emanation centred on the caster'],
+    ['20-ft cu', 'Cube, 20 ft a side'],
+    ['5-ft sq', 'Square, 5 ft a side'],
+    ['all (crea)', 'All creatures within the spell’s area'],
+    ['any (crea)', 'Any creatures you choose within the spell’s area'],
+    ['Conc, 1 min', 'Concentration, up to 1 minute'],
+    ['M† / Mƒ', 'Costly material component; †: consumed, ƒ: not consumed'],
+    ['25gp cons', 'Material component worth 25 gp, consumed by the spell'],
+    ['see B / book', 'The short description is far from complete: check the book'],
+    ['cast/enter/end', 'Takes effect when cast, when a target enters the area or ends its turn there, or when the area enters its space; once per turn per target'],
+    ['Act', 'Action'], ['Bns', 'Bonus action'], ['React', 'Reaction'],
+    ['Adv / Dis', '(Dis)advantage'], ['atk', 'Attack (roll)'], ['chk / check', 'Ability check'], ['dmg', 'Damage'],
+    ['CL', 'Character level'], ['SL', 'Spell slot level'], ['PR', 'Prepared'],
+    ['rnd', 'Round(s)'], ['SoT', 'Start of turn'], ['EoT', 'End of turn'],
+    ['obj', 'Object(s)'], ['obsc', 'Obscured'], ['dif. ter.', 'Difficult terrain'],
+  ];
   async function showSpell(key, name) {
     const dlg = $('#spell-info');
     $('#si-title').textContent = name;
@@ -342,7 +358,6 @@
       await makeSpellList(currentPicks());
     });
     $('#spells-update').addEventListener('click', () => makeSpellList(showPrepared({})));
-    $('#spells-gloss').addEventListener('click', () => makeSpellList(showPrepared({}), !(state.sheet && state.sheet.glossary)));
     $('#spells-remove').addEventListener('click', async () => {
       const res = await send('removeSpells', {});
       if (res) { state.sheet = res.sheet; renderSpellList(); toast('Spell list removed.'); }

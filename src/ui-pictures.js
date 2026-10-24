@@ -48,8 +48,7 @@
     return pdfjsP;
   }
   const b64Blob = (b64, mime) => { const t = atob(b64), u = new Uint8Array(t.length); for (let i = 0; i < t.length; i++) u[i] = t.charCodeAt(i); return new Blob([u], { type: mime }); };
-  // width: the drawing's width in pixels (640; MPMB's spell glossary is drawn larger, to be read)
-  async function loadIcon(name, width) {
+  async function loadIcon(name) {
     const r = await state.worker.call('iconImage', { name });
     if (r.img) return URL.createObjectURL(b64Blob(r.img.data, r.img.mime));
     if (!r.pdf) return '';
@@ -58,7 +57,7 @@
     try {
       const page = await doc.getPage(1);
       const v1 = page.getViewport({ scale: 1 });
-      const vp = page.getViewport({ scale: Math.min(6, (width || 640) / v1.width) });
+      const vp = page.getViewport({ scale: Math.min(6, 640 / v1.width) });
       const c = document.createElement('canvas');
       c.width = Math.round(vp.width); c.height = Math.round(vp.height);
       // intent print: drawn straight away, also while the page is in the background (on screen pdf.js waits for frames)
@@ -68,13 +67,13 @@
     } finally { doc.destroy(); }
   }
   async function showIcon(n, snap) {
-    const key = snap.exists && snap.icon ? snap.icon + (n.dataset.width ? '@' + n.dataset.width : '') : '';
+    const key = snap.exists && snap.icon ? snap.icon : '';
     if (n.dataset.key === key) return;
     n.dataset.key = key;
     const img = n.querySelector('img');
     let url = key ? iconCache.get(key) : '';
     if (url === undefined) {
-      try { url = await loadIcon(snap.name, Number(n.dataset.width) || 0); } catch (e) { url = ''; console.warn('Picture of ' + snap.name + ' not shown:', e); }
+      try { url = await loadIcon(snap.name); } catch (e) { url = ''; console.warn('Picture of ' + snap.name + ' not shown:', e); }
       iconCache.set(key, url);
     }
     if (n.dataset.key !== key) return;
