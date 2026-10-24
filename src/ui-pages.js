@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const U = window.MPMBUI;
-  const { $, $$, el, state, rows, ABILITIES, SKILLS, BOUND } = U;
+  const { $, $$, el, typingIn, state, rows, ABILITIES, SKILLS, BOUND } = U;
   // from the other screen files (all loaded before anything runs)
   const picture = (...a) => U.picture(...a);
   const lineMenu = (...a) => U.lineMenu(...a);
@@ -206,7 +206,7 @@
     for (const comp of $$('[data-comp]')) {
       let first = true;
       for (const row of comp.querySelectorAll('[data-cattack]')) {
-        const has = v(row.dataset.cattack + 'Weapon Selection') !== '' || row.contains(document.activeElement);
+        const has = v(row.dataset.cattack + 'Weapon Selection') !== '' || typingIn(row);
         row.hidden = !has && !first;
         for (const x of row.querySelectorAll('[data-figs]')) x.hidden = !has;
         row.querySelector('.more').hidden = !has;
@@ -214,7 +214,7 @@
       }
       first = true;
       for (const row of comp.querySelectorAll('[data-cgear]')) {
-        const has = v(row.dataset.cgear) !== '' || row.contains(document.activeElement);
+        const has = v(row.dataset.cgear) !== '' || typingIn(row);
         row.hidden = !has && !first;
         row.querySelector('.more').hidden = !has;
         if (!has) first = false;
@@ -350,7 +350,7 @@
       let first = true;
       for (const c of page.querySelectorAll('[data-ws]')) {
         const r = v(c.dataset.ws), picked = r !== '' && r.toLowerCase() !== WS_BLANK;
-        const hide = !picked && !first && !c.contains(document.activeElement);
+        const hide = !picked && !first && !typingIn(c);
         if (c.hidden !== hide) { c.hidden = hide; if (changed.indexOf(page) === -1) changed.push(page); }
         c.querySelector('[data-wsbody]').hidden = !picked;
         const name = c.querySelector('[data-wsname]');
@@ -448,7 +448,7 @@
       for (const c of page.querySelectorAll('[data-log]')) {
         const E = c.dataset.log;
         const used = ['date', 'adventure', 'session', 'dm', 'notes', 'xp.gain', 'gold.gain', 'downtime.gain', 'renown.gain', 'magicItems.gain'].some((k) => v(E + k) !== '');
-        const hide = !used && !first && !c.contains(document.activeElement);
+        const hide = !used && !first && !typingIn(c);
         if (c.hidden !== hide) { c.hidden = hide; if (changed.indexOf(page) === -1) changed.push(page); }
         const name = c.querySelector('[data-logname]');
         const title = [v(E + 'adventure'), v(E + 'date')].filter((x) => x !== '').join(' · ');

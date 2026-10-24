@@ -10,6 +10,8 @@
     (kids || []).forEach((c) => n.append(c));
     return n;
   };
+  // a line being typed in stays shown while empty; focus left on its menu button (after a menu closes) doesn't count
+  const typingIn = (box) => { const a = document.activeElement; return !!a && box.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName); };
   const reduceMotion = () => window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   const ABILITIES = [['Str', 'Strength'], ['Dex', 'Dexterity'], ['Con', 'Constitution'], ['Int', 'Intelligence'], ['Wis', 'Wisdom'], ['Cha', 'Charisma']];
@@ -36,7 +38,7 @@
   const rows = (key, n) => { const c = state.rowCounts && state.rowCounts[key]; return typeof c === 'number' ? Math.min(n, c) : n; };
 
   window.MPMBUI = {
-    $, $$, el, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
+    $, $$, el, typingIn, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
     ACTIONS, LANGUAGES
   };
 })();

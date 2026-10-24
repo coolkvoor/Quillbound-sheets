@@ -4,7 +4,7 @@
   'use strict';
   const U = window.MPMBUI;
   const {
-    $, $$, el, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
+    $, $$, el, typingIn, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
     ACTIONS, LANGUAGES
   } = U;
   const {
@@ -785,7 +785,7 @@
       let first = true;
       for (const row of $$(sel)) {
         const i = row.dataset.mi || row.dataset.gear || row.dataset.xgear;
-        const has = v(field(i)) !== '' || row.contains(document.activeElement);
+        const has = v(field(i)) !== '' || typingIn(row);
         row.hidden = !has && !first;
         row.querySelector('.more').hidden = !has;
         if (extra) extra(row, i, has);
@@ -818,7 +818,7 @@
     // feats: filled lines plus the first empty one, to pick a new feat
     let featEmpty = true;
     for (const li of $$('[data-feat]')) {
-      const has = v('Feat Name ' + li.dataset.feat) !== '' || li.contains(document.activeElement);
+      const has = v('Feat Name ' + li.dataset.feat) !== '' || typingIn(li);
       li.hidden = !has && !featEmpty;
       li.querySelector('.more').hidden = !has;
       li.querySelector('.note').hidden = !(v('Feat Name ' + li.dataset.feat) !== '');
@@ -832,7 +832,7 @@
     // attacks: filled rows plus the first empty one
     let firstEmpty = true;
     for (const row of $$('[data-attack]')) {
-      const has = v('Attack.' + row.dataset.attack + '.Weapon Selection') !== '' || row.contains(document.activeElement);
+      const has = v('Attack.' + row.dataset.attack + '.Weapon Selection') !== '' || typingIn(row);
       row.hidden = !has && !firstEmpty;
       for (const x of row.querySelectorAll('[data-figs]')) x.hidden = !has;
       row.querySelector('.more').hidden = !has;
