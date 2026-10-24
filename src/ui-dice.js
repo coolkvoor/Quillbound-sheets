@@ -179,11 +179,11 @@
     const tone = (c) => ({ face: mix(c, [255, 255, 255], 0.16), shadow: mix(c, [0, 0, 0], 0.6), ink: lum(c) > 150 ? '#160f1a' : '#ffffff' });
     return { font: getComputedStyle(document.body).fontFamily, plain: tone(read('--accent')), crit: tone(read('--good')), fumble: tone(read('--bad')) };
   }
-  const LIGHT = unit([-0.15, 0.35, 0.92]);   // from the front and a little above: the result's face is the brightest
+  const LIGHT = unit([0, 0.3, 0.95]);   // from the front, a little above: the result's face brightest, faces below it darkest
   // draws a die px wide centred on (cx, cy), turned by q; d: { sides, front (a face index), frontLabel, tone }
   function draw(ctx, cx, cy, px, d, q, pal) {
     const g = solid(d.sides), tone = pal[d.tone || 'plain'];
-    const R = px * 0.42, f = 4.5;
+    const R = px * 0.42, f = 12;   // little perspective, as in a drawn die
     const pt = (v) => { const r = rot(q, v), s = f / (f - r[2]); return [cx + r[0] * R * s, cy - r[1] * R * s]; };
     const pts = g.verts.map(pt);
     const vis = [];
@@ -204,7 +204,7 @@
       if (i !== d.front || n[2] < 0.3) continue;
       const label = d.frontLabel !== undefined ? String(d.frontLabel) : labelOf(d.sides, i);
       if (!label) continue;
-      const c = pt(fc.c), size = R * g.label * 1.3 * Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.85 : 1);
+      const c = pt(fc.c), size = R * g.label * 1.6 * Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.85 : 1);
       ctx.globalAlpha = Math.min(1, (n[2] - 0.3) / 0.4);
       ctx.fillStyle = tone.ink;
       ctx.font = '800 ' + size.toFixed(1) + 'px ' + pal.font;
@@ -226,9 +226,9 @@
     cv.style.width = cv.style.height = cssPx + 'px';
     return cv;
   }
-  // At rest a die shows its result's face straight at you, upright (a corner on top; a d6 square on its edge), tipped
-  // back a little so the faces around it show, like a die on a table seen from the front.
-  const TIP = turn([1, 0, 0], -0.2), TIP10 = turn([1, 0, 0], -0.45);
+  // At rest a die shows its result's face straight at you, upright (a corner on top; a d6 square on its edge); only a d10
+  // is tipped back, as its kites run nearly from tip to tip and its lower half would not show.
+  const TIP = [1, 0, 0, 0], TIP10 = turn([1, 0, 0], -0.4);
   function rest(sides, front) {
     const g = solid(sides), f = g.faces[front], q = facing(f.n);
     // the face's corner furthest from its middle (the tip of a d10's kite) turned to the top
@@ -254,8 +254,11 @@
   }
   const easeOut = (t) => 1 - Math.pow(1 - t, 3);
 
-  // the small die in a chip or on the top bar button
-  const ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 2.5 L20.5 7.25 V16.75 L12 21.5 L3.5 16.75 V7.25 Z"/><path d="M12 7 L16.5 15 H7.5 Z M12 2.5 V7 M3.5 7.25 L12 7 L20.5 7.25 M3.5 16.75 L7.5 15 M20.5 16.75 L16.5 15 M12 21.5 L7.5 15 M12 21.5 L16.5 15"/></svg>';
+  // the small die in a chip or on the top bar button: an icosahedron seen face-on (projected from solid(20)): the outline,
+  // the front face, and the lines from its corners to the outline's
+  const ICON = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">'
+    + '<path d="M12 2 L20.66 7 V17 L12 22 L3.34 17 V7 Z M12 5.82 L17.35 15.09 H6.65 Z"/>'
+    + '<path d="M12 5.82 V2 M12 5.82 L3.34 7 M12 5.82 L20.66 7 M17.35 15.09 L20.66 7 M17.35 15.09 L20.66 17 M17.35 15.09 L12 22 M6.65 15.09 L12 22 M6.65 15.09 L3.34 17 M6.65 15.09 L3.34 7"/></svg>';
 
   // ---------------------------------------------------------------- the dice screen
   let hist = [], histKey = null, frame = 0;
@@ -312,10 +315,11 @@
     return c;
   }
   const bezier = (a, b, c, d, u) => [0, 1].map((k) => (1 - u) ** 3 * a[k] + 3 * (1 - u) ** 2 * u * b[k] + 3 * (1 - u) * u * u * c[k] + u ** 3 * d[k]);
-  function rollAndShow(spec) {
+  function rollAndShow(spec, fromBuilder) {
     const r = roll(spec);
     if (!r) { U.toast('Nothing to roll there'); return; }
     open();
+    if (!fromBuilder && $('#dice-expr').value) { $('#dice-expr').value = ''; padCounts(); }
     keep(r);
     cancelAnimationFrame(frame);
     // back to the top at once, so the tray is where the dice land
@@ -547,7 +551,7 @@
       if (!t.trim()) { addDie(20); }
       const p = parse($('#dice-expr').value);
       if (!p) { U.toast('Couldn’t read that: try 2d6 + 3'); return; }
-      rollAndShow({ expr: $('#dice-expr').value, what: '', kind: '' });
+      rollAndShow({ expr: $('#dice-expr').value, what: '', kind: '' }, true);
     });
     $('#dice-hist').addEventListener('click', (e) => { const b = e.target.closest('[data-again]'); if (b && hist[b.dataset.again]) rollAndShow(fresh(hist[b.dataset.again].spec)); });
     $('#dice-hist-clear').addEventListener('click', () => { hist = []; if (histKey) idbPut(histKey, hist).catch(() => {}); renderHistory(); });
