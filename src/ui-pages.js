@@ -2,7 +2,7 @@
 (() => {
   'use strict';
   const U = window.MPMBUI;
-  const { $, $$, el, typingIn, state, rows, ABILITIES, SKILLS, BOUND } = U;
+  const { $, $$, el, rollOut, typingIn, state, rows, ABILITIES, SKILLS, BOUND } = U;
   // from the other screen files (all loaded before anything runs)
   const picture = (...a) => U.picture(...a);
   const lineMenu = (...a) => U.lineMenu(...a);
@@ -66,18 +66,18 @@
       const A = U + 'Ability.' + k + '.';
       abis.append(el('div', { cls: 'abi' }, [
         el('span', { cls: 'k', text: k.toUpperCase(), title: long }),
-        el('span', { cls: 'mod num', 'data-out': A + 'Mod', text: '–' }),
+        rollOut('mod num', A + 'Mod', 'd20', { 'data-kind': 'check', 'data-what': long + ' check', 'aria-label': 'Roll a ' + long + ' check' }),
         el('input', { 'data-f': A + 'Score', id: fid(A + 'Score'), inputmode: 'numeric', autocomplete: 'off', 'aria-label': long + ' score', cls: 'num' }),
         el('div', { cls: 'save' }, [
           el('button', { cls: 'dot sm', type: 'button', 'data-toggle': A + 'ST.Prof', 'aria-pressed': 'false', 'aria-label': long + ' saving throw proficiency' }),
-          el('span', { text: 'Save ' }), el('b', { cls: 'num', 'data-out': A + 'ST.Mod', text: '–' }),
+          el('span', { text: 'Save ' }), rollOut('num', A + 'ST.Mod', 'd20', { 'data-kind': 'save', 'data-what': long + ' save', 'aria-label': 'Roll a ' + long + ' save' }),
         ]),
       ]));
     }
     grid.append(card('Stats', [
       el('div', { cls: 'stats' }, [
         el('div', { cls: 'stat big' }, [el('span', { cls: 'k', text: 'Armor Class' }), el('span', { cls: 'v num', 'data-out': U + 'AC', text: '–' })]),
-        el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Initiative' }), el('span', { cls: 'v num', 'data-out': U + 'Combat.Init.Mod', text: '–' })]),
+        el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Initiative' }), rollOut('v num', U + 'Combat.Init.Mod', 'd20', { 'data-kind': 'init', 'data-what': 'Initiative', 'data-adv': U + 'Initiative.Adv', 'aria-label': 'Roll initiative' })]),
         el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Proficiency' }), el('span', { cls: 'v num', 'data-out': U + 'Proficiency Bonus', text: '–' })]),
         el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Passive Perc.' }), el('span', { cls: 'v num', 'data-out': U + 'Skills.Perc.Pass.Mod', text: '–' })]),
       ]),
@@ -108,8 +108,9 @@
         cInput(U + 'HD.Die', 'Die', { inputmode: 'numeric', cls: 'in num' }),
         cInput(U + 'HD.Used', 'Used', { inputmode: 'numeric', cls: 'in num' }),
       ]),
-      el('p', { cls: 'hint' }, [document.createTextNode('Constitution adds '), el('b', { cls: 'num', 'data-out': U + 'HD.Con' }), document.createTextNode(' per hit die.')]),
-      el('div', { cls: 'deaths' }, [dots('Success', 'Successes'), dots('Fail', 'Failures')]),
+      el('p', { cls: 'hint' }, [document.createTextNode('Constitution adds '), el('b', { cls: 'num', 'data-out': U + 'HD.Con' }), document.createTextNode(' per hit die. '),
+        el('button', { cls: 'btn sm', type: 'button', 'data-roll': 'hd', 'data-die': U + 'HD.Die', 'data-mod': U + 'HD.Con', 'aria-label': 'Roll a hit die', text: 'Roll a hit die' })]),
+      el('div', { cls: 'deaths' }, [dots('Success', 'Successes'), dots('Fail', 'Failures'), el('button', { cls: 'btn sm', type: 'button', 'data-roll': 'death', text: 'Roll a death save' })]),
     ]));
     // skills: MPMB's skill name button cycles not proficient → proficient → expertise
     const skills = el('div', { cls: 'skills two' });
@@ -117,7 +118,7 @@
       skills.append(el('div', { cls: 'skill' }, [
         el('button', { cls: 'dot sm', type: 'button', 'data-mpmb': P + 'Text.Comp.Use.Skills.' + f + '.Name', 'data-prof': P + 'Text.Comp.Use.Skills.' + f + '.Prof', 'data-title': name, 'aria-pressed': 'false', 'aria-label': name + ' proficiency' }),
         el('span', { cls: 'n', text: name }), el('span', { cls: 'a', text: abi }),
-        el('span', { cls: 'v num', 'data-out': U + 'Skills.' + f + '.Mod', text: '–' }),
+        rollOut('v num', U + 'Skills.' + f + '.Mod', 'd20', { 'data-kind': 'check', 'data-what': name, 'aria-label': 'Roll ' + name }),
       ]));
     }
     grid.append(card('Skills', [el('p', { cls: 'hint', text: 'Tap a dot for proficiency, again for expertise, a third time to clear.' }), skills], { 'data-span': '2' }));
@@ -131,8 +132,8 @@
           lineMenu(U + 'Attack.Button.' + i, 'Attack ' + i),
         ]),
         el('div', { cls: 'figs', 'data-figs': '1' }, [
-          el('span', {}, [el('span', { cls: 'muted', text: 'To hit ' }), el('b', { 'data-out': p + 'To Hit', text: '–' })]),
-          el('span', {}, [el('span', { cls: 'muted', text: 'Damage ' }), el('b', { 'data-out': p + 'Damage', text: '–' }), el('span', { text: ' ' }), el('span', { 'data-out': p + 'Damage Type', text: '' })]),
+          el('span', {}, [el('span', { cls: 'muted', text: 'To hit ' }), rollOut('', p + 'To Hit', 'd20', { 'data-kind': 'attack', 'aria-label': 'Roll to hit' })]),
+          el('span', {}, [el('span', { cls: 'muted', text: 'Damage ' }), rollOut('', p + 'Damage', 'dice', { 'data-kind': 'damage', 'aria-label': 'Roll damage' }), el('span', { text: ' ' }), el('span', { 'data-out': p + 'Damage Type', text: '' })]),
           el('span', {}, [el('span', { cls: 'muted', text: 'Range ' }), el('b', { 'data-out': p + 'Range', text: '–' })]),
         ]),
         el('div', { cls: 'desc', 'data-out': p + 'Description', 'data-figs': '1', text: '' }),
@@ -251,7 +252,7 @@
         el('div', { cls: 'row' }, [cInput(W + 'CR', 'Challenge'), cInput(W + 'HD', 'Hit dice')]),
         el('div', { cls: 'stats' }, [
           el('div', { cls: 'stat big' }, [el('span', { cls: 'k', text: 'Armor Class' }), el('span', { cls: 'v num', 'data-out': W + 'AC', text: '–' })]),
-          el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Initiative' }), el('span', { cls: 'v num', 'data-out': W + 'Initiative Bonus', text: '–' })]),
+          el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Initiative' }), rollOut('v num', W + 'Initiative Bonus', 'd20', { 'data-kind': 'init', 'data-what': 'Initiative', 'aria-label': 'Roll initiative' })]),
           el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Proficiency' }), el('span', { cls: 'v num', 'data-out': W + 'Proficiency Bonus', text: '–' })]),
           el('div', { cls: 'stat' }, [el('span', { cls: 'k', text: 'Passive Perc.' }), el('span', { cls: 'v num', 'data-out': W + 'Skills.PassPerc', text: '–' })]),
         ]),
@@ -267,11 +268,11 @@
         const A = W + 'Ability.' + k + '.';
         abis.append(el('div', { cls: 'abi' }, [
           el('span', { cls: 'k', text: k.toUpperCase(), title: long }),
-          el('span', { cls: 'mod num', 'data-out': A + 'Mod', text: '–' }),
+          rollOut('mod num', A + 'Mod', 'd20', { 'data-kind': 'check', 'data-what': long + ' check', 'aria-label': 'Roll a ' + long + ' check' }),
           el('input', { 'data-f': A + 'Score', id: fid(A + 'Score'), inputmode: 'numeric', autocomplete: 'off', 'aria-label': long + ' score', cls: 'num' }),
           el('div', { cls: 'save' }, [
             el('button', { cls: 'dot sm', type: 'button', 'data-toggle': A + 'ST.Prof', 'aria-pressed': 'false', 'aria-label': long + ' saving throw proficiency' }),
-            el('span', { text: 'Save ' }), el('b', { cls: 'num', 'data-out': A + 'ST.Mod', text: '–' }),
+            el('span', { text: 'Save ' }), rollOut('num', A + 'ST.Mod', 'd20', { 'data-kind': 'save', 'data-what': long + ' save', 'aria-label': 'Roll a ' + long + ' save' }),
           ]),
         ]));
       }
@@ -298,8 +299,8 @@
         body.append(el('div', { cls: 'attack', 'data-wsattack': p }, [
           el('b', { 'data-out': p + 'Weapon' }),
           el('div', { cls: 'figs' }, [
-            el('span', {}, [el('span', { cls: 'muted', text: 'To hit ' }), el('b', { 'data-out': p + 'To Hit', text: '–' })]),
-            el('span', {}, [el('span', { cls: 'muted', text: 'Damage ' }), el('b', { 'data-out': p + 'Damage', text: '–' }), el('span', { text: ' ' }), el('span', { 'data-out': p + 'Damage Type', text: '' })]),
+            el('span', {}, [el('span', { cls: 'muted', text: 'To hit ' }), rollOut('', p + 'To Hit', 'd20', { 'data-kind': 'attack', 'aria-label': 'Roll to hit' })]),
+            el('span', {}, [el('span', { cls: 'muted', text: 'Damage ' }), rollOut('', p + 'Damage', 'dice', { 'data-kind': 'damage', 'aria-label': 'Roll damage' }), el('span', { text: ' ' }), el('span', { 'data-out': p + 'Damage Type', text: '' })]),
             el('span', {}, [el('span', { cls: 'muted', text: 'Range ' }), el('b', { 'data-out': p + 'Range', text: '–' })]),
           ]),
           el('div', { cls: 'desc', 'data-out': p + 'Description', text: '' }),

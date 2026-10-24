@@ -452,6 +452,58 @@ details.feat .fbody p, .fpara { margin: 0; }
 .ammo .count { font-size: 1.5rem; font-weight: 700; min-width: 2.5rem; text-align: center; }
 details.more-bg summary { cursor: pointer; color: var(--accent); min-height: 40px; display: flex; align-items: center; }
 
+/* dice (ui-dice.js): a number that rolls is a soft pill, at least a finger wide; dice in a text are chips */
+button.roll { font: inherit; color: inherit; border: 0; margin: 0; cursor: pointer; touch-action: manipulation; border-radius: 8px; padding: 2px 8px;
+  min-width: 44px; min-height: 36px; background: color-mix(in srgb, var(--accent) 11%, transparent); box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--accent) 38%, transparent); }
+button.roll:active { background: color-mix(in srgb, var(--accent) 28%, transparent); }
+button.roll:disabled { background: none; box-shadow: none; cursor: default; min-width: 0; padding-inline: 0; }
+.abi button.roll.mod { min-width: 56px; min-height: 44px; }
+.skill button.roll.v { width: auto; min-width: 48px; min-height: 36px; text-align: center; }
+.stat button.roll.v { min-height: 44px; padding-inline: 12px; }
+.attack .figs button.roll, .save button.roll, .caster button.roll { font-weight: 700; font-variant-numeric: tabular-nums; }
+.dice-chip { font: inherit; font-weight: 600; color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  border-radius: 999px; padding: 1px 9px 1px 6px; margin: 1px 0; min-height: 30px; display: inline-flex; align-items: center; gap: 4px; vertical-align: baseline; cursor: pointer; touch-action: manipulation; white-space: nowrap; }
+.dice-chip svg { width: 15px; height: 15px; flex: none; }
+.dice-chip:active { background: color-mix(in srgb, var(--accent) 26%, transparent); }
+#dice-open svg { display: block; }
+.hd .hd-roll { min-height: 40px; }
+.deaths [data-roll] { min-height: 40px; }
+.dice-body { gap: 12px; }
+.dice-result { display: grid; justify-items: center; text-align: center; gap: 4px; padding: 6px 0 2px; }
+.dice-what { font-family: var(--font-display); font-size: 1.05rem; color: var(--muted); min-height: 1.4em; }
+.dice-tray { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; min-height: 76px; align-items: center; padding: 4px 0; max-width: 100%; }
+.die { display: block; }
+.die.dropped { opacity: 0.35; }
+/* the layer the dice fly across while thrown (over the whole screen, never in the way of a tap) */
+.dice-fly { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 10; }
+.dice-total { font-size: 3.2rem; font-weight: 800; line-height: 1; min-height: 1em; color: var(--accent); }
+.dice-total.pop { animation: dice-pop 0.35s ease-out both; }
+@keyframes dice-pop { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: none; opacity: 1; } }
+.dice-sum { color: var(--muted); font-size: 0.95rem; overflow-wrap: anywhere; }
+.dice-note { font-weight: 700; min-height: 1.3em; }
+.dice-note.good { color: var(--good); }
+.dice-note.bad { color: var(--bad); }
+.dice-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+.dice-acts .seg button { min-height: 44px; padding: 0 12px; }
+.dice-acts > .btn { min-height: 44px; padding-inline: 16px; }
+.dice-pads { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (min-width: 520px) { .dice-pads { grid-template-columns: repeat(7, minmax(0, 1fr)); } }
+.dice-pads .pad { position: relative; display: grid; justify-items: center; gap: 2px; padding: 8px 4px 6px; min-height: 76px; border: 1px solid var(--line); border-radius: 10px; background: var(--btn); color: var(--btn-ink); cursor: pointer; touch-action: manipulation; font: inherit; }
+.dice-pads .pad:active { background: color-mix(in srgb, var(--accent) 18%, var(--btn)); }
+.dice-pads .pad-k { font-weight: 700; font-size: 0.9rem; }
+.dice-pads .cnt { position: absolute; top: 4px; right: 4px; font-size: 0.78rem; font-weight: 800; line-height: 1.5; padding: 0 6px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
+.dice-build .line { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.dice-build .line .in { flex: 1; min-width: 0; text-align: center; font-size: 1.1rem; min-height: 44px; }
+.dice-build .line .btn { min-height: 44px; min-width: 52px; }
+.dice-build .line:last-of-type .btn { flex: 1; }
+.dice-hist { list-style: none; margin: 0; padding: 0; }
+.dice-hist li + li { border-top: 1px solid var(--line); }
+.dice-hist button { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; width: 100%; text-align: left; padding: 8px 2px; min-height: 52px; background: none; border: 0; color: inherit; font: inherit; cursor: pointer; }
+.dice-hist .dh-what { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dice-hist .dh-total { grid-row: 1 / 3; grid-column: 2; align-self: center; font-size: 1.4rem; }
+.dice-hist .dh-sum { grid-column: 1; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .dice-total.pop { animation: none; } }
+
 /* class and ability panels */
 .cp-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--line); }
 .cp-row select { width: 100%; }
@@ -767,6 +819,7 @@ window.MPMBTheme = (() => {
     </div>
     <span class="chip" id="save-chip" title="Saved on this device">Saved</span>
     <span class="busy" id="busy" aria-hidden="true"></span>
+    <button class="btn sm icon-btn" id="dice-open" type="button" aria-label="Dice" title="Dice" aria-haspopup="dialog"></button>
     <button class="btn sm icon-btn" id="settings-open" type="button" aria-label="Settings" title="Settings" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <span hidden data-out="Color.Theme"></span><span hidden data-out="Color.DragonHeads"></span>
   </header>
@@ -836,7 +889,7 @@ window.MPMBTheme = (() => {
           <h3>Defense</h3>
           <div class="stats">
             <div class="stat big"><span class="k">Armor Class</span><span class="v num" data-out="AC">–</span></div>
-            <div class="stat"><span class="k">Initiative</span><span class="v num" data-out="Initiative bonus">–</span></div>
+            <div class="stat"><span class="k">Initiative</span><button class="roll v num" type="button" data-out="Initiative bonus" data-roll="d20" data-kind="init" data-what="Initiative" data-adv="Init Adv" aria-label="Roll initiative" disabled>–</button></div>
             <div class="stat"><span class="k">Speed</span><span class="v num small" data-out="Speed">–</span></div>
           </div>
           <label class="f"><span>Armor</span><input class="in" data-f="AC Armor Description" id="f-armor" list="dl-armor" autocomplete="off" placeholder="Pick or type armor"><datalist id="dl-armor" data-items="AC Armor Description"></datalist></label>
@@ -888,6 +941,7 @@ window.MPMBTheme = (() => {
               <button class="dot sm" type="button" data-toggle="Death Save Fail2" aria-pressed="false" aria-label="Death save failure 2"></button>
               <button class="dot sm" type="button" data-toggle="Death Save Fail3" aria-pressed="false" aria-label="Death save failure 3"></button>
             </div>
+            <button class="btn sm" type="button" data-roll="death" >Roll a death save</button>
           </div>
         </div>
         <div class="card" id="cond-card">
@@ -1378,6 +1432,29 @@ window.MPMBTheme = (() => {
 </dialog>
 
 <!-- One spell's full text -->
+<dialog class="panel full" id="dice" aria-labelledby="dice-title">
+  <div class="panel-head"><h3 id="dice-title">Dice</h3><button class="btn sm" id="dice-close" type="button">Close</button></div>
+  <div class="panel-body dice-body">
+    <div class="dice-result" aria-live="polite">
+      <div class="dice-what" id="dice-what">Pick dice below, or tap a number on the sheet.</div>
+      <div class="dice-tray" id="dice-tray"></div>
+      <div class="dice-total num" id="dice-total"></div>
+      <div class="dice-sum num" id="dice-sum"></div>
+      <div class="dice-note" id="dice-note"></div>
+      <div class="dice-acts" id="dice-acts"></div>
+    </div>
+    <div class="card dice-build">
+      <div class="dice-pads" id="dice-pads"></div>
+      <div class="line"><button class="btn" id="dice-minus" type="button" aria-label="Lower the number by 1">−1</button><input class="in num" id="dice-expr" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. 2d6 + 3" aria-label="Dice to roll"><button class="btn" id="dice-plus" type="button" aria-label="Raise the number by 1">+1</button></div>
+      <div class="line"><button class="btn" id="dice-clear" type="button">Clear</button><button class="btn primary" id="dice-roll" type="button">Roll</button></div>
+      <p class="hint">Tap dice to add them, or type, such as 4d6, 1d20+5 or 2d8 + 1d6 − 1. Numbers on the sheet roll when tapped; advantage and disadvantage come from the sheet's A and D boxes.</p>
+    </div>
+    <div class="card">
+      <h3>Recent rolls <button class="btn sm" id="dice-hist-clear" type="button" hidden>Clear</button></h3>
+      <ol class="dice-hist" id="dice-hist"></ol>
+    </div>
+  </div>
+</dialog>
 <dialog class="panel" id="spell-info" aria-labelledby="si-title">
   <div class="panel-head"><h3 id="si-title">Spell</h3><button class="btn sm" id="si-close" type="button">Close</button></div>
   <div class="panel-body" id="si-body"></div>
@@ -1394,4 +1471,5 @@ window.MPMBTheme = (() => {
 <script src="ui-import.js"></script>
 <script src="ui-backup.js"></script>
 <script src="ui-suggest.js"></script>
+<script src="ui-dice.js"></script>
 <script src="app.js"></script>

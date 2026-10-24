@@ -37,8 +37,12 @@
   // comes from the worker's open (ROWS in worker.js), counted from the sheet's own fields.
   const rows = (key, n) => { const c = state.rowCounts && state.rowCounts[key]; return typeof c === 'number' ? Math.min(n, c) : n; };
 
+  // a number or dice MPMB works out (data-out), as a button that rolls it (ui-dice.js): kind "d20" (d20 + the number)
+  // or "dice" (the dice in it); extra attributes such as data-kind, data-what, data-adv
+  const rollOut = (cls, field, kind, extra) => el('button', Object.assign({ cls: 'roll' + (cls ? ' ' + cls : ''), type: 'button', 'data-out': field, 'data-roll': kind, disabled: '', text: '–' }, extra || {}));
+
   window.MPMBUI = {
-    $, $$, el, typingIn, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
+    $, $$, el, rollOut, typingIn, reduceMotion, state, rows, ABILITIES, SKILLS, BOUND, LEVEL_NAMES, HITDICE, ATTACKS, LIMITED, FEATS,
     ACTIONS, LANGUAGES
   };
 })();
