@@ -44,8 +44,8 @@
   const fresh = (spec) => { const c = Object.assign({}, spec); delete c.prev; return c; };
   const random = () => die(10000) / 10000;
   const bonus = (n) => (n < 0 ? '−' : '+') + Math.abs(n);
-  // spec: { expr, what, kind, mode ('normal' | 'adv' | 'dis'), crit, damage (an attack's damage spec), prev }
-  // advantage takes the higher of two d20s (disadvantage the lower) for a roll with one d20; a critical rolls the dice twice.
+  // spec: { expr, what, kind, mode ('normal' | 'adv' | 'dis'), damage (an attack's damage spec), prev }
+  // advantage takes the higher of two d20s (disadvantage the lower) for a roll with one d20.
   // prev: the d20s already rolled, kept when switching to advantage or disadvantage (only the missing one is rolled)
   function roll(spec) {
     const p = parse(spec.expr);
@@ -53,7 +53,7 @@
     const d20 = p.dice.length === 1 && p.dice[0].n === 1 && p.dice[0].sides === 20;
     const mode = d20 ? spec.mode || 'normal' : 'normal';
     const groups = p.dice.map((d) => {
-      const n = d.n * (spec.crit ? 2 : 1);
+      const n = d.n;
       const rolls = [];
       const kept = d20 && spec.prev ? spec.prev.slice(0, mode === 'normal' ? 1 : 2) : [];
       for (let i = 0; i < (mode === 'normal' ? n : 2); i++) rolls.push(i < kept.length ? kept[i] : die(d.sides));
@@ -64,7 +64,7 @@
     let total = p.mod;
     for (const g of groups) g.rolls.forEach((r, i) => { if (i !== g.drop) total += g.sign * r; });
     const nat = d20 ? groups[0].rolls[groups[0].drop === 0 ? 1 : 0] : null;
-    return { spec: Object.assign(fresh(spec), { mode }), expr: format(spec.crit ? { dice: p.dice.map((d) => Object.assign({}, d, { n: d.n * 2 })), mod: p.mod } : p), d20, groups, mod: p.mod, total, nat, at: Date.now() };
+    return { spec: Object.assign(fresh(spec), { mode }), expr: format(p), d20, groups, mod: p.mod, total, nat, at: Date.now() };
   }
   function breakdown(r) {
     const parts = [];
@@ -228,7 +228,7 @@
   }
   // At rest a die shows its result's face straight at you, upright (a corner on top; a d6 square on its edge), tipped
   // back a little so the faces around it show, like a die on a table seen from the front.
-  const TIP = turn([1, 0, 0], -0.2);
+  const TIP = turn([1, 0, 0], -0.2), TIP10 = turn([1, 0, 0], -0.45);
   function rest(sides, front) {
     const g = solid(sides), f = g.faces[front], q = facing(f.n);
     // the face's corner furthest from its middle (the tip of a d10's kite) turned to the top
@@ -236,7 +236,8 @@
     for (const i of f.idx) { const v = g.verts[i], dd = Math.hypot(v[0] - f.c[0], v[1] - f.c[1], v[2] - f.c[2]); if (dd > best + 1e-6) { best = dd; far = i; } }
     const v = rot(q, g.verts[far]), c = rot(q, f.c);
     const up = Math.PI / 2 - Math.atan2(v[1] - c[1], v[0] - c[0]) + (f.idx.length === 4 && shapeFor(sides) === 6 ? Math.PI / 4 : 0);
-    return mul(TIP, mul(turn([0, 0, 1], up), q));
+    // the d10's kites run nearly from tip to tip, so its lower half only shows when tipped back further
+    return mul(shapeFor(sides) === 10 ? TIP10 : TIP, mul(turn([0, 0, 1], up), q));
   }
   // the soft shadow a die casts on the table; lift (0 on the table) moves it out and fades it
   function shadow(ctx, x, y, px, lift) {
@@ -267,7 +268,7 @@
     renderHistory();
   }
   function keep(r) {
-    hist.unshift({ what: r.spec.what || '', expr: r.expr, total: r.total, sum: breakdown(r) + (r.spec.crit ? ', critical' : ''), note: note(r), mode: r.spec.mode, at: r.at, spec: r.spec });
+    hist.unshift({ what: r.spec.what || '', expr: r.expr, total: r.total, sum: breakdown(r), note: note(r), mode: r.spec.mode, at: r.at, spec: r.spec });
     hist.length = Math.min(hist.length, KEEP);
     if (histKey) idbPut(histKey, hist).catch(() => {});
     renderHistory();
@@ -336,7 +337,7 @@
       // a random axis, three to four turns, slowing to rest
       dice.push({ cv, d, end, still, axis: unit([random() - 0.5, random() - 0.5, random() - 0.5]), turns: (3 + random()) * 2 * Math.PI, delay: still ? 0 : Math.min(dice.length, 8) * 25 });
     });
-    $('#dice-what').textContent = (spec.what || r.expr) + (r.spec.mode !== 'normal' ? ' · ' + MODE_NAME[r.spec.mode] : '') + (spec.crit ? ' · critical' : '');
+    $('#dice-what').textContent = (spec.what || r.expr) + (r.spec.mode !== 'normal' ? ' · ' + MODE_NAME[r.spec.mode] : '');
     const total = $('#dice-total'), sum = $('#dice-sum'), nt = $('#dice-note');
     const fly = flyLayer(), ctx = fly.getContext('2d');
     const settle = () => {
@@ -382,11 +383,11 @@
     };
     frame = requestAnimationFrame(step);
   }
-  // what to do next: advantage or not (a d20), the attack's damage (normal or critical), a critical, the same again
+  // what to do next: advantage or not (a d20), the attack's damage, the same again (quiet buttons: the roll is what counts)
   function renderActs(r) {
     const box = $('#dice-acts');
     box.textContent = '';
-    const btn = (text, spec, cls) => { const b = el('button', { cls: 'btn' + (cls ? ' ' + cls : ''), type: 'button', text }); b.addEventListener('click', () => rollAndShow(spec)); return b; };
+    const btn = (text, spec, cls) => { const b = el('button', { cls: 'btn sm' + (cls ? ' ' + cls : ''), type: 'button', text }); b.addEventListener('click', () => rollAndShow(spec)); return b; };
     const s = r.spec;
     if (r.d20) {
       const seg = el('div', { cls: 'seg', role: 'group', 'aria-label': 'Roll with' });
@@ -398,12 +399,8 @@
       }
       box.append(seg);
     }
-    if (s.kind === 'attack' && s.damage) {
-      box.append(btn('Damage', s.damage, r.nat === 20 ? '' : 'primary'), btn('Critical damage', Object.assign({}, s.damage, { crit: true }), r.nat === 20 ? 'primary' : ''));
-    } else if (!r.d20 && r.groups.length) {
-      box.append(btn(s.crit ? 'Not critical' : 'Critical', Object.assign(fresh(s), { crit: !s.crit })));
-    }
-    box.append(btn('Roll again', fresh(s), s.kind === 'attack' && s.damage ? '' : 'primary'));
+    if (s.kind === 'attack' && s.damage) box.append(btn('Roll damage', s.damage, 'primary'));
+    box.append(btn('Roll again', fresh(s)));
   }
 
   // the builder: a tap on a die adds one to the box; − and + change the number; the box can be typed in too
