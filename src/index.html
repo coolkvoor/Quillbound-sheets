@@ -475,7 +475,8 @@ button.roll:disabled { background: none; box-shadow: none; cursor: default; min-
 .die { display: block; }
 .die.dropped { opacity: 0.35; }
 /* the layer the dice fly across while thrown (over the whole screen, never in the way of a tap) */
-.dice-fly { position: fixed; inset: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 10; }
+.dice-fly { position: fixed; inset: 0; pointer-events: none; z-index: 10; overflow: hidden; }
+.dice-fly canvas { position: absolute; left: 0; top: 0; display: block; will-change: transform; }
 .dice-total { font-size: 3.2rem; font-weight: 800; line-height: 1; min-height: 1em; color: var(--accent); }
 .dice-total.pop { animation: dice-pop 0.35s ease-out both; }
 @keyframes dice-pop { 0% { transform: scale(0.5); opacity: 0; } 70% { transform: scale(1.12); } 100% { transform: none; opacity: 1; } }
