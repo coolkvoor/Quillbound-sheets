@@ -1,6 +1,6 @@
 # Quillbound Sheets (the MPMB sheet app): project notes for Claude Code
 
-> **How changes ship: `git push` to `master`.** Cloudflare Pages rebuilds the site on every push; that is where the owner tests. Work on a branch first: every branch gets a preview build at `<branch>.quillbound-sheets.pages.dev` (lowercased, hyphenated). Don't publish the app as a Claude artifact. At the end of a change: run the tests, commit, push (ask the owner before pushing to `master` unless they said to), and say the site redeploys from the push. The owner's accounts, addresses, devices and rules are in `CLAUDE.local.md` (gitignored, never commit them here). How things came to be, with dates: `docs/history.md` (not loaded automatically; read it when you need the why).
+> **How changes ship: `git push` to `master`.** Cloudflare Pages rebuilds the site on every push; that is where the owner tests. Work on a branch first: every branch gets a preview build at `<branch>.quillbound-sheets.pages.dev` (lowercased, hyphenated). Don't publish the app as a Claude artifact. At the end of a change: run the tests, commit, push (ask the owner before pushing to `master` unless they said to), and say the site redeploys from the push. **Don't forget the version** (see Versions and releases): a change going to `master` gets its version bump in the same branch or PR. The owner's accounts, addresses, devices and rules are in `CLAUDE.local.md` (gitignored, never commit them here). How things came to be, with dates: `docs/history.md` (not loaded automatically; read it when you need the why).
 
 A phone-first web app that opens an **MPMB 2024 (5.5e) character sheet PDF** and runs MPMB's own scripts in a stand-in for Adobe Acrobat. Users play and build characters on a phone or tablet; all D&D logic comes from MPMB's code inside their PDF.
 
@@ -88,6 +88,13 @@ Shown to the user in every build, two ways:
 - **The renderer** (`mpmbDialog`, `#mdlg`): views and clusters as stacked groups (rows wrap), static text, text boxes (one loaded with a list is a drop-down), popups, list boxes and tree lists, check boxes, radios by `group_id`, buttons, and OK/Cancel/Other as the footer. After a tap the dialog blocks taps at once but dims only when MPMB takes over 0.35 s. After OK/Cancel/Other it stays on screen until MPMB is done (`idle()`; `userChange` calls it at the end) or the next dialog replaces it, closing by itself after 8 s otherwise: closing at once showed the page between two dialogs. MPMB's source marks at the end of list items (Unicode superscript, "Paladin ˢʳᵈ'²⁴") show as a small-caps label (`splitSource`; drop-downs "Paladin (SRD'24)"), as the app's fonts lack those characters; the name sent back to MPMB is unchanged.
 - Requests that aren't a person's change (opening, content and sources, the app's own probes such as `spellOptions`/`classOptions`) still answer dialogs with their defaults or the app's queued steps. The worker answers MPMB's EXPERIENCE POINTS DIALOG "not now" (a standing answer); the app shows Level up instead (the class screen with the levels added to the first class).
 - The Sheet tab's Sheet settings card (Weight, Unit system, Text options, Automation) needs a way to show dialogs and says so otherwise.
+
+## Versions and releases
+
+**Bump the version with every change that goes to `master`; it's easy to forget.** The version is `package.json`'s (the app shows it in Settings → About, the site's `version.json` and the downloadable file carry it).
+- major.minor.patch: bug fixes only → patch (1.2.1), any new feature → minor (1.3.0), 2.0 only for something major; 1.9 is followed by 1.10. The app leaves out a patch of 0 ("Quillbound Sheets 1.3").
+- The bump: `npm version <x.y.z> --no-git-tag-version` (changes `package.json` and the lockfile's two root entries), committed as "Version x.y.z" in the branch or PR with the change.
+- The release, once it is on `master`: `npm run build`, tag `vx.y.z` on that `master` commit and push the tag, then `gh release create vx.y.z dist-single/Quillbound-Sheets.html` titled "Quillbound Sheets x.y.z (one-file backup)", with notes on what changed and that the file is a backup (the installable app is the main version; a file is never cross-origin isolated, so MPMB's dialogs use restart and replay). Never move a published tag. Ask the owner before publishing a release.
 
 ## Build and test
 

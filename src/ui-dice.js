@@ -348,6 +348,10 @@
     // back to the top at once, so the tray is where the dice land
     $('#dice .panel-body').scrollTop = 0;
     const tray = $('#dice-tray');
+    // the result area keeps its height while the dice fly (the total and breakdown are empty then), so the screen doesn't
+    // jump shorter and back; it is let go when the new result is in
+    const area = $('#dice .dice-result');
+    area.style.minHeight = area.offsetHeight + 'px';
     tray.textContent = '';
     const n = r.groups.reduce((a, g) => a + g.rolls.length, 0);
     const size = n > 30 ? 34 : n > 12 ? 48 : 72;
@@ -369,6 +373,7 @@
     const total = $('#dice-total'), sum = $('#dice-sum'), nt = $('#dice-note');
     const fly = flyLayer(), ctx = fly.getContext('2d');
     const settle = () => {
+      area.style.minHeight = '';
       ctx.clearRect(0, 0, fly.width, fly.height);
       for (const x of dice) { x.cv.style.visibility = ''; paint(x.cv, x.d, x.end, pal); }
       total.textContent = String(r.total);
