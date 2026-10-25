@@ -617,7 +617,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
 /* ---------- looks ---------- */
 /* Colorful, after MPMB's colourful sheet: band titles on a black brush stroke streaked with the sheet's colour and a
    red seal (the app's own shape, not the sheet's emblem); card titles with a red slash and a brush underline; ability
-   scores on black ink panels with a white modifier circle; grey skill bars; underlined text fields, square number boxes */
+   scores on black ink panels with a white modifier circle (light panels in the sheet's colour on white); grey skill bars; underlined text fields, square number boxes */
 [data-look="colorful"] .grid, [data-look="colorful"] .grid > .gcol { gap: 18px; }
 [data-look="colorful"] .card { background: transparent; border: 0; border-radius: 0; padding: 6px 2px 10px; }
 [data-look="colorful"] .card h3 { position: relative; padding: 3px 4px 12px 26px; font-size: 1.2rem;
@@ -668,6 +668,15 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
 [data-look="colorful"] .abi .save button.roll { color: var(--panel-ink); background: rgb(255 255 255 / 0.16); box-shadow: inset 0 -2px 0 var(--sheet-on-dark); }
 [data-look="colorful"] .abi .save button.roll:active { background: rgb(255 255 255 / 0.3); }
 [data-look="colorful"] .abi .save button.roll:disabled { background: none; box-shadow: none; }
+/* Colorful white: a light panel in the sheet's colour, as the card titles' bands, with the page's own ink (the black
+   panels stood out from the rest of a white page); the modifier circle and score box white with a frame */
+[data-look="colorful"]:not([data-tone="dark"]) .abi { --ink: #161317; --muted: #5d5862; --line: #d4d1d6; --accent: var(--sheet-on-light); --accent-ink: #ffffff; --surface: #ffffff;
+  color: var(--ink); background: linear-gradient(165deg, color-mix(in srgb, var(--sheet) 8%, white) 0 55%, color-mix(in srgb, var(--sheet) 24%, white)); }
+[data-look="colorful"]:not([data-tone="dark"]) .abi .k { color: var(--accent); }
+[data-look="colorful"]:not([data-tone="dark"]) .abi .mod { box-shadow: 0 0 0 2px var(--frame); }
+[data-look="colorful"]:not([data-tone="dark"]) .abi input { box-shadow: inset 0 0 0 1.5px var(--frame); }
+[data-look="colorful"]:not([data-tone="dark"]) .abi .save button.roll { color: var(--ink); background: #ffffff; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sheet) 45%, white), inset 0 -2px 0 var(--accent); }
+[data-look="colorful"]:not([data-tone="dark"]) .abi .save button.roll:active { background: color-mix(in srgb, var(--accent) 18%, white); }
 /* skill bars: darker toward the right, alternate rows lighter; with two columns the rows pair up */
 [data-look="colorful"] .skill { border-bottom: 0; padding-inline: 2px 6px; background: linear-gradient(90deg, var(--row-b), color-mix(in srgb, var(--row-a) 45%, var(--row-b))); }
 [data-look="colorful"] .skill:nth-child(odd) { background: linear-gradient(90deg, var(--row-b), var(--row-a)); }
