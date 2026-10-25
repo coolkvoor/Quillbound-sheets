@@ -265,11 +265,13 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .list li > .grow { display: grid; gap: 4px; }
 .rests { gap: 8px; }
 .rests > .btn { flex: 1 1 0; }
-dialog.panel { border: 0; padding: 0; background: var(--surface); color: var(--ink); width: 100%; max-width: 40rem; max-height: 88vh; margin: auto auto 0; border-radius: 16px 16px 0 0; display: none; flex-direction: column; box-shadow: 0 -6px 30px rgb(0 0 0 / 0.25); }
+dialog.panel { border: 0; padding: 0; background: var(--surface); color: var(--ink); width: 100%; max-width: 40rem; max-height: 88vh; max-height: 88dvh; margin: auto auto 0; border-radius: 16px 16px 0 0; display: none; flex-direction: column; box-shadow: 0 -6px 30px rgb(0 0 0 / 0.25); }
 dialog.panel[open] { display: flex; }
-dialog.panel.full { height: 92vh; max-height: 92vh; }
+/* dvh: in a phone's browser vh is the height without its address bar and toolbar, so a panel that tall went up under
+   the address bar with its Close button (vh stays as the fallback) */
+dialog.panel.full { height: 92vh; max-height: 92vh; height: 92dvh; max-height: 92dvh; }
 dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
-@media (min-width: 700px) { dialog.panel { margin: auto; border-radius: 16px; max-height: 80vh; } dialog.panel.full { height: 80vh; } }
+@media (min-width: 700px) { dialog.panel { margin: auto; border-radius: 16px; max-height: 80vh; max-height: 80dvh; } dialog.panel.full { height: 80vh; height: 80dvh; } }
 .panel-head { display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); }
 .panel-head h3 { flex: 1; font-family: var(--font-display); font-size: 1.1rem; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .panel-body { padding: 12px 16px; overflow: auto; display: grid; gap: 10px; align-content: start; flex: 1; }
@@ -661,6 +663,11 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
 [data-look="colorful"] .abi .k { color: var(--panel-ink); font-size: 1.15rem; }
 [data-look="colorful"] .abi .mod { display: grid; place-items: center; width: 2.1em; height: 2.1em; border-radius: 50%; background: #fff; color: #141114; font-size: 1.6rem; }
 [data-look="colorful"] .abi input { border: 0; border-radius: 2px; background: #fff; color: #141114; }
+/* the save bonus on the black panel: white, on a lighter pill, so it reads like the modifier above it (in the grey
+   label colour on a faint pill it looked murky) */
+[data-look="colorful"] .abi .save button.roll { color: var(--panel-ink); background: rgb(255 255 255 / 0.16); box-shadow: inset 0 -2px 0 var(--sheet-on-dark); }
+[data-look="colorful"] .abi .save button.roll:active { background: rgb(255 255 255 / 0.3); }
+[data-look="colorful"] .abi .save button.roll:disabled { background: none; box-shadow: none; }
 /* skill bars: darker toward the right, alternate rows lighter; with two columns the rows pair up */
 [data-look="colorful"] .skill { border-bottom: 0; padding-inline: 2px 6px; background: linear-gradient(90deg, var(--row-b), color-mix(in srgb, var(--row-a) 45%, var(--row-b))); }
 [data-look="colorful"] .skill:nth-child(odd) { background: linear-gradient(90deg, var(--row-b), var(--row-a)); }

@@ -386,20 +386,27 @@
     }
     return picks;
   }
-  // glossary: MPMB's Glossary option, kept as the list has it unless changed
-  async function makeSpellList(picks, glossary) {
+  // glossary: MPMB's Glossary option, kept as the list has it unless changed; done: the toast (the list stays where
+  // the user is, rather than jumping to it)
+  async function makeSpellList(picks, glossary, done) {
     if (glossary === undefined) glossary = !!(state.sheet && state.sheet.glossary);
     const res = await send('chooseSpells', { picks: picks || {}, glossary });
     if (!res) return;
     state.sheet = res.sheet;
     renderSpellList();
     if (res.errors && res.errors.length) await showNotice(res.alerts.concat(res.errors.map((m) => ({ title: 'Script error', msg: m }))), 'MPMB reported a problem');
-    else toast('Spell list ready: ' + res.sheet.rows.length + ' spells.');
+    else toast(done || 'Spell list ready: ' + res.sheet.rows.length + ' spells.');
     refreshSpells(true);
-    goTo('spell-list-card', 'spells');
+    if (!done) goTo('spell-list-card', 'spells');
+  }
+  // after a class or level change: MPMB leaves the spell list as it was (as in Acrobat, where you generate it again),
+  // so the app makes it again with the same choices, for the new level's spells, slots and cantrip damage
+  async function updateSpellList() {
+    if (!(state.sheet && state.sheet.pages)) return;
+    await makeSpellList(showPrepared({}), undefined, 'Spell list updated for the new classes and levels.');
   }
 
   Object.assign(U, {
-    spellsSoon, renderCasters, renderSpellList, refreshSpells, wireSpells, showSpells
+    spellsSoon, renderCasters, renderSpellList, refreshSpells, wireSpells, showSpells, updateSpellList
   });
 })();

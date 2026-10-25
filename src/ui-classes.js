@@ -62,6 +62,7 @@
     if (!res) return;
     if (res.errors.length) await showNotice(res.alerts.concat(res.errors.map((m) => ({ title: 'Script error', msg: m }))), 'MPMB reported a problem');
     else toast(rows.length ? 'Class set: ' + rows.map((r) => r.cls + (r.sub ? ' (' + r.sub + ')' : '') + ' ' + r.level).join(', ') : 'Classes removed.');
+    await U.updateSpellList();
   }
 
   // ---------------------------------------------------------------- ability scores: MPMB's Ability Scores dialog
