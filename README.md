@@ -1,6 +1,6 @@
 # Quillbound Sheets
 
-A phone-first app for **[MPMB’s Character Record Sheet](https://www.flapkan.com/)**, the automated D&D 5e character sheet PDF by MorePurpleMoreBetter. Open your sheet's PDF and play or build your character on a phone or tablet. All the rules and automation come from the sheet's own scripts inside your PDF, run in a stand-in for Adobe Acrobat. Not made by MorePurpleMoreBetter (MPMB).
+A phone-first app for **[MPMB’s Character Record Sheet](https://www.flapkan.com/)**, the automated D&D 5e character sheet PDF by MorePurpleMoreBetter. Import your sheet's PDF and play or build your character on a phone or tablet. All the rules and automation come from the sheet's own scripts inside your PDF, run in a stand-in for Adobe Acrobat. Not made by MorePurpleMoreBetter (MPMB).
 
 **Open the app: https://quillbound-sheets.pages.dev/**
 
