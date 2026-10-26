@@ -91,6 +91,7 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .brand { display: grid; gap: 6px; }
 .brand h1 { font-family: var(--font-display); font-size: 2.1rem; font-weight: 700; color: var(--accent); line-height: 1.05; }
 .brand p { margin: 0; color: var(--muted); }
+.start-notice { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--surface); }
 .start-sec { display: grid; gap: 8px; }
 .start-sec h2 { font-size: 1rem; }
 .start-sec ul { padding-left: 1.2em; display: grid; gap: 6px; }
@@ -799,6 +800,7 @@ window.MPMBTheme = (() => {
       <h1>Quillbound Sheets</h1>
       <p>Play and build your character on your phone or tablet, with <a href="https://www.flapkan.com/" target="_blank" rel="noopener noreferrer">MPMB’s Character Record Sheet</a> and its own automation.</p>
     </div>
+    <p class="start-notice">Quillbound Sheets is made by coolkvoor. It has no affiliation with MorePurpleMoreBetter (MPMB): MPMB did not make, endorse or support it.</p>
     <div id="start-actions" class="stack">
       <label class="btn primary file-btn" for="file">Open your sheet (PDF)<input id="file" type="file" accept="application/pdf,.pdf"></label>
       <button class="btn" id="reopen" type="button" hidden></button>
@@ -827,7 +829,6 @@ window.MPMBTheme = (() => {
     </section>
     <section class="start-sec">
       <h2>About this app</h2>
-      <p class="note">Quillbound Sheets is made by coolkvoor. It is not affiliated with MorePurpleMoreBetter (MPMB), and MPMB has not made or endorsed it.</p>
       <p class="note">This app is vibe-coded: it was written with an AI coding assistant (Claude), directed and tested by coolkvoor. The <a href="https://github.com/coolkvoor/Quillbound-sheets" target="_blank" rel="noopener noreferrer">source code</a> is free to read and share.</p>
       <p class="note">Version 0.1 test build.</p>
     </section>
