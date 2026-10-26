@@ -91,6 +91,9 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .brand { display: grid; gap: 6px; }
 .brand h1 { font-family: var(--font-display); font-size: 2.1rem; font-weight: 700; color: var(--accent); line-height: 1.05; }
 .brand p { margin: 0; color: var(--muted); }
+.start-sec { display: grid; gap: 8px; }
+.start-sec h2 { font-size: 1rem; }
+.start-sec ul { padding-left: 1.2em; display: grid; gap: 6px; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--btn); color: var(--btn-ink); cursor: pointer; text-align: center; }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 .btn:active { transform: translateY(1px); }
@@ -806,8 +809,27 @@ window.MPMBTheme = (() => {
       <p class="note" id="loading-sub"></p>
     </div>
     <p class="alert" id="start-error" hidden></p>
-    <p class="note">Works with the 2024 (5.5e) and 2014 (5e) versions of <a href="https://www.flapkan.com/" target="_blank" rel="noopener noreferrer">MPMB’s Character Record Sheet</a>, Colorful and Printer Friendly, including books you imported in Acrobat. Your file stays on this device.</p>
-    <p class="note">Version 0.1 test build. Your character and add-on content are saved on this device as you go; Download PDF (Sheet tab) writes the character into your sheet for Acrobat. The sheet's dialogs and questions are shown to you, as in Acrobat. Quillbound Sheets works with MPMB’s Character Record Sheet; it isn't made by MorePurpleMoreBetter (MPMB).</p>
+    <section class="start-sec">
+      <h2>What happens to your PDF</h2>
+      <ul class="note">
+        <li><b>It stays on your device.</b> Nothing is uploaded: the app runs in this browser.</li>
+        <li><b>Your file isn't changed.</b> The app works on a copy of it.</li>
+        <li><b>Your character is saved in this browser</b> as you go, with any add-on content. Clearing this site's data in the browser deletes it.</li>
+        <li><b>To get your character out, use Download PDF</b> (Sheet tab). It makes a new PDF of your sheet with your character in it, which opens in Adobe Acrobat as usual.</li>
+        <li><b>Keep your original PDF</b>, and download a copy of your character now and then (Settings → Backups can do this for you).</li>
+      </ul>
+    </section>
+    <section class="start-sec">
+      <h2>The sheet</h2>
+      <p class="note"><a href="https://www.flapkan.com/" target="_blank" rel="noopener noreferrer">MPMB’s Character Record Sheet</a> is a fully automated D&amp;D 5e character sheet PDF by MorePurpleMoreBetter. As you pick your species, class, feats, spells and gear, it fills in the rest; this app runs that automation from your own PDF.</p>
+      <p class="note">Works with the 2024 (5.5e) and 2014 (5e) versions, Colorful and Printer Friendly, including books you imported in Acrobat. Get the latest version from <a href="https://www.flapkan.com/" target="_blank" rel="noopener noreferrer">flapkan.com</a>: old copies from file-sharing sites may not work well. You can support MPMB on <a href="https://www.patreon.com/morepurplemorebetter" target="_blank" rel="noopener noreferrer">Patreon</a>.</p>
+    </section>
+    <section class="start-sec">
+      <h2>About this app</h2>
+      <p class="note">Quillbound Sheets is made by coolkvoor. It is not affiliated with MorePurpleMoreBetter (MPMB), and MPMB has not made or endorsed it.</p>
+      <p class="note">This app is vibe-coded: it was written with an AI coding assistant (Claude), directed and tested by coolkvoor. The <a href="https://github.com/coolkvoor/Quillbound-sheets" target="_blank" rel="noopener noreferrer">source code</a> is free to read and share.</p>
+      <p class="note">Version 0.1 test build.</p>
+    </section>
   </div>
 </div>
 
