@@ -721,6 +721,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
 .pic.one { grid-column: 1 / -1; max-width: 22rem; justify-self: center; width: 100%; }
 /* the look picker (Sheet tab) */
 .looks { display: grid; gap: 6px; }
+.look-colour { display: grid; gap: 4px; margin-top: 10px; justify-items: start; }
 .look-opt { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 0 12px; align-items: center; min-height: 52px; padding: 4px 0; cursor: pointer; }
 .look-opt input { width: 22px; height: 22px; margin: 0 0 0 2px; accent-color: var(--accent); }
 .look-opt .hint { grid-column: 3; }
@@ -1283,8 +1284,9 @@ window.MPMBTheme = (() => {
   <div class="panel-body settings-body">
     <div class="card" id="look">
       <h3>Look</h3>
-      <p class="note">The app's look, after the two designs of MPMB’s Character Record Sheet. Colorful takes the sheet's colour (Sheet → Pages → Change → Color Theme options). Kept on this device.</p>
+      <p class="note">The app's look, after the two designs of MPMB’s Character Record Sheet. Colorful takes the sheet's colour. Kept on this device.</p>
       <div class="looks" role="radiogroup" aria-label="Look" id="look-list"></div>
+      <div class="look-colour"><button class="btn" type="button" data-mpmb="Colors Button" data-title="The sheet's colours">Change the sheet's colours</button><span class="hint">The sheet's own colour menu. It changes the colours in your PDF too, and the Colorful looks follow.</span></div>
     </div>
     <div class="card" id="dialog-mode">
       <h3>The sheet's dialogs</h3>
