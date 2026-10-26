@@ -215,12 +215,17 @@
       if (i !== d.front || n[2] < 0.3) continue;
       const label = d.frontLabel !== undefined ? String(d.frontLabel) : labelOf(d.sides, i);
       if (!label) continue;
-      const c = pt(fc.c), size = px * g.label * Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.85 : 1);
+      // the font at one size per die, scaled as the face turns: a new font size every frame made the browser
+      // re-read the font and redraw its letters each time
+      const c = pt(fc.c), base = Math.round(px * g.label), k = Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.85 : 1);
+      ctx.save();
       ctx.globalAlpha = Math.min(1, (n[2] - 0.3) / 0.4);
       ctx.fillStyle = tone.ink;
-      ctx.font = '800 ' + size.toFixed(1) + 'px ' + pal.font;
-      ctx.fillText(label, c[0], c[1] + size * 0.04);
-      ctx.globalAlpha = 1;
+      ctx.font = '800 ' + base + 'px ' + pal.font;
+      ctx.translate(c[0], c[1] + base * k * 0.04);
+      ctx.scale(k, k);
+      ctx.fillText(label, 0, 0);
+      ctx.restore();
     }
   }
   // a d100 is two d10s, as at the table: the tens (00–90) behind, the ones (0–9) in front. d.pair holds the two, and
@@ -329,12 +334,16 @@
     if (!dlg.open) { dlg.showModal(); paintPads(); }
   }
   // roll and show it: the dice are thrown in from below the screen, bounce across it spinning, and land in the tray on
-  // their results (half a second), then the total pops up. They fly on a layer over the whole screen (.dice-fly); each
-  // die's own canvas in the tray shows once it has landed. Dice kept from the last roll (advantage) lie still.
+  // their results (half a second), then the total pops up. Each flying die is its own small canvas on a layer over the
+  // whole screen (.dice-fly), moved with a transform, so a frame redraws only the dice (a canvas the size of the screen
+  // made every frame slow on a tablet); its canvas in the tray shows once it has landed. Dice kept from the last roll
+  // (advantage) lie still.
   const FLY_MS = 500;
+  // a flying die's canvas, in sizes of the die: room for it lifted and enlarged, and for its shadow below
+  const SPRITE_W = 2, SPRITE_H = 2.6, SPRITE_X = 1, SPRITE_Y = 1.9;
   function flyLayer() {
     let c = $('#dice .dice-fly');
-    if (!c) { c = el('canvas', { cls: 'dice-fly', 'aria-hidden': 'true' }); $('#dice').append(c); }
+    if (!c) { c = el('div', { cls: 'dice-fly', 'aria-hidden': 'true' }); $('#dice').append(c); }
     return c;
   }
   const bezier = (a, b, c, d, u) => [0, 1].map((k) => (1 - u) ** 3 * a[k] + 3 * (1 - u) ** 2 * u * b[k] + 3 * (1 - u) * u * u * c[k] + u ** 3 * d[k]);
@@ -371,10 +380,11 @@
     });
     $('#dice-what').textContent = (spec.what || r.expr) + (r.spec.mode !== 'normal' ? ' · ' + MODE_NAME[r.spec.mode] : '');
     const total = $('#dice-total'), sum = $('#dice-sum'), nt = $('#dice-note');
-    const fly = flyLayer(), ctx = fly.getContext('2d');
+    const fly = flyLayer();
+    fly.textContent = '';
     const settle = () => {
       area.style.minHeight = '';
-      ctx.clearRect(0, 0, fly.width, fly.height);
+      fly.textContent = '';
       for (const x of dice) { x.cv.style.visibility = ''; paint(x.cv, x.d, x.end, pal); }
       total.textContent = String(r.total);
       total.classList.remove('pop'); void total.offsetWidth; total.classList.add('pop');
@@ -387,7 +397,7 @@
     if (!moving.length) { settle(); return; }
     total.textContent = ''; sum.textContent = ''; nt.textContent = '';
     const W = window.innerWidth, H = window.innerHeight, dpr = Math.min(3, window.devicePixelRatio || 1);
-    fly.width = Math.round(W * dpr); fly.height = Math.round(H * dpr);
+    const sw = Math.round(size * SPRITE_W * dpr), sh = Math.round(size * SPRITE_H * dpr);
     // each die: from below the screen, through two random points anywhere on it, to its place in the tray
     for (const x of moving) {
       const b = x.cv.getBoundingClientRect();
@@ -395,23 +405,33 @@
       x.from = [random() * W, H + size];
       x.p1 = [random() * W, H * (0.15 + 0.6 * random())];
       x.p2 = [random() * W, H * (0.1 + 0.5 * random())];
+      x.sprite = el('canvas', {});
+      x.sprite.width = sw; x.sprite.height = sh;
+      x.sprite.style.width = size * SPRITE_W + 'px'; x.sprite.style.height = size * SPRITE_H + 'px';
+      x.sprite.style.visibility = 'hidden';
+      x.ctx = x.sprite.getContext('2d');
+      x.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      fly.append(x.sprite);
     }
+    const ox = size * SPRITE_X, oy = size * SPRITE_Y;
     const t0 = performance.now(), last = Math.max(...moving.map((x) => x.delay)) + FLY_MS;
     const step = (now) => {
       const at = now - t0;
       if (at >= last) { settle(); return; }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, W, H);
       for (const x of moving) {
         const t = (at - x.delay) / FLY_MS;
-        if (t <= 0) continue;
-        if (t >= 1) { if (x.cv.style.visibility) { x.cv.style.visibility = ''; paint(x.cv, x.d, x.end, pal); } continue; }
+        if (t <= 0 || x.landed) continue;
+        if (t >= 1) { x.landed = true; x.sprite.style.visibility = 'hidden'; x.cv.style.visibility = ''; paint(x.cv, x.d, x.end, pal); continue; }
         const u = 1 - (1 - t) ** 2, pos = bezier(x.from, x.p1, x.p2, x.to, u);
         // bounces that die down as it slows; higher = larger and further from its shadow
         const hop = Math.abs(Math.sin(u * Math.PI * 3)) * (1 - u) ** 1.5;
-        shadow(ctx, pos[0], pos[1], size, hop);
+        const ctx = x.ctx;
+        ctx.clearRect(0, 0, size * SPRITE_W, size * SPRITE_H);
+        shadow(ctx, ox, oy, size, hop);
         const a = x.turns * (1 - easeOut(t));
-        drawAny(ctx, pos[0], pos[1] - hop * size * 0.9, size * (1 + 0.45 * hop), x.d, x.d.pair ? [mul(x.end[0], turn(x.axis2, a)), mul(x.end[1], turn(x.axis, a))] : mul(x.end, turn(x.axis, a)), pal);
+        drawAny(ctx, ox, oy - hop * size * 0.9, size * (1 + 0.45 * hop), x.d, x.d.pair ? [mul(x.end[0], turn(x.axis2, a)), mul(x.end[1], turn(x.axis, a))] : mul(x.end, turn(x.axis, a)), pal);
+        x.sprite.style.transform = 'translate3d(' + (pos[0] - ox).toFixed(1) + 'px,' + (pos[1] - oy).toFixed(1) + 'px,0)';
+        x.sprite.style.visibility = '';
       }
       frame = requestAnimationFrame(step);
     };
@@ -569,7 +589,7 @@
     $('#dice-open').innerHTML = ICON.replace('<svg ', '<svg width="22" height="22" ');
     $('#dice-open').addEventListener('click', open);
     $('#dice-close').addEventListener('click', () => dlg.close());
-    dlg.addEventListener('close', () => { cancelAnimationFrame(frame); const f = $('#dice .dice-fly'); if (f) f.getContext('2d').clearRect(0, 0, f.width, f.height); });
+    dlg.addEventListener('close', () => { cancelAnimationFrame(frame); const f = $('#dice .dice-fly'); if (f) f.textContent = ''; });
     buildPads();
     $('#dice-expr').addEventListener('input', padCounts);
     $('#dice-expr').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); $('#dice-roll').click(); } });
