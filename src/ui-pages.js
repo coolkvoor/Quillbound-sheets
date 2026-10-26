@@ -46,7 +46,7 @@
     grid.append(card(el('h3', {}, [el('span', { 'data-compname': P, text: 'Companion' }), opts]), [
       cInput(P + 'Comp.Desc.Name', 'Name'),
       el('label', { cls: 'f' }, [el('span', { text: 'Creature' }), el('input', { cls: 'in', 'data-f': P + 'Comp.Race', id: fid(P + 'Comp.Race'), list: 'dl-' + fid(P + 'race'), autocomplete: 'off', placeholder: 'Pick or type a creature' }), el('datalist', { id: 'dl-' + fid(P + 'race'), 'data-items': P + 'Comp.Race' })]),
-      el('p', { cls: 'hint', text: 'MPMB fills in the page from the creature you pick. Options has familiars (Find Familiar, Pact of the Chain), the sections shown, and adding or removing companion pages.' }),
+      el('p', { cls: 'hint', text: 'The sheet fills in the page from the creature you pick. Options has familiars (Find Familiar, Pact of the Chain), the sections shown, and adding or removing companion pages.' }),
       el('div', { cls: 'row' }, [
         el('label', { cls: 'f' }, [el('span', { text: 'Kind' }), cSelect(P + 'Comp.Type', 'Kind of companion')]),
         el('label', { cls: 'f' }, [el('span', { text: 'Size' }), cSelect(P + 'Comp.Desc.Size', 'Size')]),
@@ -159,7 +159,7 @@
     const B = P + 'BlueText.Comp.Use.';
     const mgroup = (title, items) => el('div', { cls: 'mods-group' }, [el('span', { cls: 'lbl', text: title }), el('div', { cls: 'mods-grid' }, items.map(([f, l]) => modInput(f, l)))]);
     grid.append(card('Modifiers', [
-      el('p', { cls: 'hint', text: 'MPMB adds these to its own calculations for the companion. Type a number, or an ability such as Wis.' }),
+      el('p', { cls: 'hint', text: 'The sheet adds these to its own calculations for the companion. Type a number, or an ability such as Wis.' }),
       el('span', { cls: 'tg' }, [el('button', { cls: 'dot sm', type: 'button', 'data-toggle': B + 'Proficiency Bonus Dice', 'aria-pressed': 'false', 'aria-label': 'Proficiency dice' }), el('span', { text: 'Proficiency dice' })]),
       mgroup('General', [[B + 'Skills.All.Bonus', 'All skills'], [B + 'Ability.All.ST.Bonus', 'All saves'], [B + 'Skills.Perc.Pass.Bonus', 'Passive Perc.']]),
       mgroup('Saving throws', ABILITIES.map(([k, long]) => [B + 'Ability.' + k + '.ST.Bonus', long])),
@@ -235,7 +235,7 @@
     const grid = el('div', { cls: 'grid' });
     const I = P + 'Wildshapes.Info.';
     grid.append(card(el('h3', {}, [el('span', { text: 'Wild Shape' }), el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Wildshapes.Settings', 'data-title': 'Wild Shapes', 'data-pages': '1' }, [document.createTextNode('Options')])]), [
-      el('p', { cls: 'hint', text: 'Options → Add Wild Shape lists the beasts this character can take; MPMB works out each shape with your own proficiencies. It also removes shapes, recalculates them (after a level up) and adds or removes Wild Shapes pages.' }),
+      el('p', { cls: 'hint', text: 'Options → Add Wild Shape lists the beasts this character can take; the sheet works out each shape with your own proficiencies. It also removes shapes, recalculates them (after a level up) and adds or removes Wild Shapes pages.' }),
       // 2024 sheets: known forms and temp HP; 2014 sheets: uses (the one the sheet doesn't have is left out)
       el('div', { cls: 'row' }, [cInput(I + 'KnownForms', 'Known forms'), cInput(I + 'TempHP', 'Temp HP', { inputmode: 'numeric', cls: 'in num' }), cInput(I + 'Uses', 'Uses')]),
       cInput(I + 'Limitations', 'Limitations'),
@@ -292,7 +292,7 @@
         ]));
       }
       body.append(el('details', { cls: 'more' }, [el('summary', {}, [document.createTextNode('Skills '), el('span', { cls: 'muted', 'data-wsskills': W })]),
-        el('p', { cls: 'hint', text: 'MPMB works these out when the shape is added. A dot marks proficiency (tap again for expertise, a third time to clear; Printer Friendly sheets have a second dot for expertise) but, as on the PDF, doesn’t change the number: type it in.' }), skills]));
+        el('p', { cls: 'hint', text: 'The sheet works these out when the shape is added. A dot marks proficiency (tap again for expertise, a third time to clear; Printer Friendly sheets have a second dot for expertise) but, as on the PDF, doesn’t change the number: type it in.' }), skills]));
       // attacks as MPMB worked them out, editable underneath
       for (let a = 1; a <= rows('wsAttacks', WS_ATTACKS); a++) {
         const p = W + 'Attack.' + a + '.';

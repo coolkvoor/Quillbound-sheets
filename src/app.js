@@ -119,7 +119,7 @@
   function friendlyError(e) {
     const m = String(e && e.message || e);
     if (/EVAL_BLOCKED/.test(m)) return 'This viewer doesn’t allow the sheet’s scripts to run, so the app can’t start here. Tell Claude: EVAL_BLOCKED.';
-    if (/NOT_MPMB/.test(m)) return 'This PDF doesn’t look like an MPMB character sheet. Pick an MPMB character sheet PDF (2024 or 2014).';
+    if (/NOT_MPMB/.test(m)) return 'This PDF doesn’t look like MPMB’s Character Record Sheet. Pick a 2024 or 2014 version of that sheet.';
     if (/FILE_PAGE/.test(m)) return 'Chrome doesn’t let this app run when it’s opened straight from a file on your computer. Open it from its web link, or through the local test server.';
     if (/WORKER_FAILED/.test(m)) return 'The sheet engine couldn’t start in this browser (' + m.replace('WORKER_FAILED: ', '') + '). Try Chrome, or tell Claude what you see.';
     if (/Failed to parse|Invalid PDF|No PDF header/i.test(m)) return 'This file couldn’t be read as a PDF.';
@@ -208,7 +208,7 @@
     if (w) w.terminate();
     state.busy = 0; setBusy(0);
     for (const d of $$('dialog[open]')) d.close();
-    toast('MPMB stopped responding. Reopening your character…');
+    toast('The sheet stopped responding. Reopening your character…');
     try {
       await openSheet(state.bytes.slice(0), state.fileName, false);
       await refreshPages();
@@ -1043,7 +1043,7 @@
         if (w !== state.worker) w.terminate();
         w = next;
       }
-      throw new Error('MPMB kept asking: more than 12 dialogs in one change');
+      throw new Error('The sheet kept asking: more than 12 dialogs in one change');
     } finally { state.changing = false; mpmbDialog.idle(); }
   }
   async function send(op, args) {
@@ -1230,7 +1230,7 @@
   }
   function showNotice(alerts, title) {
     const dlg = $('#notice');
-    $('#notice-title').textContent = title || (alerts[0] && alerts[0].title) || 'MPMB';
+    $('#notice-title').textContent = title || (alerts[0] && alerts[0].title) || 'The sheet';
     const body = $('#notice-body');
     body.textContent = '';
     for (const a of alerts) {
@@ -1241,7 +1241,7 @@
   }
   function askYesNo(q) {
     const dlg = $('#ask');
-    $('#ask-title').textContent = q.title || 'MPMB asks';
+    $('#ask-title').textContent = q.title || 'The sheet asks';
     $('#ask-msg').textContent = String(q.msg || '').trim();
     // the buttons answer straight away; the close event (Esc, back) only counts as No. Chrome can deliver a close event
     // late (a page in the background), and it mustn't answer the next question.
@@ -1359,18 +1359,18 @@
   const fmtS =(ms) => (ms >= 1000 ? (ms / 1000).toFixed(1) + ' s' : ms + ' ms');
   function renderFacts() {
     const i = state.info, s = state.stats;
-    $('#sheet-ver').textContent = 'MPMB v' + i.version + ' · ' + i.type;
-    $('#sheet-file').textContent = state.fileName + ' (' + (s.bytes / 1048576).toFixed(1) + ' MB), MPMB v' + i.version + ', ' + i.type + '. App and sheet details are under Settings (⚙ at the top).';
+    $('#sheet-ver').textContent = 'Sheet v' + i.version + ' · ' + i.type;
+    $('#sheet-file').textContent = state.fileName + ' (' + (s.bytes / 1048576).toFixed(1) + ' MB), sheet v' + i.version + ', ' + i.type + '. App and sheet details are under Settings (⚙ at the top).';
     const dl = $('#sheet-facts');
     dl.textContent = '';
     const add = (k, v) => { dl.append(el('dt', { text: k }), el('dd', { text: v })); };
     add('App', APP_BUILD);
-    add('Dialogs', state.worker && state.worker.asks ? 'Shown to you; MPMB waits for your answer' : 'Shown to you; MPMB makes the change again with your answer (restart and replay' + (isolated() ? ', chosen under MPMB’s dialogs' : '') + ')');
+    add('Dialogs', state.worker && state.worker.asks ? 'Shown to you; the sheet waits for your answer' : 'Shown to you; the sheet makes the change again with your answer (restart and replay' + (isolated() ? ', chosen under The sheet’s dialogs' : '') + ')');
     add('Installed', standalone() ? 'Yes, running as the app' : navigator.serviceWorker && navigator.serviceWorker.controller ? 'No, but kept for offline use' : 'No');
     add('File', state.fileName + ' (' + (s.bytes / 1048576).toFixed(1) + ' MB)');
-    add('Sheet', 'MPMB v' + i.version + ', ' + i.type);
+    add('Sheet', 'MPMB’s Character Record Sheet v' + i.version + ', ' + i.type);
     add('Contents', s.pages + ' pages, ' + s.templates + ' extra page templates, ' + s.fields.toLocaleString('en') + ' fields, ' + s.scripts + ' scripts');
-    add('Opening', fmtS(s.openMs) + ' (reading the PDF ' + fmtS(s.loadMs) + ', starting MPMB ' + fmtS(s.startMs) + ')');
+    add('Opening', fmtS(s.openMs) + ' (reading the PDF ' + fmtS(s.loadMs) + ', starting the sheet ' + fmtS(s.startMs) + ')');
     add('Screen', window.innerWidth + ' × ' + window.innerHeight + ' at ' + Math.round((window.devicePixelRatio || 1) * 100) / 100 + '×');
   }
   // Settings → Credits and licences: the open sheet's own SRD statement (MPMB's licenseSRD) in place of the general

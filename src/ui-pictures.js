@@ -118,7 +118,7 @@
       input.value = '';
       input.onchange = () => finish(input.files && input.files[0]);
       $('#picpick-cancel').onclick = () => finish(null);
-      $('#picpick-note').textContent = 'MPMB asks for a picture for ' + label + '. Any image works; it goes into the PDF with your character.';
+      $('#picpick-note').textContent = 'The sheet asks for a picture for ' + label + '. Any image works; it goes into the PDF with your character.';
       const active = navigator.userActivation ? navigator.userActivation.isActive : false;
       if (active) {
         // a picker closed without a file doesn't always send an event: coming back to the page without one is a cancel

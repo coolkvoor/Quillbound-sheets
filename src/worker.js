@@ -127,7 +127,7 @@ const ops = {
     mustBeMpmb(model);
     // the sheet as read, before MPMB changes anything: what a fresh copy starts from (replay, see run)
     modelJSON = JSON.stringify(model);
-    progress(state ? 'Starting MPMB’s scripts with your character' : saved ? 'Starting MPMB’s scripts and your add-on content' : 'Starting MPMB’s scripts');
+    progress(state ? 'Starting the sheet’s scripts with your character' : saved ? 'Starting the sheet’s scripts and your add-on content' : 'Starting the sheet’s scripts');
     const { restoredChar, startMs, restored } = startEngine(model, fileName, saved, state);
     // the sheet's own SRD attribution (MPMB's FAQ menu shows it): SRD 5.2.1 on 2024 sheets, SRD 5.1 on 2014 ones
     let srd = '';
