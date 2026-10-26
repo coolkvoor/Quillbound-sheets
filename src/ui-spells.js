@@ -41,7 +41,7 @@
     const show = needed && !state.hideSpells;
     $('#spells').hidden = !show;
     $('#tab-spells').hidden = !show;
-    $('#spells-why').textContent = !needed ? 'Hidden: this character has no spells. It shows once MPMB gives them some.' : state.hideSpells ? 'Hidden by you.' : '';
+    $('#spells-why').textContent = !needed ? 'Hidden: this character has no spells. It shows once the sheet gives them some.' : state.hideSpells ? 'Hidden by you.' : '';
     const b = $('#spells-toggle');
     b.hidden = !needed;
     b.textContent = state.hideSpells ? 'Show' : 'Hide';
@@ -91,7 +91,7 @@
     const rows = (s && s.rows) || [];
     $('#spell-actions').hidden = !(s && s.pages);
     $('#spell-count').textContent = rows.length ? rows.length + (rows.length === 1 ? ' spell' : ' spells') : 'None yet';
-    if (!rows.length) { box.append(el('p', { cls: 'note', text: s && s.pages ? 'The spell list is empty.' : 'Tap Choose spells: the spells you prepare (and your cantrips) show here, with MPMB’s details.' })); return; }
+    if (!rows.length) { box.append(el('p', { cls: 'note', text: s && s.pages ? 'The spell list is empty.' : 'Tap Choose spells: the spells you prepare (and your cantrips) show here, with the sheet’s details.' })); return; }
     const heads = s.casters;
     const casterOrder = [];
     for (const r of rows) if (casterOrder.indexOf(r.caster) === -1) casterOrder.push(r.caster);
@@ -255,7 +255,7 @@
       const label = lv === 'all' ? 'Any level' : lv === 0 ? 'Cantrips' : LEVEL_NAMES[lv].replace(' level', '');
       chips.append(el('button', { type: 'button', 'data-level': String(lv), 'aria-pressed': picker.level === lv ? 'true' : 'false', text: label }));
     }
-    const notes = { book: 'Add spells to your spellbook, then prepare the ones you want today.', list: 'Prepare the spells you want today from your class list.', known: 'Choose the spells you know.', bonus: 'Choose the spells this gives you.', none: 'There is nothing to choose here: MPMB adds these spells itself.' };
+    const notes = { book: 'Add spells to your spellbook, then prepare the ones you want today.', list: 'Prepare the spells you want today from your class list.', known: 'Choose the spells you know.', bonus: 'Choose the spells this gives you.', none: 'There is nothing to choose here: the sheet adds these spells itself.' };
     $('#picker-note').textContent = notes[kind] + (c.maxLevel ? ' You can cast spells up to ' + LEVEL_NAMES[c.maxLevel].toLowerCase() + '.' : '');
     const q = picker.search.trim().toLowerCase();
     const info = state.spellOpts.spells;
@@ -394,7 +394,7 @@
     if (!res) return;
     state.sheet = res.sheet;
     renderSpellList();
-    if (res.errors && res.errors.length) await showNotice(res.alerts.concat(res.errors.map((m) => ({ title: 'Script error', msg: m }))), 'MPMB reported a problem');
+    if (res.errors && res.errors.length) await showNotice(res.alerts.concat(res.errors.map((m) => ({ title: 'Script error', msg: m }))), 'The sheet reported a problem');
     else toast(done || 'Spell list ready: ' + res.sheet.rows.length + ' spells.');
     refreshSpells(true);
     if (!done) goTo('spell-list-card', 'spells');

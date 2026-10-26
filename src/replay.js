@@ -34,7 +34,7 @@
         if (failed) throw failed;
         return { engine: eng, result, answers, restarts: round, restartMs, ms: Date.now() - t0 };
       }
-      if (round === MAX_ROUNDS) throw new Error('MPMB kept asking: more than ' + MAX_ROUNDS + ' dialogs in one change');
+      if (round === MAX_ROUNDS) throw new Error('The sheet kept asking: more than ' + MAX_ROUNDS + ' dialogs in one change');
       if (s.kind === 'question') {
         const r = await host.user({ kind: 'question', title: s.title, msg: s.msg, type: s.type });
         answers.push({ kind: 'question', yes: !!(r && r.yes), cancel: !!(r && r.cancel) });

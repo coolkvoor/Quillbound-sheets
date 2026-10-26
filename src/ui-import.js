@@ -56,11 +56,11 @@
       state.modelJSON = toJSON;
       const now = await state.worker.call('exportState', {});
       const src = await realmSource();
-      say('Opening ' + file.name + ' with MPMB’s scripts…');
+      say('Opening ' + file.name + ' with the sheet’s scripts…');
       await pause();
       const from = makeRealm(src); frames.push(from.frame);
       startIn(from, fromJSON, { fileName: file.name });
-      say('Importing into this sheet (MPMB’s Direct Import)…');
+      say('Importing into this sheet (the sheet’s Direct Import)…');
       await pause();
       const to = makeRealm(src); frames.push(to.frame);
       let opened = 0;
@@ -75,7 +75,7 @@
       const done = opened === 1 && alerts.some((a) => /Things to consider about the import/.test(a.title));
       if (!done) {
         busy.hidden = true;
-        await U.showNotice(alerts.length ? alerts : [{ title: 'Import', msg: 'MPMB didn’t import anything from ' + file.name + '.' }], 'Import from another sheet');
+        await U.showNotice(alerts.length ? alerts : [{ title: 'Import', msg: 'The sheet didn’t import anything from ' + file.name + '.' }], 'Import from another sheet');
         return;
       }
       const st = JSON.parse(JSON.stringify(e.exportState()));
@@ -91,7 +91,7 @@
     } catch (err) {
       busy.hidden = true;
       const m = String(err && err.message || err);
-      await U.showNotice([{ title: 'Import', msg: /NOT_MPMB/.test(m) ? file.name + ' doesn’t look like an MPMB character sheet.' : 'The import stopped: ' + m }], 'Import from another sheet');
+      await U.showNotice([{ title: 'Import', msg: /NOT_MPMB/.test(m) ? file.name + ' doesn’t look like MPMB’s Character Record Sheet.' : 'The import stopped: ' + m }], 'Import from another sheet');
     } finally {
       for (const f of frames) f.remove();
       U.setBusy(-1);
@@ -103,7 +103,7 @@
     $('#import-char').addEventListener('click', async () => {
       const yes = await U.askYesNo({
         title: 'Import from another sheet',
-        msg: 'MPMB opens another of its character sheets (an older version, the other design, or a copy) and goes through every field and layout setting in it to make this sheet the same. MPMB’s automation runs again, so it uses this sheet’s newer code.\n\nThe character on this sheet is replaced. Download it first if you want to keep it.\n\nPick the PDF to import from?',
+        msg: 'The sheet opens another copy of MPMB’s Character Record Sheet (an older version, the other design, or a copy) and goes through every field and layout setting in it to make this sheet the same. The sheet’s automation runs again, so it uses this sheet’s newer code.\n\nThe character on this sheet is replaced. Download it first if you want to keep it.\n\nPick the PDF to import from?',
       });
       if (yes) input.click();
     });

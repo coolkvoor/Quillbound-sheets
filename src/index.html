@@ -91,6 +91,10 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .brand { display: grid; gap: 6px; }
 .brand h1 { font-family: var(--font-display); font-size: 2.1rem; font-weight: 700; color: var(--accent); line-height: 1.05; }
 .brand p { margin: 0; color: var(--muted); }
+.start-notice { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--surface); }
+.start-sec { display: grid; gap: 8px; }
+.start-sec h2 { font-size: 1rem; }
+.start-sec ol { padding-left: 1.2em; display: grid; gap: 6px; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--btn); color: var(--btn-ink); cursor: pointer; text-align: center; }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 .btn:active { transform: translateY(1px); }
@@ -734,6 +738,7 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
 .pic.one { grid-column: 1 / -1; max-width: 22rem; justify-self: center; width: 100%; }
 /* the look picker (Sheet tab) */
 .looks { display: grid; gap: 6px; }
+.look-colour { display: grid; gap: 4px; margin-top: 10px; justify-items: start; }
 .look-opt { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 0 12px; align-items: center; min-height: 52px; padding: 4px 0; cursor: pointer; }
 .look-opt input { width: 22px; height: 22px; margin: 0 0 0 2px; accent-color: var(--accent); }
 .look-opt .hint { grid-column: 3; }
@@ -811,10 +816,11 @@ window.MPMBTheme = (() => {
   <div class="start-card">
     <div class="brand">
       <h1>Quillbound Sheets</h1>
-      <p>Play and build your character on your phone or tablet, with your MPMB character sheet and its own automation.</p>
+      <p>Play and build your character on your phone or tablet, with <a href="https://www.flapkan.com/" target="_blank" rel="noopener noreferrer">MPMB’s Character Record Sheet</a> and its own automation.</p>
     </div>
+    <p class="start-notice">Quillbound Sheets is made by coolkvoor. It has no affiliation with MorePurpleMoreBetter (MPMB): MPMB did not make, endorse or support it.</p>
     <div id="start-actions" class="stack">
-      <label class="btn primary file-btn" for="file">Open MPMB sheet (PDF)<input id="file" type="file" accept="application/pdf,.pdf"></label>
+      <label class="btn primary file-btn" for="file">Open your sheet (PDF)<input id="file" type="file" accept="application/pdf,.pdf"></label>
       <button class="btn" id="reopen" type="button" hidden></button>
     </div>
     <div id="loading" hidden>
@@ -823,8 +829,28 @@ window.MPMBTheme = (() => {
       <p class="note" id="loading-sub"></p>
     </div>
     <p class="alert" id="start-error" hidden></p>
-    <p class="note">Works with MPMB's 2024 (5.5e) and 2014 (5e) character sheets, Colorful and Printer Friendly, including books you imported in Acrobat. Your file stays on this device.</p>
-    <p class="note">Version 0.1 test build. Your character and add-on content are saved on this device as you go; Download PDF (Sheet tab) writes the character into your sheet for Acrobat. MPMB's dialogs and questions are shown to you, as in Acrobat. Quillbound Sheets works with MPMB's character sheets; it isn't made by MPMB.</p>
+    <section class="start-sec">
+      <h2>How it works</h2>
+      <ol class="note">
+        <li><b>You open your own copy of <a href="https://www.flapkan.com/" target="_blank" rel="noopener noreferrer">MPMB’s Character Record Sheet</a>.</b> The app reads the PDF here on your device; nothing is uploaded.</li>
+        <li><b>The sheet's own scripts do the work.</b> The app runs the automation built into your PDF, in a stand-in for Adobe Acrobat inside your browser. Every rule, list and calculation comes from the sheet, not from this app.</li>
+        <li><b>You see a phone-friendly layout, not the PDF's pages.</b> Each box is one of the sheet's fields, each button presses one of the sheet's buttons, and the sheet's menus and dialogs show up as panels.</li>
+        <li><b>Your character is kept in this browser as you go.</b> Your original file isn't changed. Clearing this site's data in the browser deletes the kept copy.</li>
+        <li><b>Download PDF gives you your sheet back, filled in</b> (Sheet tab): the same PDF with your character in it, as if you'd used Acrobat. It opens and keeps working in Adobe Acrobat.</li>
+        <li><b>Or let the app make backups.</b> In Settings → Backups, pick a folder: the app saves your character there as a PDF by itself while you play. Where the browser can't use a folder (such as Brave, Firefox and Safari), Backups has Save a copy and the app reminds you after a week.</li>
+        <li><b>Keep your original PDF</b> somewhere safe.</li>
+      </ol>
+    </section>
+    <section class="start-sec">
+      <h2>MPMB’s Character Record Sheet</h2>
+      <p class="note">A fully automated D&amp;D 5e character sheet PDF by MorePurpleMoreBetter. As you pick your species, class, feats, spells and gear, it fills in the rest; this app runs that automation from your own PDF.</p>
+      <p class="note">Works with the 2024 (5.5e) and 2014 (5e) versions, Colorful and Printer Friendly, including books you imported in Acrobat. Get the latest version from <a href="https://www.flapkan.com/" target="_blank" rel="noopener noreferrer">flapkan.com</a>: old copies from file-sharing sites may not work well. You can support MPMB on <a href="https://www.patreon.com/morepurplemorebetter" target="_blank" rel="noopener noreferrer">Patreon</a>.</p>
+    </section>
+    <section class="start-sec">
+      <h2>About this app</h2>
+      <p class="note">This app is coded with AI: it was written with an AI coding assistant (Claude), directed and tested by coolkvoor. The <a href="https://github.com/coolkvoor/Quillbound-sheets" target="_blank" rel="noopener noreferrer">source code</a> is free to read and share.</p>
+      <p class="note">Version 0.1 test build.</p>
+    </section>
   </div>
 </div>
 
@@ -893,7 +919,7 @@ window.MPMBTheme = (() => {
         </div>
         <div class="card span-2" id="mods-card" data-vis="Acr Bonus" hidden>
           <h3>Modifiers <button class="btn sm" type="button" data-mpmb="SkillsClick" data-title="Skill options">Options</button></h3>
-          <p class="hint">MPMB's modifier fields: extra bonuses (or penalties) it adds into its own calculations. Type a number, or an ability such as Int. To hide them again, choose "Show fields to modify skill calculations" once more (it has a tick while they show).</p>
+          <p class="hint">The sheet's modifier fields: extra bonuses (or penalties) it adds into its own calculations. Type a number, or an ability such as Int. To hide them again, choose "Show fields to modify skill calculations" once more (it has a tick while they show).</p>
           <div id="mods"></div>
         </div>
       </div>
@@ -931,7 +957,7 @@ window.MPMBTheme = (() => {
               <span class="tg"><button class="dot sm" type="button" data-toggle="Heavy Armor" aria-pressed="false" aria-label="Heavy armor"></button><span>Heavy armor (no Dex)</span></span>
               <span class="tg"><button class="dot sm" type="button" data-toggle="AC Stealth Disadvantage" aria-pressed="false" aria-label="Stealth disadvantage"></button><span>Stealth disadvantage</span></span>
             </div>
-            <p class="hint">MPMB fills these in from your armor, shield and features. "Other" and "Magic" take a number, or a formula such as Con. <span data-out="AC during Rest"></span></p>
+            <p class="hint">The sheet fills these in from your armor, shield and features. "Other" and "Magic" take a number, or a formula such as Con. <span data-out="AC during Rest"></span></p>
           </details>
           <div class="stack"><span class="lbl">Damage resistances</span><div class="plines" id="resistances"></div></div>
         </div>
@@ -1001,7 +1027,7 @@ window.MPMBTheme = (() => {
         </div>
         <div class="card span-2" id="spell-list-card">
           <h3>Your spells <span class="chip" id="spell-count">None yet</span></h3>
-          <div id="spell-list"><p class="note">Tap Choose spells: the spells you prepare (and your cantrips) show here, with MPMB's details.</p></div>
+          <div id="spell-list"><p class="note">Tap Choose spells: the spells you prepare (and your cantrips) show here, with the sheet's details.</p></div>
           <div class="row" id="spell-actions" hidden>
             <button class="btn" id="spells-update" type="button">Update spell list</button>
             <button class="btn" id="spells-remove" type="button">Remove spell list</button>
@@ -1026,7 +1052,7 @@ window.MPMBTheme = (() => {
           <h3>Class features <button class="btn sm" type="button" data-mpmb="Class Features Menu" data-title="Choose feature" hidden>Choose feature</button></h3>
           <div class="result err" id="cf-stale" hidden>
             <div>Some feature descriptions are missing. They were saved by an older version of the app, which put them in the wrong place.</div>
-            <div class="hint">Rebuilding removes your classes and adds them back, so MPMB writes the texts again. Choices made with "Choose feature" may need picking again.</div>
+            <div class="hint">Rebuilding removes your classes and adds them back, so the sheet writes the texts again. Choices made with "Choose feature" may need picking again.</div>
             <div><button class="btn sm" id="cf-rebuild" type="button">Rebuild feature texts</button></div>
           </div>
           <div class="features" data-rich="Class Features" data-features="class" data-empty="Choose a class to fill this in."></div>
@@ -1078,7 +1104,7 @@ window.MPMBTheme = (() => {
           <div class="stack"><span class="lbl">Tools</span><div class="plines" id="tools"></div></div>
           <div class="stack"><span class="lbl">Languages</span><div class="plines" id="languages"></div></div>
           <label class="f" id="more-profs" hidden><span>More proficiencies</span><textarea class="in" rows="3" data-f="MoreProficiencies" id="f-more-profs"></textarea><span class="hint">From the overflow page: languages and tools that didn't fit in the lines above.</span></label>
-          <p class="hint">MPMB fills these in from your species, class, background and feats. Type in the empty box to add one; clear a box to remove it.</p>
+          <p class="hint">The sheet fills these in from your species, class, background and feats. Type in the empty box to add one; clear a box to remove it.</p>
         </div>
         <div class="card">
           <h3>Details</h3>
@@ -1108,7 +1134,7 @@ window.MPMBTheme = (() => {
             <figure class="pic"><button class="pic-btn" type="button" data-mpmb="Portrait" data-icon="Portrait" data-title="Portrait" aria-label="Portrait: picture options" style="aspect-ratio: 174 / 220"><img alt="Portrait"></button><figcaption>Portrait</figcaption></figure>
             <figure class="pic"><button class="pic-btn" type="button" data-mpmb="Symbol" data-icon="Symbol" data-title="Symbol" aria-label="Organisation symbol: picture options" style="aspect-ratio: 174 / 152"><img alt="Organisation symbol"></button><figcaption>Organisation symbol</figcaption></figure>
           </div>
-          <p class="hint">Tap a picture for MPMB's picture menu: your own image, a faction symbol or a class icon. Pictures are saved in the PDF with your character, so Acrobat shows them too, and pictures added in Acrobat show here.</p>
+          <p class="hint">Tap a picture for the sheet's picture menu: your own image, a faction symbol or a class icon. Pictures are saved in the PDF with your character, so Acrobat shows them too, and pictures added in Acrobat show here.</p>
         </div>
       </div>
     </section>
@@ -1123,14 +1149,14 @@ window.MPMBTheme = (() => {
         </div>
         <div class="card span-2">
           <h3>Equipment <button class="btn sm" type="button" data-mpmb="Equipment.menu" data-title="Add equipment">Add gear</button></h3>
-          <p class="hint">Type an item; MPMB fills in its weight. The menu adds packs and starting gear.</p>
+          <p class="hint">Type an item; the sheet fills in its weight. The menu adds packs and starting gear.</p>
           <div id="gear-list"></div>
           <div class="stack loc-totals" data-vis="Adventuring Gear Location.SubtotalName 1" hidden><span class="lbl">Weight by location</span><div id="gear-loc"></div>
             <p class="hint">Name a location (as in the LOC column) to add up the weight carried there. The Add gear menu shows or hides the location column.</p></div>
         </div>
         <div class="card span-2">
           <h3>Extra equipment <span class="chip">page 3</span></h3>
-          <p class="hint">More room for gear, as on the sheet's third page. Weight: <b class="num" id="xgear-weight">–</b> (by default MPMB doesn't add this to the weight you carry: it counts coins and the Equipment list; What counts, under Coins and weight, changes that).</p>
+          <p class="hint">More room for gear, as on the sheet's third page. Weight: <b class="num" id="xgear-weight">–</b> (by default the sheet doesn't add this to the weight you carry: it counts coins and the Equipment list; What counts, under Coins and weight, changes that).</p>
           <div id="xgear-list"></div>
           <div class="stack loc-totals" data-vis="Extra.Gear Location.SubtotalName 1" hidden><span class="lbl">Weight by location</span><div id="xgear-loc"></div></div>
           <label class="f"><span>Other holdings</span><textarea class="in" rows="4" data-f="Extra.Other Holdings" id="f-holdings" placeholder="Property, investments, things kept elsewhere"></textarea></label>
@@ -1146,7 +1172,7 @@ window.MPMBTheme = (() => {
             <div class="stat"><span class="k">Push / lift</span><span class="v num small" data-out="Weight Push/Drag/Lift">–</span></div>
           </div>
           <label class="f mod" data-vis="Carrying Capacity Multiplier" hidden><span>Carrying capacity multiplier</span><input class="in num" data-f="Carrying Capacity Multiplier" id="f-carry-mult" autocomplete="off"></label>
-          <p class="hint">What counts: MPMB's choices for what adds to the weight you carry (armor, weapons, coins, the extra equipment page, magic items) and whether encumbrance is used.</p>
+          <p class="hint">What counts: the sheet's choices for what adds to the weight you carry (armor, weapons, coins, the extra equipment page, magic items) and whether encumbrance is used.</p>
           <div class="row">
             <label class="f"><span>Lifestyle</span><input class="in" data-f="Lifestyle" id="f-lifestyle" list="dl-life" autocomplete="off"><datalist id="dl-life" data-items="Lifestyle"></datalist></label>
             <div class="f"><span class="flabel">Cost per day</span><span data-out="Lifestyle daily cost"></span></div>
@@ -1162,7 +1188,7 @@ window.MPMBTheme = (() => {
 
     <section class="band" id="wildshape" aria-labelledby="t-wildshape" hidden>
       <h2 class="band-title" id="t-wildshape">Wild Shape</h2>
-      <p class="note" id="ws-none" hidden>MPMB gives this character Wild Shape, but your PDF has no Wild Shapes page yet. Add one: MPMB works out each beast you pick with your own proficiencies.</p>
+      <p class="note" id="ws-none" hidden>The sheet gives this character Wild Shape, but your PDF has no Wild Shapes page yet. Add one: the sheet works out each beast you pick with your own proficiencies.</p>
       <button class="btn primary" id="ws-add" type="button" hidden>Add a Wild Shapes page</button>
       <div id="ws-list"></div>
     </section>
@@ -1193,45 +1219,45 @@ window.MPMBTheme = (() => {
         </div>
         <div class="card" id="content">
           <h3>Add-on content <span class="chip" id="content-chip">SRD only</span></h3>
-          <p class="note">MPMB add-on scripts add classes, species, spells and more from books you own, or your own homebrew. They stay with this sheet on this device.</p>
+          <p class="note">Add-on scripts for the sheet add classes, species, spells and more from books you own, or your own homebrew. They stay with this sheet on this device.</p>
           <ul class="list" id="content-files"></ul>
           <div class="row">
             <label class="btn primary file-btn" for="content-file">Add content file<input id="content-file" type="file"></label>
             <button class="btn" id="paste-open" type="button" aria-expanded="false" aria-controls="paste-box">Paste a script</button>
           </div>
           <div class="stack" id="paste-box" hidden>
-            <label class="f"><span>Pasted script</span><textarea class="in code" id="paste-text" rows="8" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea><span class="hint">This replaces any script you pasted before. MPMB runs it now and every time the sheet opens.</span></label>
+            <label class="f"><span>Pasted script</span><textarea class="in code" id="paste-text" rows="8" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea><span class="hint">This replaces any script you pasted before. The sheet runs it now and every time it opens.</span></label>
             <div class="row">
               <button class="btn primary" id="paste-save" type="button">Add script to sheet</button>
               <button class="btn" id="paste-cancel" type="button">Cancel</button>
             </div>
           </div>
           <div class="result" id="content-result" role="status" aria-live="polite" hidden></div>
-          <p class="note">Get add-on scripts from the <a href="https://www.flapkan.com/mpmb/index" target="_blank" rel="noopener">MPMB community index</a>, or read <a href="https://www.flapkan.com/how-to/add-more-content" target="_blank" rel="noopener">how adding content works</a>.</p>
+          <p class="note">Get add-on scripts from the <a href="https://www.flapkan.com/mpmb/index" target="_blank" rel="noopener">community index on MPMB’s site</a>, or read <a href="https://www.flapkan.com/how-to/add-more-content" target="_blank" rel="noopener">how adding content works</a>.</p>
         </div>
         <div class="card" id="sources">
           <h3>Sources <span class="chip" id="sources-chip">1 in use</span></h3>
-          <p class="note">Choose which books MPMB's automation uses. Content from books you switch off doesn't appear in the lists.</p>
+          <p class="note">Choose which books the sheet's automation uses. Content from books you switch off doesn't appear in the lists.</p>
           <div id="source-list"></div>
           <div class="src-group src-sub">Single items</div>
-          <p class="note">Leave out single classes, spells, feats and so on from the books in use, with MPMB's own selection dialog.</p>
+          <p class="note">Leave out single classes, spells, feats and so on from the books in use, with the sheet's own selection dialog.</p>
           <div class="excl-kinds" id="excl-kinds"></div>
         </div>
         <div class="card" id="pages">
           <h3>Pages <button class="btn sm" type="button" data-bookmark="Functions/Set Pages Layout" data-title="Pages and layout" data-pages="1">Change</button></h3>
-          <p class="note">The extra pages in your PDF, from MPMB's Set Pages Layout menu (it also has the sheet's colour, equipment and spell sheet options).</p>
+          <p class="note">The extra pages in your PDF, from the sheet's Set Pages Layout menu (it also has the sheet's colour, equipment and spell sheet options).</p>
           <ul class="list" id="page-list"></ul>
           <ul class="list"><li><span class="grow"><span>Spells section</span><span class="hint" id="spells-why"></span></span><button class="btn sm" id="spells-toggle" type="button">Hide</button></li></ul>
           <button class="btn" id="notes-clear-open" type="button" hidden>Clear out Notes pages…</button>
         </div>
         <div class="card" id="house-rules">
           <h3>House rules</h3>
-          <p class="note">The app's own extras for your table. They stay in the app on this device; the PDF keeps only what MPMB's sheet has.</p>
+          <p class="note">The app's own extras for your table. They stay in the app on this device; the PDF keeps only what the sheet has.</p>
           <ul class="list"><li><span class="grow"><span>Inspiration points</span><span class="hint">Hold more than one: a counter in place of the Inspiration dot. The sheet's box is ticked while you have at least one.</span></span><button class="btn sm" id="insp-house" type="button" aria-pressed="false">Off</button></li></ul>
         </div>
         <div class="card" id="mpmb-settings">
           <h3>Sheet settings</h3>
-          <p class="note">MPMB's own settings dialogs, from its Functions menu. Text options change fonts, font size and lines in the PDF (as Acrobat shows it); the app keeps its own look.</p>
+          <p class="note">The sheet's own settings dialogs, from its Functions menu. Text options change fonts, font size and lines in the PDF (as Acrobat shows it); the app keeps its own look.</p>
           <div class="row wrap" id="mpmb-settings-btns">
             <button class="btn" type="button" data-bookmark="Functions/Weight" data-title="Weight">Weight carried</button>
             <button class="btn" type="button" data-bookmark="Functions/Unit System" data-title="Unit system">Unit system</button>
@@ -1275,15 +1301,16 @@ window.MPMBTheme = (() => {
   <div class="panel-body settings-body">
     <div class="card" id="look">
       <h3>Look</h3>
-      <p class="note">The app's look, after MPMB's two sheet designs. Colorful takes the sheet's colour (Sheet → Pages → Change → Color Theme options). Kept on this device.</p>
+      <p class="note">The app's look, after the two designs of MPMB’s Character Record Sheet. Colorful takes the sheet's colour. Kept on this device.</p>
       <div class="looks" role="radiogroup" aria-label="Look" id="look-list"></div>
+      <div class="look-colour"><button class="btn" type="button" data-mpmb="Colors Button" data-title="The sheet's colours">Change the sheet's colours</button><span class="hint">The sheet's own colour menu. It changes the colours in your PDF too, and the Colorful looks follow.</span></div>
     </div>
     <div class="card" id="dialog-mode">
-      <h3>MPMB's dialogs</h3>
-      <p class="note">How the app shows MPMB's dialogs and questions. Changing it reopens your character (it is saved first). Kept on this device.</p>
-      <div class="looks" role="radiogroup" aria-label="MPMB's dialogs">
-        <label class="look-opt plain"><input type="radio" name="dlgmode" value="wait"><span>MPMB waits for your answer, as in Acrobat</span><span class="hint" id="dlgmode-wait-hint">Needs the app's own web address.</span></label>
-        <label class="look-opt plain"><input type="radio" name="dlgmode" value="replay"><span>Restart and replay</span><span class="hint">MPMB makes the change, stops at a dialog, and makes it again with your answer. The backup: works everywhere.</span></label>
+      <h3>The sheet's dialogs</h3>
+      <p class="note">How the app shows the sheet's dialogs and questions. Changing it reopens your character (it is saved first). Kept on this device.</p>
+      <div class="looks" role="radiogroup" aria-label="The sheet's dialogs">
+        <label class="look-opt plain"><input type="radio" name="dlgmode" value="wait"><span>The sheet waits for your answer, as in Acrobat</span><span class="hint" id="dlgmode-wait-hint">Needs the app's own web address.</span></label>
+        <label class="look-opt plain"><input type="radio" name="dlgmode" value="replay"><span>Restart and replay</span><span class="hint">The sheet makes the change, stops at a dialog, and makes it again with your answer. The backup: works everywhere.</span></label>
       </div>
     </div>
     <div class="card" id="install-card" hidden>
@@ -1314,11 +1341,11 @@ window.MPMBTheme = (() => {
       <h4 class="credits-h">This app</h4>
       <p class="credits-p">Quillbound Sheets is free software: you may share and change it under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU General Public License version 3</a> or any later version. It comes with no warranty. Source code: <a href="https://github.com/coolkvoor/Quillbound-sheets" target="_blank" rel="noopener noreferrer">github.com/coolkvoor/Quillbound-sheets</a>.</p>
       <h4 class="credits-h">Rules content</h4>
-      <p class="credits-p" id="srd-notice">The rules content comes from your sheet. MPMB's sheets include material from the System Reference Document by Wizards of the Coast LLC, licensed under the Creative Commons Attribution 4.0 International License (<a href="https://creativecommons.org/licenses/by/4.0/legalcode" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>).</p>
-      <p class="note" id="srd-source" hidden>As your sheet states it (MPMB's FAQ menu shows the same text).</p>
+      <p class="credits-p" id="srd-notice">The rules content comes from your sheet. <a href="https://www.flapkan.com/" target="_blank" rel="noopener noreferrer">MPMB’s Character Record Sheet</a> includes material from the System Reference Document by Wizards of the Coast LLC, licensed under the Creative Commons Attribution 4.0 International License (<a href="https://creativecommons.org/licenses/by/4.0/legalcode" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>).</p>
+      <p class="note" id="srd-source" hidden>As your sheet states it (the sheet's FAQ menu shows the same text).</p>
       <p class="note">Add-on content you load belongs to its own makers.</p>
       <h4 class="credits-h">The sheet's scripts</h4>
-      <p class="credits-p">All D&amp;D rules and automation run MPMB's own code from your sheet: MorePurpleMoreBetter's Character Record Sheets by Joost Wijnen (<a href="https://flapkan.com" target="_blank" rel="noopener noreferrer">flapkan.com</a>), licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU General Public License version 3</a>. The app includes none of it.</p>
+      <p class="credits-p">All D&amp;D rules and automation run the sheet's own code: <a href="https://www.flapkan.com/" target="_blank" rel="noopener noreferrer">MPMB’s Character Record Sheet</a> by Joost Wijnen (MorePurpleMoreBetter, <a href="https://www.flapkan.com/" target="_blank" rel="noopener noreferrer">flapkan.com</a>), licensed under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener noreferrer">GNU General Public License version 3</a>. The app includes none of it. Get the latest version of MPMB’s Character Record Sheet from <a href="https://www.flapkan.com/" target="_blank" rel="noopener noreferrer">flapkan.com</a>, and support MPMB on <a href="https://www.patreon.com/morepurplemorebetter" target="_blank" rel="noopener noreferrer">Patreon</a>.</p>
       <h4 class="credits-h">Parts of this app</h4>
       <ul class="credits-list">
         <li><b>pdf-lib</b> (reads and saves the PDF): copyright 2019 Andrew Dillon, MIT License.</li>
@@ -1328,8 +1355,8 @@ window.MPMBTheme = (() => {
       <div id="licence-texts"></div>
     </div>
     <div class="card">
-      <h3>Messages from MPMB <span class="chip" id="msg-count">0</span></h3>
-      <p class="note">What MPMB said, asked and showed, and any errors in its scripts, newest first.</p>
+      <h3>Messages from the sheet <span class="chip" id="msg-count">0</span></h3>
+      <p class="note">What the sheet said, asked and showed, and any errors in its scripts, newest first.</p>
       <div class="log" id="msgs"></div>
     </div>
   </div>
@@ -1340,17 +1367,17 @@ window.MPMBTheme = (() => {
 
 <!-- MPMB's messages after a tap -->
 <dialog class="panel" id="notice" aria-labelledby="notice-title">
-  <div class="panel-head"><h3 id="notice-title">MPMB</h3><button class="btn sm" id="notice-close" type="button">OK</button></div>
+  <div class="panel-head"><h3 id="notice-title">The sheet</h3><button class="btn sm" id="notice-close" type="button">OK</button></div>
   <div class="panel-body" id="notice-body"></div>
 </dialog>
 
 <!-- Safety net: MPMB stopped responding, the app reopened the character from the autosave -->
 <dialog class="panel" id="stuck" aria-labelledby="stuck-title">
-  <div class="panel-head"><h3 id="stuck-title">MPMB got stuck</h3><button class="btn sm" id="stuck-ok" type="button">OK</button></div>
+  <div class="panel-head"><h3 id="stuck-title">The sheet got stuck</h3><button class="btn sm" id="stuck-ok" type="button">OK</button></div>
   <div class="panel-body">
-    <p>MPMB's scripts stopped responding during <b id="stuck-op">a change</b>, so the app restarted the sheet and reopened your character as it was saved just before that change.</p>
+    <p>The sheet's scripts stopped responding during <b id="stuck-op">a change</b>, so the app restarted the sheet and reopened your character as it was saved just before that change.</p>
     <div id="stuck-notes" hidden>
-      <p>A known cause is a bug in MPMB's own code: removing something whose text is on the third (or later) Notes page makes it loop forever. Clearing out the Notes pages prevents that; you can copy their text first.</p>
+      <p>A known cause is a bug in the sheet's own code: removing something whose text is on the third (or later) Notes page makes it loop forever. Clearing out the Notes pages prevents that; you can copy their text first.</p>
       <button class="btn primary" id="stuck-clear" type="button">Clear out Notes pages…</button>
     </div>
   </div>
@@ -1360,7 +1387,7 @@ window.MPMBTheme = (() => {
 <dialog class="panel" id="notes-clear" aria-labelledby="notes-clear-title">
   <div class="panel-head"><h3 id="notes-clear-title">Clear out Notes pages</h3></div>
   <div class="panel-body">
-    <p>This removes all <span id="notes-clear-count">Notes pages</span> from your PDF (MPMB's own page removal). The Notes on the third page and on the Notes card stay. This can't be undone.</p>
+    <p>This removes all <span id="notes-clear-count">Notes pages</span> from your PDF (the sheet's own page removal). The Notes on the third page and on the Notes card stay. This can't be undone.</p>
     <p class="note" id="notes-clear-empty">The Notes pages are empty.</p>
     <textarea class="in" id="notes-clear-text" rows="8" readonly aria-label="Text on the Notes pages"></textarea>
     <div class="row ask-btns"><button class="btn" id="notes-clear-copy" type="button">Copy text</button><button class="btn" id="notes-clear-no" type="button">Cancel</button><button class="btn primary" id="notes-clear-yes" type="button">Remove the pages</button></div>
@@ -1369,14 +1396,14 @@ window.MPMBTheme = (() => {
 
 <!-- One of MPMB's own dialogs (app.execDialog), drawn from its description -->
 <dialog class="panel full" id="mdlg" aria-labelledby="mdlg-title">
-  <div class="panel-head"><h3 id="mdlg-title">MPMB</h3></div>
+  <div class="panel-head"><h3 id="mdlg-title">The sheet</h3></div>
   <div class="panel-body md-body" id="mdlg-body"></div>
   <div class="panel-foot md-foot" id="mdlg-foot"></div>
 </dialog>
 
 <!-- MPMB's yes/no questions ("This can't be undone! Are you sure?") -->
 <dialog class="panel" id="ask" aria-labelledby="ask-title">
-  <div class="panel-head"><h3 id="ask-title">MPMB asks</h3></div>
+  <div class="panel-head"><h3 id="ask-title">The sheet asks</h3></div>
   <div class="panel-body"><div class="notice-msg" id="ask-msg"></div>
     <div class="row ask-btns"><button class="btn" id="ask-no" type="button">No</button><button class="btn primary" id="ask-yes" type="button">Yes</button></div></div>
 </dialog>
