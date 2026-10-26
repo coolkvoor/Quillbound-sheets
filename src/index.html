@@ -94,7 +94,7 @@ h1, h2, h3 { text-wrap: balance; margin: 0; }
 .start-notice { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: var(--radius); background: var(--surface); }
 .start-sec { display: grid; gap: 8px; }
 .start-sec h2 { font-size: 1rem; }
-.start-sec ul { padding-left: 1.2em; display: grid; gap: 6px; }
+.start-sec ol { padding-left: 1.2em; display: grid; gap: 6px; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 10px 18px; border-radius: 10px; border: 1px solid var(--line); background: var(--btn); color: var(--btn-ink); cursor: pointer; text-align: center; }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
 .btn:active { transform: translateY(1px); }
@@ -812,15 +812,16 @@ window.MPMBTheme = (() => {
     </div>
     <p class="alert" id="start-error" hidden></p>
     <section class="start-sec">
-      <h2>What happens to your PDF</h2>
-      <ul class="note">
-        <li><b>It stays on your device.</b> Nothing is uploaded: the app runs in this browser.</li>
-        <li><b>Your file isn't changed.</b> The app works on a copy of it.</li>
-        <li><b>Your character is saved in this browser</b> as you go, with any add-on content. Clearing this site's data in the browser deletes it.</li>
-        <li><b>To get your character out, use Download PDF</b> (Sheet tab). It makes a new PDF of your sheet with your character in it, which opens in Adobe Acrobat as usual.</li>
-        <li><b>Or let the app make backups.</b> In Settings → Backups, pick a folder on your device: the app saves your character there as a PDF by itself while you play. In browsers that can't use a folder (such as Brave, Firefox and Safari), Backups has Save a copy instead, and the app reminds you when a changed character has no copy from the last week.</li>
+      <h2>How it works</h2>
+      <ol class="note">
+        <li><b>You open your own copy of the sheet.</b> The app reads the PDF here on your device; nothing is uploaded.</li>
+        <li><b>The sheet's own scripts do the work.</b> The app runs the automation built into your PDF, in a stand-in for Adobe Acrobat inside your browser. Every rule, list and calculation comes from the sheet, not from this app.</li>
+        <li><b>You see a phone-friendly layout, not the PDF's pages.</b> Each box is one of the sheet's fields, each button presses one of the sheet's buttons, and the sheet's menus and dialogs show up as panels.</li>
+        <li><b>Your character is kept in this browser as you go.</b> Your original file isn't changed. Clearing this site's data in the browser deletes the kept copy.</li>
+        <li><b>Download PDF gives you your sheet back, filled in</b> (Sheet tab): the same PDF with your character in it, as if you'd used Acrobat. It opens and keeps working in Adobe Acrobat.</li>
+        <li><b>Or let the app make backups.</b> In Settings → Backups, pick a folder: the app saves your character there as a PDF by itself while you play. Where the browser can't use a folder (such as Brave, Firefox and Safari), Backups has Save a copy and the app reminds you after a week.</li>
         <li><b>Keep your original PDF</b> somewhere safe.</li>
-      </ul>
+      </ol>
     </section>
     <section class="start-sec">
       <h2>The sheet</h2>
