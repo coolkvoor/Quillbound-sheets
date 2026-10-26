@@ -60,7 +60,7 @@
     $('#class-panel').close();
     const res = await send('applyClasses', { rows });
     if (!res) return;
-    if (res.errors.length) await showNotice(res.alerts.concat(res.errors.map((m) => ({ title: 'Script error', msg: m }))), 'MPMB reported a problem');
+    if (res.errors.length) await showNotice(res.alerts.concat(res.errors.map((m) => ({ title: 'Script error', msg: m }))), 'The sheet reported a problem');
     else toast(rows.length ? 'Class set: ' + rows.map((r) => r.cls + (r.sub ? ' (' + r.sub + ')' : '') + ' ' + r.level).join(', ') : 'Classes removed.');
   }
 
@@ -146,14 +146,14 @@
     $('#abil-panel').close();
     const res = await send('applyAbilities', { scores: ab.scores });
     if (!res) return;
-    if (res.errors.length) await showNotice(res.alerts.concat(res.errors.map((m) => ({ title: 'Script error', msg: m }))), 'MPMB reported a problem');
+    if (res.errors.length) await showNotice(res.alerts.concat(res.errors.map((m) => ({ title: 'Script error', msg: m }))), 'The sheet reported a problem');
     else toast('Ability scores applied.');
   }
   function wireClassAbility() {
     $('#class-open').addEventListener('click', () => openClasses());
     $('#cf-rebuild').addEventListener('click', async () => {
       const res = await send('rebuildClassText', {});
-      if (res && res.errors.length) await showNotice(res.errors.map((m) => ({ title: 'Script error', msg: m })), 'MPMB reported a problem');
+      if (res && res.errors.length) await showNotice(res.errors.map((m) => ({ title: 'Script error', msg: m })), 'The sheet reported a problem');
       else if (res) toast('Feature texts rebuilt.');
     });
     $('#xp-levelup-btn').addEventListener('click', () => { const m = /level (\d+)/.exec($('#xp-levelup-text').textContent); openClasses(m ? Number(m[1]) : undefined); });

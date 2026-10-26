@@ -95,13 +95,13 @@
     contentBusy(true);
     const res = await U.send('excludeItems', { type });
     contentBusy(false);
-    if (!res) { showResult('err', 'Something went wrong; see Settings → Messages from MPMB.'); return; }
+    if (!res) { showResult('err', 'Something went wrong; see Settings → Messages from the sheet.'); return; }
     state.content = res.content; state.saved = res.saved;
     idbPut(state.sheetKey, { saved: res.saved, date: Date.now() });
     renderContent();
     const errs = (res.errors || []).map((e) => 'Script error: ' + e);
-    if (errs.length) showResult('err', 'MPMB reported a problem.', errs);
-    else if (res.changed) showResult('ok', 'Done: MPMB updated its lists.');
+    if (errs.length) showResult('err', 'The sheet reported a problem.', errs);
+    else if (res.changed) showResult('ok', 'Done: the sheet updated its lists.');
     else $('#content-result').hidden = true;
   }
   function contentBusy(on) {
@@ -140,14 +140,14 @@
       const off = added.filter((s) => s.excluded).map((s) => s.abbr);
       const lines = [];
       if (added.length) lines.push('New books: ' + added.map((s) => s.name).join(', ') + '.');
-      if (off.length) lines.push(listNames(off) + (off.length === 1 ? ' is' : ' are') + ' switched off for now (MPMB does this for some books). Switch ' + (off.length === 1 ? 'it' : 'them') + ' on under Sources.');
+      if (off.length) lines.push(listNames(off) + (off.length === 1 ? ' is' : ' are') + ' switched off for now (the sheet does this for some books). Switch ' + (off.length === 1 ? 'it' : 'them') + ' on under Sources.');
       showResult('ok', 'Added ' + ctx.name + ' in ' + fmtS(res.ms) + '.', lines.concat(other, errs));
     } else if (op === 'setUserScript' && !(ctx && ctx.removed)) {
       if (worked) { showResult('ok', 'Your script was added to the sheet.', other.concat(errs)); $('#paste-box').hidden = true; $('#paste-open').setAttribute('aria-expanded', 'false'); }
       else showResult('err', 'The script wasn’t added. Your earlier content is unchanged.', other.concat(errs));
     } else if (ctx && ctx.removed) {
       showResult(other.length || errs.length ? 'err' : 'ok', 'Removed ' + ctx.removed + '.', other.concat(errs));
-    } else if (other.length || errs.length) showResult('err', 'MPMB reported a problem.', other.concat(errs));
+    } else if (other.length || errs.length) showResult('err', 'The sheet reported a problem.', other.concat(errs));
     else $('#content-result').hidden = true;
   }
   function openPaste(focus) {
