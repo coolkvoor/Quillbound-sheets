@@ -91,7 +91,7 @@
     } catch (err) {
       busy.hidden = true;
       const m = String(err && err.message || err);
-      await U.showNotice([{ title: 'Import', msg: /NOT_MPMB/.test(m) ? file.name + ' doesn’t look like MPMB’s Character Record Sheet.' : /OLD_SHEET/.test(m) ? file.name + ' is an old version of MPMB’s Character Record Sheet (' + m.replace(/^.*OLD_SHEET: /, '') + '). The app works with v14 and newer.' : 'The import stopped: ' + m }], 'Import from another sheet');
+      await U.showNotice([{ title: 'Import', msg: /NOT_MPMB/.test(m) ? file.name + ' doesn’t look like MPMB’s Character Record Sheet.' : /OLD_SHEET/.test(m) ? file.name + ' is an older version of MPMB’s Character Record Sheet (' + m.replace(/^.*OLD_SHEET: /, '') + '). The app works with v14 (2014) and v24 or newer (2024).' : 'The import stopped: ' + m }], 'Import from another sheet');
     } finally {
       for (const f of frames) f.remove();
       U.setBusy(-1);
