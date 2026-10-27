@@ -192,12 +192,12 @@
     // a triangle centred by its outline looks low (its weight is in the base): the d4 sits halfway up to its centre
     return (FIT[k] = { scale: (2 / Math.max(x1 - x0, y1 - y0)) * (k === 6 ? 0.7 : 1), dx: -(x0 + x1) / 2, dy: -(y0 + y1) / 2 * (k === 4 ? 0.5 : 1) });
   }
-  // where a face's number goes: its middle, but on the d4's big triangle the middle (two thirds down) looks low, so the
-  // number moves a little toward the corner that is on top at rest (the face's first)
+  // where a face's number goes: its middle. On the d4's big triangle the number's own nudge down (see draw) left it
+  // below the middle, so it moves a little toward the corner on top at rest (the face's first), back onto it
   function labelAt(g, fc, sides) {
     if (shapeFor(sides) !== 4) return fc.c;
     const top = g.verts[fc.idx[0]];
-    return fc.c.map((x, i) => x + (top[i] - x) * 0.12);
+    return fc.c.map((x, i) => x + (top[i] - x) * 0.06);
   }
   function draw(ctx, cx, cy, px, d, q, pal) {
     const g = solid(d.sides), tone = pal[d.tone || 'plain'], fi = fit(d.sides);
