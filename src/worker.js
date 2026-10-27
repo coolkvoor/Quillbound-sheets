@@ -84,12 +84,12 @@ let modelJSON = null;   // the sheet model as read from the PDF, for fresh copie
 let stateNow = null;    // engine.exportState() while nothing has changed since (the autosave asks for it too)
 let stopped = null;     // the dialog or question the last run stopped at
 function currentState() { return stateNow || (stateNow = engine.exportState()); }
-// a PDF without MPMB's scripts (Startup) or sheet version isn't an MPMB sheet; one older than v14 (the 2014 sheets;
-// 2024 ones are v24) is a version the app wasn't made for, which Joost asked us to turn away
+// a PDF without MPMB's scripts (Startup) or sheet version isn't an MPMB sheet. The app is made for v14 (the 2014
+// sheets) and v24 and later (2024); older ones, v13 and the v23 2024 betas, are turned away (Joost's wish)
 function mustBeMpmb(model) {
   if (!model.docScripts.some((s) => s.name === 'Startup') || !model.info.SheetVersion) throw new Error('NOT_MPMB');
   const major = parseInt(String(model.info.SheetVersion).replace(/^\D+/, ''), 10);
-  if (!(major >= 14)) throw new Error('OLD_SHEET: v' + model.info.SheetVersion);
+  if (!(major === 14 || major >= 24)) throw new Error('OLD_SHEET: v' + model.info.SheetVersion);
 }
 // requests that only read: the saved state stays valid
 const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'parseModel', 'pageList', 'xpInfo', 'notesText', 'toolNames', 'spellSheet', 'spellKey', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare', 'iconImage']);

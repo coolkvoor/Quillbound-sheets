@@ -141,7 +141,7 @@ MPMB's code runs unchanged on the 2014 sheets (v14.1.2: Colorful A4/Letter, Prin
 - A field the sheet doesn't have is left out: `absent()` in app.js marks its wrapper (`.f`, `.tg`, `.stat`, `.ad-wrap`) `data-absent` (`display: none`). Printer Friendly sheets (2024 too) have no Adv/Dis boxes, no conditions, no "Reaction used", no Attacks per Action.
 - Conditions: 2024 Colorful `Condition.<Name>` + `Condition.Exhaustion`; 2014 Colorful `Extra.Condition 1..14` (2014 order, no Surprised) + `Extra.Exhaustion Level 1..6` (MPMB's ConditionSet); Printer Friendly none (the card hides).
 - Wild Shapes: 2024 `Wildshapes.Info.KnownForms`/`TempHP`; 2014 `Wildshapes.Info.Uses`. Shape skills: Colorful `Text.Wildshape.N.Skills.X.Name`/`.Prof` (a combo MPMB cycles) + `Wildshape.N.Skills.X`; Printer Friendly (both years) `Wildshape.N.Skills.X.Prof`/`.Exp` check boxes + `.Mod`. The app binds both sets.
-- Sheets older than v14 are turned away (`mustBeMpmb` in worker.js throws `OLD_SHEET`, for opening and for Import; Joost's wish, 2026-10-27: versions the app wasn't made for). v14 and every later version (v24, v25, …) open.
+- Only v14 and v24 or later open: v13 and older and the v23 2024 betas are turned away (`mustBeMpmb` in worker.js throws `OLD_SHEET`, for opening and for Import; Joost's wish, 2026-10-27: versions the app wasn't made for). v25 and later open.
 - 2014 names: "High Elf" (no Elf lineage menu), a Racial Bonus column in Ability Scores, 25 doc scripts (2024: 27).
 - MPMB fills a wild shape only when all six ability scores are set (as in Acrobat).
 
