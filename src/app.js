@@ -120,6 +120,7 @@
     const m = String(e && e.message || e);
     if (/EVAL_BLOCKED/.test(m)) return 'This viewer doesn’t allow the sheet’s scripts to run, so the app can’t start here. Tell Claude: EVAL_BLOCKED.';
     if (/NOT_MPMB/.test(m)) return 'This PDF doesn’t look like MPMB’s Character Record Sheet. Pick a 2024 or 2014 version of that sheet.';
+    if (/OLD_SHEET/.test(m)) return 'This is an old version of MPMB’s Character Record Sheet (' + m.replace(/^.*OLD_SHEET: /, '') + '). The app works with v14 and newer: get the latest version from flapkan.com.';
     if (/FILE_PAGE/.test(m)) return 'Chrome doesn’t let this app run when it’s opened straight from a file on your computer. Open it from its web link, or through the local test server.';
     if (/WORKER_FAILED/.test(m)) return 'The sheet engine couldn’t start in this browser (' + m.replace('WORKER_FAILED: ', '') + '). Try Chrome, or tell Claude what you see.';
     if (/Failed to parse|Invalid PDF|No PDF header/i.test(m)) return 'This file couldn’t be read as a PDF.';
