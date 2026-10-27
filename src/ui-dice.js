@@ -192,12 +192,11 @@
     // a triangle centred by its outline looks low (its weight is in the base): the d4 sits halfway up to its centre
     return (FIT[k] = { scale: (2 / Math.max(x1 - x0, y1 - y0)) * (k === 6 ? 0.7 : 1), dx: -(x0 + x1) / 2, dy: -(y0 + y1) / 2 * (k === 4 ? 0.5 : 1) });
   }
-  // where a face's number goes: its middle. On the d4's big triangle the number's own nudge down (see draw) left it
-  // below the middle, so it moves a little toward the corner on top at rest (the face's first), back onto it
-  function labelAt(g, fc, sides) {
-    if (shapeFor(sides) !== 4) return fc.c;
-    const top = g.verts[fc.idx[0]];
-    return fc.c.map((x, i) => x + (top[i] - x) * 0.06);
+  // where a number's ink is: a face's number is centred by what it draws, not by its letter box (digits sit low in
+  // theirs, by how much depends on the font and the digit)
+  function inkOf(ctx, label) {
+    const t = ctx.measureText(label);
+    return { dx: (t.actualBoundingBoxLeft - t.actualBoundingBoxRight) / 2, dy: (t.actualBoundingBoxAscent - t.actualBoundingBoxDescent) / 2 };
   }
   function draw(ctx, cx, cy, px, d, q, pal) {
     const g = solid(d.sides), tone = pal[d.tone || 'plain'], fi = fit(d.sides);
@@ -210,7 +209,7 @@
     ctx.lineJoin = 'round';
     ctx.lineWidth = 1;
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    ctx.textBaseline = 'alphabetic';
     for (const [fc, i, n] of vis) {
       ctx.beginPath();
       fc.idx.forEach((j, k) => (k ? ctx.lineTo(pts[j][0], pts[j][1]) : ctx.moveTo(pts[j][0], pts[j][1])));
@@ -224,14 +223,21 @@
       if (!label) continue;
       // the font at one size per die, scaled as the face turns: a new font size every frame made the browser
       // re-read the font and redraw its letters each time
-      const c = pt(labelAt(g, fc, d.sides)), base = Math.round(px * g.label), k = Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.85 : 1);
+      const c = pt(fc.c), base = Math.round(px * g.label), k = Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.85 : 1);
       ctx.save();
       ctx.globalAlpha = Math.min(1, (n[2] - 0.3) / 0.4);
       ctx.fillStyle = tone.ink;
       ctx.font = '800 ' + base + 'px ' + pal.font;
-      ctx.translate(c[0], c[1] + base * k * 0.04);
+      ctx.translate(c[0], c[1]);
       ctx.scale(k, k);
-      ctx.fillText(label, 0, 0);
+      if (shapeFor(d.sides) === 10) {
+        // the d10's number stays a little low on its kite, as it was meant to
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, 0, base * 0.04);
+      } else {
+        const ink = inkOf(ctx, label);
+        ctx.fillText(label, ink.dx, ink.dy);
+      }
       ctx.restore();
     }
   }
