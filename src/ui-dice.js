@@ -192,6 +192,13 @@
     // a triangle centred by its outline looks low (its weight is in the base): the d4 sits halfway up to its centre
     return (FIT[k] = { scale: (2 / Math.max(x1 - x0, y1 - y0)) * (k === 6 ? 0.7 : 1), dx: -(x0 + x1) / 2, dy: -(y0 + y1) / 2 * (k === 4 ? 0.5 : 1) });
   }
+  // where a face's number goes: its middle, but on the d4's big triangle the middle (two thirds down) looks low, so the
+  // number moves a little toward the corner that is on top at rest (the face's first)
+  function labelAt(g, fc, sides) {
+    if (shapeFor(sides) !== 4) return fc.c;
+    const top = g.verts[fc.idx[0]];
+    return fc.c.map((x, i) => x + (top[i] - x) * 0.12);
+  }
   function draw(ctx, cx, cy, px, d, q, pal) {
     const g = solid(d.sides), tone = pal[d.tone || 'plain'], fi = fit(d.sides);
     const R = px * 0.42 * fi.scale, f = 12;   // little perspective, as in a drawn die
@@ -217,7 +224,7 @@
       if (!label) continue;
       // the font at one size per die, scaled as the face turns: a new font size every frame made the browser
       // re-read the font and redraw its letters each time
-      const c = pt(fc.c), base = Math.round(px * g.label), k = Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.85 : 1);
+      const c = pt(labelAt(g, fc, d.sides)), base = Math.round(px * g.label), k = Math.sqrt(n[2]) * (label.length > 2 ? 0.7 : label.length > 1 ? 0.85 : 1);
       ctx.save();
       ctx.globalAlpha = Math.min(1, (n[2] - 0.3) / 0.4);
       ctx.fillStyle = tone.ink;
