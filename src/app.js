@@ -823,11 +823,18 @@
     await idbPut('view:' + state.charKey, state.view);
     if (!!(state.snap.get('Inspiration') || {}).checked !== n > 0) await send('toggle', { name: 'Inspiration' });
   }
+  // a long name shrinks a little before it is cut off (the phone's real font is wider than the fallback)
+  function fitName(n, text) {
+    if (text !== undefined) n.textContent = text;
+    n.style.fontSize = '';
+    if (!n.clientWidth) return;   // not on screen yet: showSheet and resizing fit it again
+    for (let size = 1.2; n.scrollWidth > n.clientWidth + 1 && size >= 0.95; size -= 0.05) n.style.fontSize = size.toFixed(2) + 'rem';
+  }
   function refreshDerived() {
     showInspiration();
     const v = (n) => shown(state.snap.get(n)).trim();
     const name = v('PC Name');
-    $('#hdr-name').textContent = name || 'Unnamed character';
+    fitName($('#hdr-name'), name || 'Unnamed character');
     const bits = [v('Race'), v('Class and Levels')].filter(Boolean);
     const lvl = v('Character Level');
     if (lvl) bits.push('Level ' + lvl);
@@ -1189,6 +1196,7 @@
     $('#stuck-clear').addEventListener('click', () => { $('#stuck').close(); if (state.worker) clearNotesPages(); });
     $('#save-pdf').addEventListener('click', downloadPdf);
     // phones close apps in the background without warning: save right away when the page is hidden
+    window.addEventListener('resize', () => fitName($('#hdr-name')));
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && saveTimer) { clearTimeout(saveTimer); saveTimer = 0; saveNow(); } });
     // a new character: forget the saved one (add-on content stays) and open the sheet fresh; tap twice to confirm
     let armedNew = 0;
@@ -1587,6 +1595,7 @@
     $('#start').hidden = true;
     $('#sheet').hidden = false;
     layoutGrids(true);   // after the sheet is visible, so the cards have their heights
+    fitName($('#hdr-name'));
     window.scrollTo(0, 0);
     setTab('main');
     refreshSpells();

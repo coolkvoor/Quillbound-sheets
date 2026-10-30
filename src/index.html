@@ -128,9 +128,11 @@ header.top .line { font-size: 0.92rem; color: var(--muted); white-space: nowrap;
   .save-wrap { gap: 0; }
   .save-wrap .busy { position: absolute; top: -1px; right: -1px; width: 8px; height: 8px; }
   #save-chip { font-size: 0; width: 24px; height: 24px; padding: 0; justify-content: center; flex: none; }
-  #save-chip::before { content: "✓"; font-size: 0.9rem; }
-  #save-chip[data-state="pending"]::before { content: "…"; }
-  #save-chip[data-state="error"]::before { content: "!"; font-weight: 700; }
+  /* drawn shapes, not characters: a ✓ from a fallback font sat low and to the left (Brave on Android) */
+  #save-chip::before { content: ""; width: 14px; height: 14px; background: currentColor; -webkit-mask: var(--mark) center / contain no-repeat; mask: var(--mark) center / contain no-repeat;
+    --mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3.2 3.2L13 4.8' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+  #save-chip[data-state="pending"]::before { --mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='3.5' cy='8' r='1.4'/%3E%3Ccircle cx='8' cy='8' r='1.4'/%3E%3Ccircle cx='12.5' cy='8' r='1.4'/%3E%3C/svg%3E"); }
+  #save-chip[data-state="error"]::before { --mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3v6.5' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='12.6' r='1.3'/%3E%3C/svg%3E"); }
 }
 
 main.bands { padding: 8px 16px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
@@ -1104,9 +1106,9 @@ window.MPMBTheme = (() => {
         <div class="card">
           <h3>Limited features</h3>
           <div class="row rests">
-            <button class="btn sm" type="button" data-mpmb="SR" data-done="Short rest: uses reset.">Short rest</button>
-            <button class="btn sm" type="button" data-mpmb="LR" data-done="Long rest: uses reset.">Long rest</button>
-            <button class="btn sm" type="button" data-mpmb="Dawn" data-done="Dawn: uses reset.">Dawn</button>
+            <button class="btn sm" type="button" data-mpmb="SR" data-done="Short rest: your short-rest features are back.">Short rest</button>
+            <button class="btn sm" type="button" data-mpmb="LR" data-done="Long rest: your features and spell slots are back.">Long rest</button>
+            <button class="btn sm" type="button" data-mpmb="Dawn" data-done="Dawn: features that come back at dawn are back.">Dawn</button>
           </div>
           <ul class="list" id="limited"></ul>
         </div>

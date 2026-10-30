@@ -21,7 +21,7 @@
     { long: true, at: '#f-race', text: 'Start typing to pick from the sheet’s lists. Same for background, feats and items.' },
     { long: true, at: () => { const d = first('#skills [data-skill]'); return d ? d.parentNode : $('#skills'); }, text: 'Tap a skill’s dot: proficient, then expertise, then off.' },
     { at: '[data-roll="d20"][data-kind="init"]', text: 'Tap a number to roll it. Attacks, saves and skills too.' },
-    { at: '.rests', text: 'Short and long rests. The sheet resets your uses.' },
+    { at: '.rests', text: 'Rested? Tap here. Short rest gives back the features that recharge on one. Long rest also gives back your spell slots.' },
     { long: true, at: '[data-mpmb="Buttons.HP Max"]', text: 'Tap Set and the sheet works out your max HP.' },
     { long: true, at: () => $('#limited') && $('#limited').closest('.card'), text: 'Track the uses of your features here.',
       missing: { when: () => !Array.from(document.querySelectorAll('#limited li[data-row]')).some(shownEl), text: 'No limited features yet. They show up here when you get them.' } },
