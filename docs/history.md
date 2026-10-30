@@ -71,6 +71,9 @@ How the app came to be the way it is: the timeline, how decisions were reached, 
 - Tested on the 2014 Colorful A4 sheet with a made-up file of 60 books in four groups: the Sources card was 6,182 px (7 phone screens), a group heading was drawn each time the group changed (books come in file order), every tick ran a full Apply with all boxes locked, and the "added" message named all 60 books. MPMB itself needs 50–100 ms in Node for any number of books.
 - Now: Sources is a full-screen panel from a book in the top bar (the owner's choice over a bottom-bar item: the bar holds up to nine tabs). The save chip became a round mark on phones so the name keeps its width (163 px at 393 px, as before). Books fold per group (478 px for the same 63 books), with Include all / Exclude all; ticks never lock. The dialogs name the move buttons and give long lists a search box and a count.
 
+- The tour: the owner rated the list of things to explain (long tour for people new to the sheet, short for people who know it; Looks in the short one), asked that a thing the character doesn't have still be shown where it would be, that steps inside Settings or Sources wait for the user's own tap, and for short, plain texts. 29 steps in the full tour, 18 in the quick one.
+- A long name ("Alinar Brightshield") was still cut off on the phone: the busy dot now sits on the save mark's corner.
+
 ## Milestones (as planned on day one)
 
 1. Engine in the browser. Done in desktop Chrome tests (self-test 19/19); phone results still to come.

@@ -135,6 +135,7 @@ header.top .line { font-size: 0.92rem; color: var(--muted); white-space: nowrap;
 
 main.bands { padding: 8px 16px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
 section.band { scroll-margin-top: calc(var(--header-h) + 8px); padding-top: 12px; }
+.card > h3, .band-title { scroll-margin-top: calc(var(--header-h) + 16px); }   /* the tour scrolls a heading to the top, clear of the top bar */
 .band-title { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; color: var(--accent); margin: 8px 0 10px; display: flex; align-items: baseline; gap: 10px; }
 .band-title small { font-family: var(--font-body); font-size: 0.85rem; font-weight: 500; color: var(--muted); }
 /* cards flow down columns like a folio: 1 column on phones, 2 on phone landscape and tablet portrait, 3 on tablet landscape */
@@ -277,6 +278,25 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .excl-kinds .btn > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .excl-kinds .chip { flex: none; }
 #content-hint { margin: 0; }
+
+/* the tour (ui-tour.js): the page dimmed but for the lit-up thing, and a small card */
+.tour { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.tour-dim { position: fixed; inset: 0; background: rgb(0 0 0 / 0.55); pointer-events: auto; }
+.tour-block { position: fixed; pointer-events: auto; }
+.tour.waiting .tour-block { pointer-events: none; }   /* a wait step: the lit-up button takes the tap */
+.tour-ring { position: fixed; border-radius: 12px; box-shadow: 0 0 0 3px var(--accent), 0 0 0 6px rgb(255 255 255 / 0.5); pointer-events: none; transition: left .2s, top .2s, width .2s, height .2s; }
+.tour.waiting .tour-ring { animation: tour-pulse 1.4s ease-in-out infinite; }
+@keyframes tour-pulse { 50% { box-shadow: 0 0 0 5px var(--accent), 0 0 0 10px rgb(255 255 255 / 0.35); } }
+@media (prefers-reduced-motion: reduce) { .tour-ring { transition: none; } .tour.waiting .tour-ring { animation: none; } }
+.tour-card { position: fixed; left: 16px; right: 16px; max-width: 360px; margin: 0 auto; background: var(--surface); color: var(--ink); border-radius: 14px; padding: 14px 16px 12px; box-shadow: 0 8px 30px rgb(0 0 0 / 0.35); pointer-events: auto; }
+.tour-text { margin: 0 0 10px; font-size: 1.02rem; line-height: 1.4; }
+.tour.missing .tour-text { color: var(--muted); }
+.tour-foot { display: flex; align-items: center; gap: 8px; }
+.tour-n { flex: 1; font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+.tour-foot .btn[hidden] { display: none; }
+.tour-choices .btn { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; }
+.tour-choices .hint { font-family: var(--font-body); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.tour-choices .btn.primary .hint { color: inherit; opacity: 0.9; }
 
 /* MPMB buttons, menus and pop-up panels */
 .card h3 .btn.sm { font-family: var(--font-body); letter-spacing: 0; font-weight: 500; }
@@ -1313,6 +1333,20 @@ window.MPMBTheme = (() => {
   <ul class="menu-list" id="menu-list"></ul>
 </dialog>
 
+<!-- Offered once, after the first sheet opens (ui-tour.js) -->
+<dialog class="panel" id="tour-ask" aria-labelledby="tour-ask-title">
+  <div class="panel-head"><h3 id="tour-ask-title">New here?</h3></div>
+  <div class="panel-body">
+    <p>Want a short tour of the app's buttons?</p>
+    <div class="stack tour-choices">
+      <button class="btn primary" type="button" data-tour="long">Full tour <span class="hint">I'm new to the sheet</span></button>
+      <button class="btn" type="button" data-tour="short">Quick tour <span class="hint">I know the sheet</span></button>
+      <button class="btn" type="button" data-tour="no">No thanks</button>
+    </div>
+    <p class="note">You can start it later in Settings.</p>
+  </div>
+</dialog>
+
 <!-- Sources (top bar book): add-on content, the books in use and single items, on their own screen -->
 <dialog class="panel full" id="sources-panel" aria-labelledby="sources-title">
   <div class="panel-head"><h3 id="sources-title">Sources</h3><button class="btn sm" id="sources-close" type="button">Close</button></div>
@@ -1387,6 +1421,11 @@ window.MPMBTheme = (() => {
       <button class="btn primary" id="backup-share" type="button" hidden>Send to…</button>
       <button class="btn" id="backup-download" type="button" hidden>Download</button>
       <p class="note">A backup is the character written into your sheet's PDF, as Download PDF makes it: open it in the app (Open another sheet) or in Acrobat.</p>
+    </div>
+    <div class="card" id="tour-card">
+      <h3>Tour</h3>
+      <p class="note">A walk past the app's buttons. It changes nothing on your sheet.</p>
+      <div class="row"><button class="btn" type="button" data-tour="short">Quick tour</button><button class="btn" type="button" data-tour="long">Full tour</button></div>
     </div>
     <div class="card">
       <h3>About</h3>
@@ -1573,4 +1612,5 @@ window.MPMBTheme = (() => {
 <script src="ui-backup.js"></script>
 <script src="ui-suggest.js"></script>
 <script src="ui-dice.js"></script>
+<script src="ui-tour.js"></script>
 <script src="app.js"></script>

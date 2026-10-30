@@ -34,6 +34,8 @@ const DEVICES = {
     }
     // LOOK=colorful-white|colorful-dark|pf-white|pf-dark|pf-black picks a look (Settings); default: match the sheet
     if (process.env.LOOK) await ctx.addInitScript((c) => { try { localStorage.setItem('mpmb-theme', JSON.stringify({ choice: c })); } catch (e) { /* default look */ } }, process.env.LOOK);
+    // the tour is offered once after the first sheet opens: seen already, so it doesn't cover the screens tested here
+    await ctx.addInitScript(() => { try { localStorage.setItem('mpmb-tour', 'seen'); } catch (e) { /* offered */ } });
     const page = await ctx.newPage();
     const logs = [];
     page.on('console', (m) => logs.push(m.type() + ': ' + m.text()));

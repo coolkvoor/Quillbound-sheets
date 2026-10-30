@@ -1538,6 +1538,7 @@
     refreshSpells();
     state.worker.call('xpInfo', {}).then((x) => { state.xpTable = x.table; refreshDerived(); }).catch(() => {});
     refreshPages();
+    U.offerTour();
     state.worker.call('toolNames', {}).then((names) => { const dl = $('#dl-tools'); dl.textContent = ''; for (const n of names) dl.append(el('option', { value: n })); }).catch(() => {});
   }
   // what the other screen files use from here
@@ -1547,6 +1548,7 @@
   });
   wireEvents();
   wireContent();
+  U.wireTour();
   wireImport();
   U.wireSuggest();
   U.wireDice();
