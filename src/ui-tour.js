@@ -55,13 +55,14 @@
     ['Make it yours', ['look', 'again']],
   ];
   const QUICK = [
-    ['Quick tour', ['book', 'content', 'books', 'single', 'closeBook', 'sheetBtn', 'roll', 'saved', 'pdf', 'gearOpen', 'backups', 'install', 'again']],
+    ['Quick tour', ['book', 'content', 'books', 'single', 'closeBook', 'sheetBtn', 'roll', 'saved', 'pdf', 'gearOpen', 'look', 'backups', 'install', 'again']],
   ];
   const QUICK_TEXT = {
     book: 'Your sources are behind the book: content files and books. Set them first. Tap it.',
     roll: 'Tap any number to roll it. The die at the top rolls anything else.',
     saved: 'Your character is saved in this browser, not in your PDF.',
     pdf: 'Download PDF writes it into the sheet, for Acrobat or another device.',
+    look: 'The sheet’s looks are here, not on the sheet. “Match my sheet” follows your PDF.',
   };
   function buildSteps(long) {
     const out = [];
