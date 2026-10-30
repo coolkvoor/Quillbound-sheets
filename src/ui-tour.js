@@ -5,56 +5,71 @@
   const { $, el } = U;
 
   // ---------------------------------------------------------------- the steps
-  // at: what to light up (a selector or a function). long: only in the full tour. panel: the panel the step is in
-  // (opened by the user's own tap at a "wait" step, by the tour when going back). missing: when it returns true the
-  // character doesn't have the thing yet; the step still shows where it would be (missing.at), with missing.text.
-  // wait: the user taps the lit-up button; the tour goes on when done() is true. Nothing the tour does changes the sheet.
+  // A step: at (what to light up: a selector or a function), text. panel: the panel the step is in (opened by the user's
+  // own tap at a "wait" step, by the tour when going back). missing: when it returns true the character doesn't have
+  // the thing yet; the step still shows where it would be (missing.at), with missing.text. wait: the user taps the
+  // lit-up button; the tour goes on when it returns true. Nothing the tour does changes the sheet.
   const shownEl = (n) => !!n && n.getClientRects().length > 0 && !n.closest('[hidden],[data-absent]');
   const first = (sel) => Array.from(document.querySelectorAll(sel)).filter(shownEl)[0] || null;
   const isOpen = (id) => { const d = document.getElementById(id); return !!d && d.open; };
-  // in the order of the screen, top to bottom: the top bar and tab bar, then each section, then the two panels
-  const STEPS = [
-    { at: '#save-chip', text: 'Your character saves on this device as you go.' },
-    { at: 'nav.tabs', text: 'Jump to each part of your sheet. Some tabs only show up when you need them, like Spells or Companion.' },
-    // Main
-    { long: true, at: '#f-race', text: 'Start typing to pick from the sheet’s lists. Same for background, feats and items.' },
-    { at: '#class-open', text: 'Pick your class, subclass and level. Level up and multiclass here too.' },
-    { long: true, at: '#abil-open', text: 'Set your ability scores: point buy, rolled or typed in.' },
-    { at: () => first('[data-mpmb="SkillsClick"]') || first('main [data-mpmb]'), text: 'Buttons like this run the sheet’s own menus and dialogs, as in Acrobat.' },
-    { long: true, at: () => { const d = first('#skills [data-skill]'); return d ? d.parentNode : $('#skills'); }, text: 'Tap a skill’s dot: proficient, then expertise, then off.' },
-    // Combat
-    { at: '[data-roll="d20"][data-kind="init"]', text: 'Tap a number to roll it. Attacks, saves and skills too.' },
-    { at: '#dice-open', text: 'Or roll any dice here.' },
-    { long: true, at: '[data-mpmb="Buttons.HP Max"]', text: 'Tap Set and the sheet works out your max HP.' },
-    // Spells
-    { long: true, at: '#spells', text: 'Your spells: pick them, see your list and mark slots used.',
-      missing: { when: () => !shownEl($('#tab-spells')), at: 'nav.tabs', text: 'No spells yet. A Spells tab shows up here once you can cast them.' } },
-    // Features
-    { at: '.rests', text: 'Rested? Tap here. Short rest gives back the features that recharge on one. Long rest also gives back your spell slots.' },
-    { long: true, at: () => $('#limited') && $('#limited').closest('.card'), text: 'Track the uses of your features here.',
-      missing: { when: () => !Array.from(document.querySelectorAll('#limited li[data-row]')).some(shownEl), text: 'No limited features yet. They show up here when you get them.' } },
-    // Gear
-    { long: true, at: () => $('#attuned-chip') && $('#attuned-chip').closest('.card'), text: 'Magic items. The dot marks attunement.' },
-    { long: true, at: '[data-mpmb="Equipment.menu"]', text: 'Add gear and packs from the sheet’s list.' },
-    // Sheet
-    { at: '#save-pdf', text: 'Download your character as a PDF. It opens in Adobe Acrobat too.' },
-    { long: true, at: '#new-char', text: 'Start over, or bring in a character from another sheet.' },
-    { long: true, at: '#pages', text: 'Add pages: a companion, Wild Shape, notes or an Adventurers League log.' },
-    { long: true, at: '#mpmb-settings', text: 'The sheet’s settings: weight, units, fonts and automation.' },
-    // Sources (the book in the top bar)
-    { at: '#sources-open', text: 'Tap the book to see your sources.', wait: () => isOpen('sources-panel') },
-    { panel: 'sources-panel', at: '#content', text: 'Add content files here for more books. Get them from the community index.' },
-    { panel: 'sources-panel', at: '#sources', text: 'Pick which books the sheet uses.' },
-    { panel: 'sources-panel', at: '#single-items', text: 'Leave out or add single items, like firearms.' },
-    { panel: 'sources-panel', at: '#sources-close', text: 'Tap Close.', wait: () => !isOpen('sources-panel') },
-    // Settings (the gear)
-    { at: '#settings-open', text: 'Tap the gear for settings.', wait: () => isOpen('settings') },
-    { panel: 'settings', at: '#look', text: 'Pick a look. “Match my sheet” follows your PDF.' },
-    { panel: 'settings', at: '#backup-card', text: 'Backups: pick a folder and the app keeps a copy of your PDF there.' },
-    { panel: 'settings', at: '#install-card', text: 'Install the app. It then works offline.',
-      missing: { when: () => !shownEl($('#install-card')), at: null, text: 'Want it as an app? Use your browser’s menu: Add to Home screen.' } },
-    { panel: 'settings', at: '#tour-card', text: 'Watch this tour again here. That’s it, have fun!' },
+  const noSpells = { when: () => !shownEl($('#tab-spells')), at: 'nav.tabs', text: 'This character has no spells. A Spells tab shows up here once it gets some.' };
+  const noLimited = { when: () => !Array.from(document.querySelectorAll('#limited li[data-row]')).some(shownEl), text: 'No limited features yet. They show up here when you get them.' };
+  const noInstall = { when: () => !shownEl($('#install-card')), at: null, text: 'Want it as an app? Use your browser’s menu: Add to Home screen.' };
+  const skillDot = () => { const d = first('#skills [data-skill]'); return d ? d.parentNode : $('#skills'); };
+  const sheetButton = () => first('[data-mpmb="SkillsClick"]') || first('main [data-mpmb]');
+  const S = {
+    book: { at: '#sources-open', text: 'Start here: pick the books the sheet may use. Tap the book.', wait: () => isOpen('sources-panel') },
+    content: { panel: 'sources-panel', at: '#content', text: 'Have add-on content? Add the file here. Get files from the community index.' },
+    books: { panel: 'sources-panel', at: '#sources', text: 'Then pick the books to use. Include all switches them all on.' },
+    single: { panel: 'sources-panel', at: '#single-items', text: 'Leave out single items, or add ones the sheet leaves out, like firearms.' },
+    closeBook: { panel: 'sources-panel', at: '#sources-close', text: 'Tap Close.', wait: () => !isOpen('sources-panel') },
+    species: { at: '#f-race', text: 'Start with your species. Type a few letters and pick from the sheet’s list.' },
+    cls: { at: '#class-open', text: 'Then your class, subclass and level. Level up and multiclass here too.' },
+    bg: { at: '#f-bg', text: 'Pick your background.' },
+    abilities: { at: '#abil-open', text: 'Set your ability scores: point buy, rolled or typed in.' },
+    sheetBtn: { at: sheetButton, text: 'Buttons like this open the sheet’s own menus and dialogs, as in Acrobat.' },
+    skills: { at: skillDot, text: 'Tap a skill’s dot for proficiency. Tap again for expertise.' },
+    spells: { at: () => first('#casters button.primary') || $('#spells'), text: 'Choose your spells here.', missing: noSpells },
+    gear: { at: '[data-mpmb="Equipment.menu"]', text: 'Add your gear and packs from the sheet’s list.' },
+    pages: { at: '#pages', text: 'A companion, Wild Shape or notes? Add their pages here.' },
+    roll: { at: '[data-roll="d20"][data-kind="init"]', text: 'Tap any number to roll it: attacks, saves, skills.' },
+    dice: { at: '#dice-open', text: 'Other dice? Roll them here.' },
+    hp: { at: () => { const n = $('#f-hp'); return n && n.closest('.card'); }, text: 'Keep track of your hit points here.' },
+    rests: { at: '.rests', text: 'Rested? Tap here. Short rest gives back the features that recharge on one. Long rest also gives back your spell slots.' },
+    limited: { at: () => $('#limited') && $('#limited').closest('.card'), text: 'Mark a feature’s use here when you use it.', missing: noLimited },
+    saved: { at: '#save-chip', text: 'Your character is saved in this browser as you go. Clearing the browser’s data deletes it.' },
+    pdf: { at: '#save-pdf', text: 'So download it now and then. The PDF holds your character and opens in Adobe Acrobat too.' },
+    gearOpen: { at: '#settings-open', text: 'Tap the gear.', wait: () => isOpen('settings') },
+    install: { panel: 'settings', at: '#install-card', text: 'Install the app. It then works offline.', missing: noInstall },
+    backups: { panel: 'settings', at: '#backup-card', text: 'Backups: the app can keep a copy of your PDF in a folder for you.' },
+    look: { panel: 'settings', at: '#look', text: 'Pick a look. “Match my sheet” follows your PDF.' },
+    again: { panel: 'settings', at: '#tour-card', text: 'Watch this tour again here. Have fun!' },
+  };
+  // the full tour (new to the sheet): what you do, in order, a chapter at a time; within a chapter the page only
+  // scrolls down. The quick tour (knows the sheet): only what differs from the sheet in Acrobat.
+  const FULL = [
+    ['Set up', ['book', 'content', 'books', 'closeBook']],
+    ['Build', ['species', 'cls', 'bg', 'abilities', 'sheetBtn', 'skills', 'spells', 'gear', 'pages']],
+    ['Play', ['roll', 'dice', 'hp', 'rests', 'limited']],
+    ['Keep it safe', ['saved', 'pdf', 'gearOpen', 'backups', 'install']],
+    ['Make it yours', ['look', 'again']],
   ];
+  const QUICK = [
+    ['Quick tour', ['book', 'content', 'books', 'single', 'closeBook', 'sheetBtn', 'roll', 'saved', 'pdf', 'gearOpen', 'backups', 'install', 'again']],
+  ];
+  const QUICK_TEXT = {
+    book: 'Your sources are behind the book: content files and books. Set them first. Tap it.',
+    roll: 'Tap any number to roll it. The die at the top rolls anything else.',
+    saved: 'Your character is saved in this browser, not in your PDF.',
+    pdf: 'Download PDF writes it into the sheet, for Acrobat or another device.',
+  };
+  function buildSteps(long) {
+    const out = [];
+    for (const [chapter, ids] of long ? FULL : QUICK) ids.forEach((id, k) => out.push(Object.assign({}, S[id], { chapter, k: k + 1, of: ids.length, last: k === ids.length - 1 }, !long && QUICK_TEXT[id] ? { text: QUICK_TEXT[id] } : {})));
+    // a chapter's "Next" says where it goes
+    out.forEach((s, i) => { if (s.last && out[i + 1]) s.nextLabel = 'Next: ' + out[i + 1].chapter; });
+    return out;
+  }
 
   // ---------------------------------------------------------------- the layer
   let tour = null;   // { steps, i, node, raf }
@@ -65,7 +80,7 @@
     const ring = el('div', { cls: 'tour-ring' });
     const text = el('p', { cls: 'tour-text', id: 'tour-text' });
     const count = el('span', { cls: 'tour-n' });
-    const skip = el('button', { cls: 'btn sm', type: 'button', text: 'Skip' });
+    const skip = el('button', { cls: 'btn sm', type: 'button', text: 'Stop' });
     const back = el('button', { cls: 'btn sm', type: 'button', text: 'Back' });
     const next = el('button', { cls: 'btn sm primary', type: 'button', text: 'Next' });
     const card = el('div', { cls: 'tour-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'tour-text' }, [text, el('div', { cls: 'tour-foot' }, [count, skip, back, next])]);
@@ -86,8 +101,8 @@
     for (const id of ['settings', 'sources-panel']) if (isOpen(id)) document.getElementById(id).close();
     try {
       await U.withSample((sample) => new Promise((resolve) => {
-        const steps = STEPS.filter((s) => long || !s.long);
-        if (sample) steps.unshift({ at: '#hdr-name', text: 'This is a sample character for the tour. Yours is safe and comes back when the tour ends.' });
+        const steps = buildSteps(long);
+        if (sample) steps.unshift({ at: '#hdr-name', text: 'This is a sample character for the tour. Yours is safe and comes back when the tour ends.', chapter: '' });
         tour = { steps, i: 0, ui: layer(), target: null, key: '', done: resolve };
         starting = false;
         show(0, 1);
@@ -142,10 +157,10 @@
     ui.text.textContent = miss ? step.missing.text : step.text;
     ui.node.classList.toggle('waiting', !!step.wait && !miss);
     ui.node.classList.toggle('missing', miss);
-    ui.count.textContent = (i + 1) + ' of ' + tour.steps.length;
+    ui.count.textContent = step.chapter ? step.chapter + (step.of > 1 ? ' · ' + step.k + ' of ' + step.of : '') : '';
     ui.back.disabled = i === 0;
     ui.next.hidden = !!step.wait;
-    ui.next.textContent = i === tour.steps.length - 1 ? 'Done' : 'Next';
+    ui.next.textContent = i === tour.steps.length - 1 ? 'Done' : step.nextLabel || 'Next';
     // a heading standing for a tall card goes near the top, so the card shows under it
     tour.tall = !!(t && t.dataset.tourTall);
     if (t) { delete t.dataset.tourTall; reveal(t, tour.tall); }

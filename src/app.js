@@ -203,7 +203,7 @@
   // (state.tourSample: autosave, backups and idbPut stand still), and the user's copy comes back when the tour ends.
   const SAMPLE = [
     ['PC Name', 'Sample character'], ['Str', '8'], ['Dex', '14'], ['Con', '14'], ['Int', '16'], ['Wis', '12'], ['Cha', '10'],
-    ['Race', 'Human'], ['Class and Levels', 'Wizard 3'], ['AC Armor Description', 'Unarmored'],
+    ['Race', 'Human'], ['Class and Levels', 'Wizard 3'], ['Background', 'Acolyte'], ['AC Armor Description', 'Unarmored'],
     ['Attack.1.Weapon Selection', 'Quarterstaff'], ['Attack.2.Weapon Selection', 'Fire Bolt'], ['Extra.Magic Item 1', 'Cloak of Protection'],
   ];
   async function withSample(run) {

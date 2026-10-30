@@ -293,8 +293,8 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .tour-card { position: fixed; left: 16px; right: 16px; max-width: 360px; margin: 0 auto; background: var(--surface); color: var(--ink); border-radius: 14px; padding: 14px 16px 12px; box-shadow: 0 8px 30px rgb(0 0 0 / 0.35); pointer-events: auto; }
 .tour-text { margin: 0 0 10px; font-size: 1.02rem; line-height: 1.4; }
 .tour.missing .tour-text { color: var(--muted); }
-.tour-foot { display: flex; align-items: center; gap: 8px; }
-.tour-n { flex: 1; font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+.tour-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.tour-n { flex: 1 1 auto; font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
 .tour-foot .btn[hidden] { display: none; }
 .tour-choices .btn { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; }
 .tour-choices .hint { font-family: var(--font-body); font-weight: 400; letter-spacing: 0; text-transform: none; }
