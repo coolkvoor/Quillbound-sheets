@@ -53,21 +53,47 @@
     if (!c.files.length && !c.userScript) ul.append(el('li', { cls: 'muted', text: 'No add-on content yet. The sheet has the SRD (the free rules) only.' }));
     const n = c.files.length;
     $('#content-chip').textContent = !n && !c.userScript ? 'SRD only' : (n ? n + (n === 1 ? ' file' : ' files') : '') + (n && c.userScript ? ' + ' : '') + (c.userScript ? 'script' : '');
-    // sources, grouped like MPMB's Source Selection dialog
+    // books, grouped like MPMB's Source Selection dialog: one fold per group (Primary Sources first, then as MPMB lists
+    // them), books by the name its dialog shows (Unearthed Arcana by date). A tick waiting to be applied shows as ticked.
     const box = $('#source-list');
     box.textContent = '';
-    let group = null;
+    const off = (s) => (want ? want.has(s.key) : s.excluded);
+    const groups = [];
     for (const s of c.sources) {
-      if (s.group !== group) { group = s.group; box.append(el('div', { cls: 'src-group', text: group })); }
-      const cb = el('input', { type: 'checkbox', 'data-source': s.key });
-      cb.checked = !s.excluded;
-      const counts = countText(s.counts);
-      box.append(el('label', { cls: 'src' + (s.excluded ? ' off' : '') }, [
-        cb,
-        el('span', {}, [el('span', { cls: 'n', text: s.name }), el('span', { cls: 'abbr', text: s.abbr })]),
-        el('span', { cls: 'hint', text: s.excluded ? 'Switched off' + (counts ? ' · ' + counts : '') : counts || 'In use' }),
-      ]));
+      let g = groups.filter((x) => x.name === s.group)[0];
+      if (!g) groups.push(g = { name: s.group, books: [] });
+      g.books.push(s);
     }
+    groups.sort((x, y) => (/primary|core/i.test(y.name) ? 1 : 0) - (/primary|core/i.test(x.name) ? 1 : 0));
+    const many = c.sources.length > 12;
+    for (const g of groups) {
+      g.books.sort((x, y) => x.dialogName.localeCompare(y.dialogName));
+      const on = g.books.filter((s) => !off(s)).length;
+      const fold = el('details', { cls: 'src-fold', 'data-group': g.name });
+      fold.open = !many || openGroups.has(g.name);
+      // remember the user's own taps only (a fold opened because the list was short isn't one)
+      const sum = el('summary', {}, [el('span', { cls: 'src-group', text: g.name }), el('span', { cls: 'src-count', text: on + ' of ' + g.books.length + ' in use' })]);
+      sum.addEventListener('click', () => { if (fold.open) openGroups.delete(g.name); else openGroups.add(g.name); });
+      fold.append(sum);
+      if (g.books.length > 1) {
+        fold.append(el('div', { cls: 'row src-all' }, [
+          el('button', { cls: 'btn sm', type: 'button', 'data-src-group': g.name, 'data-src-to': 'on', text: 'Include these' }),
+          el('button', { cls: 'btn sm', type: 'button', 'data-src-group': g.name, 'data-src-to': 'off', text: 'Exclude these' }),
+        ]));
+      }
+      for (const s of g.books) {
+        const cb = el('input', { type: 'checkbox', 'data-source': s.key });
+        cb.checked = !off(s);
+        const counts = countText(s.counts);
+        fold.append(el('label', { cls: 'src' + (off(s) ? ' off' : '') }, [
+          cb,
+          el('span', {}, [el('span', { cls: 'n', text: s.name }), el('span', { cls: 'abbr', text: s.abbr })]),
+          el('span', { cls: 'hint', text: off(s) ? 'Switched off' + (counts ? ' · ' + counts : '') : counts || 'In use' }),
+        ]));
+      }
+      box.append(fold);
+    }
+    $('#src-all').hidden = c.sources.length <= 1;
     if (c.sources.length <= 1) box.append(el('p', { cls: 'note', text: 'Add a content file to choose from more books.' }));
     // single items: one button per kind, as in MPMB's Source Selection dialog, with how many are left out
     const kinds = $('#excl-kinds');
@@ -79,11 +105,37 @@
       kinds.append(b);
     }
     const used = inUse(c);
-    $('#sources-chip').textContent = used.length + ' of ' + c.sources.length + ' in use';
+    $('#sources-chip').textContent = c.sources.filter((s) => !off(s)).length + ' of ' + c.sources.length + ' in use';
     // the line in the Character card
     const onlySRD = !c.files.length && !c.userScript;
-    $('#content-hint-text').textContent = onlySRD ? 'Content: SRD only.' : 'Content: ' + (used.map((s) => s.abbr).join(', ') || 'no books switched on') + (c.userScript ? ' + your script' : '') + '.';
+    $('#content-hint-text').textContent = onlySRD ? 'Content: SRD only.' : 'Content: ' + (used.length > 8 ? used.length + ' books' : used.map((s) => s.abbr).join(', ') || 'no books switched on') + (c.userScript ? ' + your script' : '') + '.';
     $('#content-hint-link').textContent = onlySRD ? 'Add books' : 'Change';
+    // the Sheet tab's card
+    const nOut = EXCL_KINDS.reduce((t, k) => t + ((c.excluded && c.excluded[k[0]]) || 0), 0);
+    $('#sources-sum-text').textContent = onlySRD ? 'The sheet has the SRD (the free rules) only. Add content files for more books.'
+      : (n ? n + (n === 1 ? ' content file' : ' content files') : 'No content files') + (c.userScript ? ' and a pasted script' : '') + ' · ' + used.length + ' of ' + c.sources.length + ' books in use' + (nOut ? ' · ' + nOut + ' single items left out' : '') + '.';
+  }
+  // the books the user wants switched off while the sheet is still applying an earlier change (null: none waiting)
+  let want = null, applying = false;
+  const openGroups = new Set();
+  // apply the books as ticked; ticks made meanwhile are applied together afterwards
+  async function applySources() {
+    if (applying || !want || !state.content) return;
+    applying = true;
+    const wanted = Array.from(want);
+    const res = await contentOp('setSources', { excluded: wanted }, { working: 'Updating the lists…' });
+    applying = false;
+    if (!res) { want = null; renderContent(); return; }   // failed: show the books as the sheet has them
+    const now = state.content ? state.content.sources.filter((s) => s.excluded).map((s) => s.key).sort().join('|') : '';
+    if (!want || Array.from(want).sort().join('|') === now) { want = null; renderContent(); return; }
+    applySources();
+  }
+  function wantSources(fn) {
+    if (!state.content || !state.worker) return;
+    if (!want) want = new Set(state.content.sources.filter((s) => s.excluded).map((s) => s.key));
+    for (const s of state.content.sources) { const o = fn(s); if (o === true) want.add(s.key); else if (o === false) want.delete(s.key); }
+    renderContent();
+    applySources();
   }
 
   // MPMB's buttons in Source Selection, in its order and with its names
@@ -105,7 +157,8 @@
     else $('#content-result').hidden = true;
   }
   function contentBusy(on) {
-    for (const n of $$('#content-file, #paste-open, #paste-save, #paste-cancel, #content-files button, [data-source], [data-excl]')) n.disabled = on;
+    // the book ticks stay usable: a tick made meanwhile waits for the change before it (applySources)
+    for (const n of $$('#content-file, #paste-open, #paste-save, #paste-cancel, #content-files button, [data-excl]')) n.disabled = on;
     $('label[for="content-file"]').classList.toggle('is-disabled', on);
   }
   function showResult(kind, title, msgs) {
@@ -123,7 +176,7 @@
     showResult('', ctx && ctx.working ? ctx.working : 'Working…');
     setBusy(1);
     let res;
-    try { res = await state.worker.call(op, args); } catch (e) { setBusy(-1); contentBusy(false); showResult('err', 'Something went wrong: ' + (e.message || e)); return; }
+    try { res = await state.worker.call(op, args); } catch (e) { setBusy(-1); contentBusy(false); showResult('err', 'Something went wrong: ' + (e.message || e)); return null; }
     for (const s of res.changes || []) apply(s);
     state.log = res.log; state.content = res.content; state.saved = res.saved;
     idbPut(state.sheetKey, { saved: res.saved, date: Date.now() });
@@ -139,8 +192,8 @@
       const added = res.content.sources.filter((s) => !had.has(s.key));
       const off = added.filter((s) => s.excluded).map((s) => s.abbr);
       const lines = [];
-      if (added.length) lines.push('New books: ' + added.map((s) => s.name).join(', ') + '.');
-      if (off.length) lines.push(listNames(off) + (off.length === 1 ? ' is' : ' are') + ' switched off for now (the sheet does this for some books). Switch ' + (off.length === 1 ? 'it' : 'them') + ' on under Sources.');
+      if (added.length) lines.push(added.length > 6 ? added.length + ' new books.' : 'New books: ' + added.map((s) => s.name).join(', ') + '.');
+      if (off.length) lines.push((off.length > 6 ? off.length + ' of them are' : listNames(off) + (off.length === 1 ? ' is' : ' are')) + ' switched off for now (the sheet does this for some books). Switch ' + (off.length === 1 ? 'it' : 'them') + ' on under Books.');
       showResult('ok', 'Added ' + ctx.name + ' in ' + fmtS(res.ms) + '.', lines.concat(other, errs));
     } else if (op === 'setUserScript' && !(ctx && ctx.removed)) {
       if (worked) { showResult('ok', 'Your script was added to the sheet.', other.concat(errs)); $('#paste-box').hidden = true; $('#paste-open').setAttribute('aria-expanded', 'false'); }
@@ -149,6 +202,7 @@
       showResult(other.length || errs.length ? 'err' : 'ok', 'Removed ' + ctx.removed + '.', other.concat(errs));
     } else if (other.length || errs.length) showResult('err', 'The sheet reported a problem.', other.concat(errs));
     else $('#content-result').hidden = true;
+    return res;
   }
   function openPaste(focus) {
     $('#paste-text').value = (state.saved && state.saved['User Script']) || '';
@@ -178,10 +232,18 @@
       if (b && state.worker && !b.disabled) excludeOp(b.dataset.excl);
     });
     $('#source-list').addEventListener('change', (e) => {
-      if (!e.target.matches('[data-source]') || !state.content) return;
-      const excluded = $$('[data-source]').filter((cb) => !cb.checked).map((cb) => cb.dataset.source);
-      contentOp('setSources', { excluded }, { working: 'Updating the lists…' });
+      if (!e.target.matches('[data-source]')) return;
+      const key = e.target.dataset.source, out = !e.target.checked;
+      wantSources((s) => (s.key === key ? out : undefined));
     });
+    $('#source-list').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-src-group]');
+      if (!b) return;
+      const out = b.dataset.srcTo === 'off';
+      wantSources((s) => (s.group === b.dataset.srcGroup ? out : undefined));
+    });
+    $('#src-all-on').addEventListener('click', () => wantSources(() => false));
+    $('#src-all-off').addEventListener('click', () => wantSources(() => true));
   }
 
   Object.assign(U, {

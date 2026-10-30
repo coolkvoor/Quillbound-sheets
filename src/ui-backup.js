@@ -61,7 +61,7 @@
 
   async function backupNow(byUser) {
     clearTimeout(timer); timer = 0;
-    if (!dir || !state.worker || !state.charKey) return false;
+    if (!dir || !state.worker || !state.charKey || state.tourSample) return false;   // never a backup of the tour's sample
     if (running || state.changing) { schedule(); return false; }
     if (!(await permission(byUser))) { render(); if (!asked && !byUser) { asked = true; toast('Backups need your OK again: Settings → Backups'); } return false; }
     running = true;

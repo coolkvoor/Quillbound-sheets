@@ -39,6 +39,36 @@
     // the same for a drop-down's options, which can only hold text (capitals, as the label's small caps show it)
     const optionText = (name) => { const p = splitSource(name); return p ? p.text + ' (' + p.src.toUpperCase() + ')' : name.trim() ? name : '–'; };
 
+    // MPMB's source dialogs (Source Selection and the single-item dialogs) move items between an Excluded list (ExcL)
+    // and an Included list (IncL) with >>, >, < and <<. Acrobat has the lists side by side; on a phone they are stacked,
+    // so the arrows pointed nowhere and ">>" wasn't read as "include all". Same buttons, named for what they do.
+    const MOVERS = { BTRA: 'Include all', BTR1: 'Include ↓', BTL1: '↑ Exclude', BTLA: 'Exclude all' };
+    const hasPair = (desc) => { const ids = new Set(); const w = (e) => { if (!e) return; if (e.item_id) ids.add(e.item_id); (e.elements || []).forEach(w); }; w(desc); return ids.has('ExcL') && ids.has('IncL'); };
+    const LONG_LIST = 20;
+    // show the items (and their groups) that hold the searched text
+    function filterList(it) {
+      const q = it.find.value.trim().toLowerCase();
+      const depth = (li) => Number(li.style.getPropertyValue('--d')) || 0;
+      const open = [];   // the groups above the current item; a group shows when anything under it does
+      const done = (g) => { g.hidden = !g.dataset.hit; delete g.dataset.hit; };
+      let shown = 0, total = 0;
+      for (const li of it.input.children) {
+        if (li.classList.contains('md-group')) {
+          while (open.length && depth(open[open.length - 1]) >= depth(li)) done(open.pop());
+          open.push(li);
+        } else if (li.dataset.item) {
+          total++;
+          const hit = !q || li.textContent.toLowerCase().indexOf(q) !== -1;
+          li.hidden = !hit;
+          if (hit) { shown++; for (const g of open) g.dataset.hit = '1'; }
+        }
+      }
+      while (open.length) done(open.pop());
+      it.count.textContent = q ? shown + ' of ' + total : total + (total === 1 ? ' item' : ' items');
+      let none = it.input.querySelector('.md-none');
+      if (total && !shown) { if (!none) it.input.append(el('li', { cls: 'md-none', text: 'Nothing matches' })); } else if (none && total) none.remove();
+    }
+
     function send(reply) {
       if (!cur || !cur.resolve || cur.waiting) return;
       // text boxes typed in but not yet sent go along with every reply
@@ -99,8 +129,13 @@
             if (!li || li.getAttribute('aria-disabled') === 'true') return;
             send({ pick: { [e.item_id]: li.dataset.item }, press: e.item_id });
           });
-          node = el('div', { cls: 'md-field' }, e.name ? [el('span', { cls: 'md-label', text: textOf(e.name) }), input] : [input]);
-          items[e.item_id] = { type: t, node, input, def: e };
+          // a long list gets a search box and its count (the app's own: MPMB only sees the item picked)
+          const find = el('input', { cls: 'in md-find', type: 'search', placeholder: 'Search', 'aria-label': 'Search ' + (textOf(e.name) || 'the list'), autocomplete: 'off', spellcheck: 'false' });
+          const count = el('span', { cls: 'md-count hint' });
+          find.addEventListener('input', () => filterList(items[e.item_id]));
+          const tools = el('div', { cls: 'md-find-row', hidden: '' }, [find, count]);
+          node = el('div', { cls: 'md-field' }, (e.name ? [el('span', { cls: 'md-label', text: textOf(e.name) })] : []).concat([tools, input]));
+          items[e.item_id] = { type: t, node, input, def: e, find, count, tools };
         } else if (t === 'check_box' || t === 'radio') {
           const input = el('input', { type: t === 'radio' ? 'radio' : 'checkbox' });
           if (t === 'radio') input.name = 'md-' + req.id + '-' + (e.group_id || 'g');
@@ -113,7 +148,8 @@
           node = el('label', { cls: 'md-check' }, [input, el('span', { text: textOf(e.name) })]);
           items[e.item_id] = { type: t, node, input, def: e };
         } else if (t === 'button') {
-          node = el('button', { cls: 'btn md-btn', type: 'button', text: textOf(e.name) || e.item_id });
+          node = el('button', { cls: 'btn md-btn', type: 'button', text: MOVERS[e.item_id] && hasPair(req.desc) ? MOVERS[e.item_id] : textOf(e.name) || e.item_id });
+          if (MOVERS[e.item_id] && hasPair(req.desc)) node.setAttribute('aria-label', MOVERS[e.item_id].replace(/[↑↓] ?| ?[↑↓]/g, ''));
           node.addEventListener('click', () => send({ press: e.item_id }));
           items[e.item_id] = { type: t, node, input: node, def: e };
         } else if (t === 'ok' || t === 'ok_cancel' || t === 'ok_cancel_other') {
@@ -132,6 +168,12 @@
         parent.append(node);
       };
       walk(req.desc, body);
+      // the source dialogs' move buttons: in one row between the two lists, which stack on a phone
+      if (items.BTRA && hasPair(req.desc)) {
+        const v = items.BTRA.node.parentNode;
+        v.classList.add('md-movers');
+        if (v.parentNode) v.parentNode.classList.add('md-pair');
+      }
       // a dialog without OK/Cancel buttons can still be closed
       if (!foot.childElementCount) { const b = el('button', { cls: 'btn primary', type: 'button', text: 'Close' }); b.addEventListener('click', () => send({ press: 'cancel' })); foot.append(b); }
       d.oncancel = (ev) => { ev.preventDefault(); send({ press: 'cancel' }); };
@@ -174,6 +216,10 @@
             }
           };
           add(v, 0);
+          const n = ul.querySelectorAll('li[data-item]').length;
+          if (!n) ul.append(el('li', { cls: 'md-none', text: 'Nothing here' }));
+          it.tools.hidden = n <= LONG_LIST && !it.find.value;
+          if (!it.tools.hidden) filterList(it);
           ul.scrollTop = top;
         } else if (it.type === 'check_box' || it.type === 'radio') it.input.checked = !!v;
       }

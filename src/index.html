@@ -120,9 +120,24 @@ header.top .line { font-size: 0.92rem; color: var(--muted); white-space: nowrap;
 .busy.on { opacity: 1; }
 .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 0.85rem; color: var(--muted); background: var(--surface); white-space: nowrap; }
 .chip.warn { color: var(--warn); border-color: currentColor; }
+/* phones: the save chip is a small round mark (✓, … while saving, ! when not saved), so the name keeps its room next to three buttons */
+.save-wrap { display: inline-flex; align-items: center; gap: 12px; flex: none; position: relative; }
+@media (max-width: 560px) {
+  /* the busy dot sits on the mark's corner instead of taking its own room */
+  header.top { gap: 4px; }
+  .save-wrap { gap: 0; }
+  .save-wrap .busy { position: absolute; top: -1px; right: -1px; width: 8px; height: 8px; }
+  #save-chip { font-size: 0; width: 24px; height: 24px; padding: 0; gap: 0; justify-content: center; flex: none; }   /* no gap: the hidden "Saved" text is still a flex item and pushed the mark 3 px left */
+  /* drawn shapes, not characters: a ✓ from a fallback font sat low and to the left (Brave on Android) */
+  #save-chip::before { content: ""; width: 14px; height: 14px; background: currentColor; -webkit-mask: var(--mark) center / contain no-repeat; mask: var(--mark) center / contain no-repeat;
+    --mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3.2 3.2L13 4.8' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+  #save-chip[data-state="pending"]::before { --mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='3.5' cy='8' r='1.4'/%3E%3Ccircle cx='8' cy='8' r='1.4'/%3E%3Ccircle cx='12.5' cy='8' r='1.4'/%3E%3C/svg%3E"); }
+  #save-chip[data-state="error"]::before { --mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3v6.5' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='12.6' r='1.3'/%3E%3C/svg%3E"); }
+}
 
 main.bands { padding: 8px 16px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
 section.band { scroll-margin-top: calc(var(--header-h) + 8px); padding-top: 12px; }
+.card > h3, .band-title { scroll-margin-top: calc(var(--header-h) + 16px); }   /* the tour scrolls a heading to the top, clear of the top bar */
 .band-title { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; color: var(--accent); margin: 8px 0 10px; display: flex; align-items: baseline; gap: 10px; }
 .band-title small { font-family: var(--font-body); font-size: 0.85rem; font-weight: 500; color: var(--muted); }
 /* cards flow down columns like a folio: 1 column on phones, 2 on phone landscape and tablet portrait, 3 on tablet landscape */
@@ -244,20 +259,49 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .result.ok { border-color: var(--good); }
 .result.err { border-color: var(--bad); }
 .result .msg { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.88rem; color: var(--muted); max-height: 14rem; overflow: auto; }
-.src-group { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; color: var(--muted); letter-spacing: 0.03em; margin: 10px 0 2px; }
-.src-group:first-child { margin-top: 0; }
+.src-all { margin: 4px 0 8px; }
+.src-fold { border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; margin-top: 8px; }
+.src-fold > summary { display: flex; align-items: center; gap: 8px; min-height: 48px; cursor: pointer; list-style: none; }
+.src-fold > summary::-webkit-details-marker { display: none; }
+.src-fold > summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+.src-fold[open] > summary::before { transform: rotate(90deg); }
+.src-fold[open] > summary { border-bottom: 1px solid var(--line); }
+.src-group { flex: 1; min-width: 0; font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; color: var(--muted); letter-spacing: 0.03em; }
+.src-fold .src-count { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+.src-fold .src:last-child { border-bottom: 0; }
 .src { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 12px; align-items: center; min-height: 52px; padding: 6px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
 .src input { width: 22px; height: 22px; margin: 0 0 0 4px; accent-color: var(--accent); }
 .src .n { font-weight: 500; }
 .src .abbr { color: var(--muted); font-size: 0.85rem; margin-left: 4px; }
 .src .hint { grid-column: 2; }
 .src.off .n { color: var(--muted); }
-.src-sub { margin-top: 16px; }
 .excl-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
 .excl-kinds .btn { min-height: 48px; min-width: 0; padding: 10px 12px; text-align: left; justify-content: space-between; gap: 6px; }
 .excl-kinds .btn > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .excl-kinds .chip { flex: none; }
 #content-hint { margin: 0; }
+
+/* the tour (ui-tour.js): the page dimmed but for the lit-up thing, and a small card */
+.tour { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
+.tour-dim { position: fixed; inset: 0; background: rgb(0 0 0 / 0.55); pointer-events: auto; }
+.tour-block { position: fixed; pointer-events: auto; }
+.tour.waiting .tour-block { pointer-events: none; }   /* a wait step: the lit-up button takes the tap */
+.tour-ring { position: fixed; border-radius: 12px; box-shadow: 0 0 0 3px var(--accent), 0 0 0 6px rgb(255 255 255 / 0.5); pointer-events: none; transition: left .2s, top .2s, width .2s, height .2s; }
+.tour.waiting .tour-ring { animation: tour-pulse 1.4s ease-in-out infinite; }
+@keyframes tour-pulse { 50% { box-shadow: 0 0 0 5px var(--accent), 0 0 0 10px rgb(255 255 255 / 0.35); } }
+@media (prefers-reduced-motion: reduce) { .tour-ring { transition: none; } .tour.waiting .tour-ring { animation: none; } }
+.tour-card { position: fixed; left: 16px; right: 16px; max-width: 360px; margin: 0 auto; background: var(--surface); color: var(--ink); border-radius: 14px; padding: 14px 16px 12px; box-shadow: 0 8px 30px rgb(0 0 0 / 0.35); pointer-events: auto; }
+.tour-text { margin: 0 0 10px; font-size: 1.02rem; line-height: 1.4; }
+.tour.missing .tour-text { color: var(--muted); }
+.tour-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.tour-n { flex: 1 1 auto; font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+.tour-foot .btn[hidden] { display: none; }
+.tour-choices .btn { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; }
+.tour-choices .hint { font-family: var(--font-body); font-weight: 400; letter-spacing: 0; text-transform: none; }
+.tour-choices .btn.primary .hint { color: inherit; opacity: 0.9; }
+.tour-busy { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / 0.55); display: grid; place-items: center; }
+.tour-busy[hidden] { display: none; }
+.tour-busy .tour-card { position: static; }
 
 /* MPMB buttons, menus and pop-up panels */
 .card h3 .btn.sm { font-family: var(--font-body); letter-spacing: 0; font-weight: 500; }
@@ -308,6 +352,17 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .md-list li { padding: 10px 10px 10px calc(10px + var(--d, 0) * 16px); border-radius: 6px; cursor: pointer; min-height: 44px; display: flex; align-items: center; overflow-wrap: anywhere; }
 .md-list li[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
 .md-list li.md-group { font-weight: 700; color: var(--muted); cursor: default; }
+.md-list li.md-none { color: var(--muted); font-style: italic; cursor: default; }
+.md-list li[hidden] { display: none; }
+.md-find-row { display: flex; align-items: center; gap: 10px; }
+.md-find-row[hidden] { display: none; }
+.md-find-row .md-find { flex: 1; min-width: 0; }
+.md-find-row .md-count { white-space: nowrap; }
+/* the source dialogs' move buttons, named for what they do: a row of four between the two lists */
+.md-movers { grid-template-columns: repeat(4, minmax(0, 1fr)); align-self: center; }
+.md-movers .md-btn { min-width: 0; padding-inline: 6px; white-space: normal; }
+@media (max-width: 699px) { .md-pair { flex-direction: column; align-items: stretch; } .md-pair > * { flex: none; } }
+@media (min-width: 700px) { .md-movers { grid-template-columns: 1fr; } }
 /* suggestions under a text box (ui-suggest.js), in place of the browser's datalist popup */
 .suggest { position: absolute; z-index: 60; margin: 0; padding: 4px; list-style: none; overflow: auto; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.35); overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 .suggest li { padding: 10px 12px; min-height: 44px; display: flex; align-items: center; border-radius: 6px; cursor: pointer; overflow-wrap: anywhere; }
@@ -869,8 +924,8 @@ window.MPMBTheme = (() => {
       <div class="name" id="hdr-name">Unnamed character</div>
       <div class="line" id="hdr-line">Choose a species and class to begin</div>
     </div>
-    <span class="chip" id="save-chip" title="Saved on this device">Saved</span>
-    <span class="busy" id="busy" aria-hidden="true"></span>
+    <span class="save-wrap"><span class="chip" id="save-chip" title="Saved on this device">Saved</span><span class="busy" id="busy" aria-hidden="true"></span></span>
+    <button class="btn sm icon-btn" id="sources-open" type="button" aria-label="Sources" title="Sources" aria-haspopup="dialog" data-sources-open><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7"/></svg></button>
     <button class="btn sm icon-btn" id="dice-open" type="button" aria-label="Dice" title="Dice" aria-haspopup="dialog"></button>
     <button class="btn sm icon-btn" id="settings-open" type="button" aria-label="Settings" title="Settings" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <span hidden data-out="Color.Theme"></span><span hidden data-out="Color.DragonHeads"></span>
@@ -896,7 +951,7 @@ window.MPMBTheme = (() => {
             <div class="f"><span class="flabel">Add XP</span><div class="line"><input class="in num" data-f="Add Experience" id="f-addxp" inputmode="numeric" autocomplete="off" aria-label="Experience to add"><button class="btn" type="button" data-mpmb="Add Experience Button" data-title="Add experience">Add</button></div></div>
           </div>
           <p class="hint">Next level at <b class="num" data-out="Next level">–</b> XP. <span id="xp-levelup" hidden><span id="xp-levelup-text"></span> <button class="linkish" id="xp-levelup-btn" type="button">Level up</button></span></p>
-          <p class="hint" id="content-hint"><span id="content-hint-text">Content: SRD only.</span> <a href="#content" data-goto="content" id="content-hint-link">Add books</a></p>
+          <p class="hint" id="content-hint"><span id="content-hint-text">Content: SRD only.</span> <a href="#sources-panel" data-sources-open id="content-hint-link">Add books</a></p>
           <div class="stats">
             <div class="stat"><span class="k">Level</span><span class="v num" data-out="Character Level">–</span></div>
             <div class="stat"><span class="k">Proficiency</span><span class="v num" data-out="Proficiency Bonus">–</span></div>
@@ -1051,9 +1106,9 @@ window.MPMBTheme = (() => {
         <div class="card">
           <h3>Limited features</h3>
           <div class="row rests">
-            <button class="btn sm" type="button" data-mpmb="SR" data-done="Short rest: uses reset.">Short rest</button>
-            <button class="btn sm" type="button" data-mpmb="LR" data-done="Long rest: uses reset.">Long rest</button>
-            <button class="btn sm" type="button" data-mpmb="Dawn" data-done="Dawn: uses reset.">Dawn</button>
+            <button class="btn sm" type="button" data-mpmb="SR" data-done="Short rest: your short-rest features are back.">Short rest</button>
+            <button class="btn sm" type="button" data-mpmb="LR" data-done="Long rest: your features and spell slots are back.">Long rest</button>
+            <button class="btn sm" type="button" data-mpmb="Dawn" data-done="Dawn: features that come back at dawn are back.">Dawn</button>
           </div>
           <ul class="list" id="limited"></ul>
         </div>
@@ -1226,31 +1281,10 @@ window.MPMBTheme = (() => {
           <p class="note" id="sheet-file"></p>
           <button class="btn" id="open-other" type="button">Open another sheet</button>
         </div>
-        <div class="card" id="content">
-          <h3>Add-on content <span class="chip" id="content-chip">SRD only</span></h3>
-          <p class="note">Add-on scripts for the sheet add classes, species, spells and more from books you own, or your own homebrew. They stay with this sheet on this device.</p>
-          <ul class="list" id="content-files"></ul>
-          <div class="row">
-            <label class="btn primary file-btn" for="content-file">Add content file<input id="content-file" type="file"></label>
-            <button class="btn" id="paste-open" type="button" aria-expanded="false" aria-controls="paste-box">Paste a script</button>
-          </div>
-          <div class="stack" id="paste-box" hidden>
-            <label class="f"><span>Pasted script</span><textarea class="in code" id="paste-text" rows="8" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea><span class="hint">This replaces any script you pasted before. The sheet runs it now and every time it opens.</span></label>
-            <div class="row">
-              <button class="btn primary" id="paste-save" type="button">Add script to sheet</button>
-              <button class="btn" id="paste-cancel" type="button">Cancel</button>
-            </div>
-          </div>
-          <div class="result" id="content-result" role="status" aria-live="polite" hidden></div>
-          <p class="note">Get add-on scripts from the <a href="https://www.flapkan.com/mpmb/index" target="_blank" rel="noopener">community index on MPMB’s site</a>, or read <a href="https://www.flapkan.com/how-to/add-more-content" target="_blank" rel="noopener">how adding content works</a>.</p>
-        </div>
-        <div class="card" id="sources">
-          <h3>Sources <span class="chip" id="sources-chip">1 in use</span></h3>
-          <p class="note">Choose which books the sheet's automation uses. Content from books you switch off doesn't appear in the lists.</p>
-          <div id="source-list"></div>
-          <div class="src-group src-sub">Single items</div>
-          <p class="note">Leave out single classes, spells, feats and so on from the books in use, with the sheet's own selection dialog.</p>
-          <div class="excl-kinds" id="excl-kinds"></div>
+        <div class="card" id="sources-sum">
+          <h3>Sources and add-on content</h3>
+          <p class="note" id="sources-sum-text">The sheet has the SRD (the free rules) only.</p>
+          <button class="btn" type="button" data-sources-open>Open Sources</button>
         </div>
         <div class="card" id="pages">
           <h3>Pages <button class="btn sm" type="button" data-bookmark="Functions/Set Pages Layout" data-title="Pages and layout" data-pages="1">Change</button></h3>
@@ -1304,6 +1338,61 @@ window.MPMBTheme = (() => {
   <ul class="menu-list" id="menu-list"></ul>
 </dialog>
 
+<!-- While the tour's sample character is made (app.js withSample) -->
+<div class="tour-busy" id="tour-busy" role="status" hidden><div class="tour-card"><p class="tour-text">Making a sample character for the tour…</p></div></div>
+<!-- Offered once, after the first sheet opens (ui-tour.js) -->
+<dialog class="panel" id="tour-ask" aria-labelledby="tour-ask-title">
+  <div class="panel-head"><h3 id="tour-ask-title">New here?</h3></div>
+  <div class="panel-body">
+    <p>Want a short tour of the app's buttons?</p>
+    <div class="stack tour-choices">
+      <button class="btn primary" type="button" data-tour="long">Full tour <span class="hint">I'm new to the sheet</span></button>
+      <button class="btn" type="button" data-tour="short">Quick tour <span class="hint">I know the sheet</span></button>
+      <button class="btn" type="button" data-tour="no">No thanks</button>
+    </div>
+    <p class="note">You can start it later in Settings.</p>
+  </div>
+</dialog>
+
+<!-- Sources (top bar book): add-on content, the books in use and single items, on their own screen -->
+<dialog class="panel full" id="sources-panel" aria-labelledby="sources-title">
+  <div class="panel-head"><h3 id="sources-title">Sources</h3><button class="btn sm" id="sources-close" type="button">Close</button></div>
+  <div class="panel-body sources-body">
+  <div class="card" id="content">
+    <h3>Add-on content <span class="chip" id="content-chip">SRD only</span></h3>
+    <p class="note">Add-on scripts for the sheet add classes, species, spells and more from books you own, or your own homebrew. They stay with this sheet on this device.</p>
+    <ul class="list" id="content-files"></ul>
+    <div class="row">
+      <label class="btn primary file-btn" for="content-file">Add content file<input id="content-file" type="file"></label>
+      <button class="btn" id="paste-open" type="button" aria-expanded="false" aria-controls="paste-box">Paste a script</button>
+    </div>
+    <div class="stack" id="paste-box" hidden>
+      <label class="f"><span>Pasted script</span><textarea class="in code" id="paste-text" rows="8" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea><span class="hint">This replaces any script you pasted before. The sheet runs it now and every time it opens.</span></label>
+      <div class="row">
+        <button class="btn primary" id="paste-save" type="button">Add script to sheet</button>
+        <button class="btn" id="paste-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+    <div class="result" id="content-result" role="status" aria-live="polite" hidden></div>
+    <p class="note">Get add-on scripts from the <a href="https://www.flapkan.com/mpmb/index" target="_blank" rel="noopener">community index on MPMB’s site</a>, or read <a href="https://www.flapkan.com/how-to/add-more-content" target="_blank" rel="noopener">how adding content works</a>.</p>
+  </div>
+  <div class="card" id="sources">
+    <h3>Books <span class="chip" id="sources-chip">1 in use</span></h3>
+    <p class="note">Choose which books the sheet's automation uses. Content from books you switch off doesn't appear in the lists.</p>
+    <div class="row src-all" id="src-all" hidden>
+      <button class="btn sm" id="src-all-on" type="button">Include all</button>
+      <button class="btn sm" id="src-all-off" type="button">Exclude all</button>
+    </div>
+    <div id="source-list"></div>
+  </div>
+  <div class="card" id="single-items">
+    <h3>Single items</h3>
+    <p class="note">Leave out single classes, spells, feats and so on from the books in use, or include ones the sheet leaves out by default (such as firearms), with the sheet's own selection dialog.</p>
+    <div class="excl-kinds" id="excl-kinds"></div>
+  </div>
+  </div>
+</dialog>
+
 <!-- The app's own settings (top bar gear): look, about, MPMB's message log. The Sheet tab keeps what belongs to the sheet. -->
 <dialog class="panel full" id="settings" aria-labelledby="settings-title">
   <div class="panel-head"><h3 id="settings-title">Settings</h3><button class="btn sm" id="settings-close" type="button">Close</button></div>
@@ -1339,6 +1428,11 @@ window.MPMBTheme = (() => {
       <button class="btn primary" id="backup-share" type="button" hidden>Send to…</button>
       <button class="btn" id="backup-download" type="button" hidden>Download</button>
       <p class="note">A backup is the character written into your sheet's PDF, as Download PDF makes it: open it in the app (Open another sheet) or in Acrobat.</p>
+    </div>
+    <div class="card" id="tour-card">
+      <h3>Tour</h3>
+      <p class="note">A walk past the app's buttons. It changes nothing on your sheet.</p>
+      <div class="row"><button class="btn" type="button" data-tour="short">Quick tour</button><button class="btn" type="button" data-tour="long">Full tour</button></div>
     </div>
     <div class="card">
       <h3>About</h3>
@@ -1525,4 +1619,5 @@ window.MPMBTheme = (() => {
 <script src="ui-backup.js"></script>
 <script src="ui-suggest.js"></script>
 <script src="ui-dice.js"></script>
+<script src="ui-tour.js"></script>
 <script src="app.js"></script>
