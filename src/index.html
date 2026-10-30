@@ -120,6 +120,14 @@ header.top .line { font-size: 0.92rem; color: var(--muted); white-space: nowrap;
 .busy.on { opacity: 1; }
 .chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 0.85rem; color: var(--muted); background: var(--surface); white-space: nowrap; }
 .chip.warn { color: var(--warn); border-color: currentColor; }
+/* phones: the save chip is a small round mark (✓, … while saving, ! when not saved), so the name keeps its room next to three buttons */
+@media (max-width: 560px) {
+  header.top { gap: 6px; }
+  #save-chip { font-size: 0; width: 26px; height: 26px; padding: 0; justify-content: center; flex: none; }
+  #save-chip::before { content: "✓"; font-size: 0.9rem; }
+  #save-chip[data-state="pending"]::before { content: "…"; }
+  #save-chip[data-state="error"]::before { content: "!"; font-weight: 700; }
+}
 
 main.bands { padding: 8px 16px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
 section.band { scroll-margin-top: calc(var(--header-h) + 8px); padding-top: 12px; }
@@ -244,15 +252,22 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .result.ok { border-color: var(--good); }
 .result.err { border-color: var(--bad); }
 .result .msg { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.88rem; color: var(--muted); max-height: 14rem; overflow: auto; }
-.src-group { font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; color: var(--muted); letter-spacing: 0.03em; margin: 10px 0 2px; }
-.src-group:first-child { margin-top: 0; }
+.src-all { margin: 4px 0 8px; }
+.src-fold { border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; margin-top: 8px; }
+.src-fold > summary { display: flex; align-items: center; gap: 8px; min-height: 48px; cursor: pointer; list-style: none; }
+.src-fold > summary::-webkit-details-marker { display: none; }
+.src-fold > summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+.src-fold[open] > summary::before { transform: rotate(90deg); }
+.src-fold[open] > summary { border-bottom: 1px solid var(--line); }
+.src-group { flex: 1; min-width: 0; font-family: var(--font-display); font-weight: 700; font-size: 0.95rem; color: var(--muted); letter-spacing: 0.03em; }
+.src-fold .src-count { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
+.src-fold .src:last-child { border-bottom: 0; }
 .src { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 12px; align-items: center; min-height: 52px; padding: 6px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
 .src input { width: 22px; height: 22px; margin: 0 0 0 4px; accent-color: var(--accent); }
 .src .n { font-weight: 500; }
 .src .abbr { color: var(--muted); font-size: 0.85rem; margin-left: 4px; }
 .src .hint { grid-column: 2; }
 .src.off .n { color: var(--muted); }
-.src-sub { margin-top: 16px; }
 .excl-kinds { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 8px; }
 .excl-kinds .btn { min-height: 48px; min-width: 0; padding: 10px 12px; text-align: left; justify-content: space-between; gap: 6px; }
 .excl-kinds .btn > span:first-child { min-width: 0; overflow-wrap: anywhere; }
@@ -308,6 +323,17 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .md-list li { padding: 10px 10px 10px calc(10px + var(--d, 0) * 16px); border-radius: 6px; cursor: pointer; min-height: 44px; display: flex; align-items: center; overflow-wrap: anywhere; }
 .md-list li[aria-selected="true"] { background: var(--accent); color: var(--accent-ink); }
 .md-list li.md-group { font-weight: 700; color: var(--muted); cursor: default; }
+.md-list li.md-none { color: var(--muted); font-style: italic; cursor: default; }
+.md-list li[hidden] { display: none; }
+.md-find-row { display: flex; align-items: center; gap: 10px; }
+.md-find-row[hidden] { display: none; }
+.md-find-row .md-find { flex: 1; min-width: 0; }
+.md-find-row .md-count { white-space: nowrap; }
+/* the source dialogs' move buttons, named for what they do: a row of four between the two lists */
+.md-movers { grid-template-columns: repeat(4, minmax(0, 1fr)); align-self: center; }
+.md-movers .md-btn { min-width: 0; padding-inline: 6px; white-space: normal; }
+@media (max-width: 699px) { .md-pair { flex-direction: column; align-items: stretch; } .md-pair > * { flex: none; } }
+@media (min-width: 700px) { .md-movers { grid-template-columns: 1fr; } }
 /* suggestions under a text box (ui-suggest.js), in place of the browser's datalist popup */
 .suggest { position: absolute; z-index: 60; margin: 0; padding: 4px; list-style: none; overflow: auto; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 8px 24px rgb(0 0 0 / 0.35); overscroll-behavior: contain; touch-action: pan-y; -webkit-overflow-scrolling: touch; }
 .suggest li { padding: 10px 12px; min-height: 44px; display: flex; align-items: center; border-radius: 6px; cursor: pointer; overflow-wrap: anywhere; }
@@ -871,6 +897,7 @@ window.MPMBTheme = (() => {
     </div>
     <span class="chip" id="save-chip" title="Saved on this device">Saved</span>
     <span class="busy" id="busy" aria-hidden="true"></span>
+    <button class="btn sm icon-btn" id="sources-open" type="button" aria-label="Sources" title="Sources" aria-haspopup="dialog" data-sources-open><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7"/></svg></button>
     <button class="btn sm icon-btn" id="dice-open" type="button" aria-label="Dice" title="Dice" aria-haspopup="dialog"></button>
     <button class="btn sm icon-btn" id="settings-open" type="button" aria-label="Settings" title="Settings" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <span hidden data-out="Color.Theme"></span><span hidden data-out="Color.DragonHeads"></span>
@@ -896,7 +923,7 @@ window.MPMBTheme = (() => {
             <div class="f"><span class="flabel">Add XP</span><div class="line"><input class="in num" data-f="Add Experience" id="f-addxp" inputmode="numeric" autocomplete="off" aria-label="Experience to add"><button class="btn" type="button" data-mpmb="Add Experience Button" data-title="Add experience">Add</button></div></div>
           </div>
           <p class="hint">Next level at <b class="num" data-out="Next level">–</b> XP. <span id="xp-levelup" hidden><span id="xp-levelup-text"></span> <button class="linkish" id="xp-levelup-btn" type="button">Level up</button></span></p>
-          <p class="hint" id="content-hint"><span id="content-hint-text">Content: SRD only.</span> <a href="#content" data-goto="content" id="content-hint-link">Add books</a></p>
+          <p class="hint" id="content-hint"><span id="content-hint-text">Content: SRD only.</span> <a href="#sources-panel" data-sources-open id="content-hint-link">Add books</a></p>
           <div class="stats">
             <div class="stat"><span class="k">Level</span><span class="v num" data-out="Character Level">–</span></div>
             <div class="stat"><span class="k">Proficiency</span><span class="v num" data-out="Proficiency Bonus">–</span></div>
@@ -1226,31 +1253,10 @@ window.MPMBTheme = (() => {
           <p class="note" id="sheet-file"></p>
           <button class="btn" id="open-other" type="button">Open another sheet</button>
         </div>
-        <div class="card" id="content">
-          <h3>Add-on content <span class="chip" id="content-chip">SRD only</span></h3>
-          <p class="note">Add-on scripts for the sheet add classes, species, spells and more from books you own, or your own homebrew. They stay with this sheet on this device.</p>
-          <ul class="list" id="content-files"></ul>
-          <div class="row">
-            <label class="btn primary file-btn" for="content-file">Add content file<input id="content-file" type="file"></label>
-            <button class="btn" id="paste-open" type="button" aria-expanded="false" aria-controls="paste-box">Paste a script</button>
-          </div>
-          <div class="stack" id="paste-box" hidden>
-            <label class="f"><span>Pasted script</span><textarea class="in code" id="paste-text" rows="8" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea><span class="hint">This replaces any script you pasted before. The sheet runs it now and every time it opens.</span></label>
-            <div class="row">
-              <button class="btn primary" id="paste-save" type="button">Add script to sheet</button>
-              <button class="btn" id="paste-cancel" type="button">Cancel</button>
-            </div>
-          </div>
-          <div class="result" id="content-result" role="status" aria-live="polite" hidden></div>
-          <p class="note">Get add-on scripts from the <a href="https://www.flapkan.com/mpmb/index" target="_blank" rel="noopener">community index on MPMB’s site</a>, or read <a href="https://www.flapkan.com/how-to/add-more-content" target="_blank" rel="noopener">how adding content works</a>.</p>
-        </div>
-        <div class="card" id="sources">
-          <h3>Sources <span class="chip" id="sources-chip">1 in use</span></h3>
-          <p class="note">Choose which books the sheet's automation uses. Content from books you switch off doesn't appear in the lists.</p>
-          <div id="source-list"></div>
-          <div class="src-group src-sub">Single items</div>
-          <p class="note">Leave out single classes, spells, feats and so on from the books in use, with the sheet's own selection dialog.</p>
-          <div class="excl-kinds" id="excl-kinds"></div>
+        <div class="card" id="sources-sum">
+          <h3>Sources and add-on content</h3>
+          <p class="note" id="sources-sum-text">The sheet has the SRD (the free rules) only.</p>
+          <button class="btn" type="button" data-sources-open>Open Sources</button>
         </div>
         <div class="card" id="pages">
           <h3>Pages <button class="btn sm" type="button" data-bookmark="Functions/Set Pages Layout" data-title="Pages and layout" data-pages="1">Change</button></h3>
@@ -1302,6 +1308,45 @@ window.MPMBTheme = (() => {
     <button class="btn sm" id="menu-close" type="button">Close</button>
   </div>
   <ul class="menu-list" id="menu-list"></ul>
+</dialog>
+
+<!-- Sources (top bar book): add-on content, the books in use and single items, on their own screen -->
+<dialog class="panel full" id="sources-panel" aria-labelledby="sources-title">
+  <div class="panel-head"><h3 id="sources-title">Sources</h3><button class="btn sm" id="sources-close" type="button">Close</button></div>
+  <div class="panel-body sources-body">
+  <div class="card" id="content">
+    <h3>Add-on content <span class="chip" id="content-chip">SRD only</span></h3>
+    <p class="note">Add-on scripts for the sheet add classes, species, spells and more from books you own, or your own homebrew. They stay with this sheet on this device.</p>
+    <ul class="list" id="content-files"></ul>
+    <div class="row">
+      <label class="btn primary file-btn" for="content-file">Add content file<input id="content-file" type="file"></label>
+      <button class="btn" id="paste-open" type="button" aria-expanded="false" aria-controls="paste-box">Paste a script</button>
+    </div>
+    <div class="stack" id="paste-box" hidden>
+      <label class="f"><span>Pasted script</span><textarea class="in code" id="paste-text" rows="8" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea><span class="hint">This replaces any script you pasted before. The sheet runs it now and every time it opens.</span></label>
+      <div class="row">
+        <button class="btn primary" id="paste-save" type="button">Add script to sheet</button>
+        <button class="btn" id="paste-cancel" type="button">Cancel</button>
+      </div>
+    </div>
+    <div class="result" id="content-result" role="status" aria-live="polite" hidden></div>
+    <p class="note">Get add-on scripts from the <a href="https://www.flapkan.com/mpmb/index" target="_blank" rel="noopener">community index on MPMB’s site</a>, or read <a href="https://www.flapkan.com/how-to/add-more-content" target="_blank" rel="noopener">how adding content works</a>.</p>
+  </div>
+  <div class="card" id="sources">
+    <h3>Books <span class="chip" id="sources-chip">1 in use</span></h3>
+    <p class="note">Choose which books the sheet's automation uses. Content from books you switch off doesn't appear in the lists.</p>
+    <div class="row src-all" id="src-all" hidden>
+      <button class="btn sm" id="src-all-on" type="button">Include all</button>
+      <button class="btn sm" id="src-all-off" type="button">Exclude all</button>
+    </div>
+    <div id="source-list"></div>
+  </div>
+  <div class="card" id="single-items">
+    <h3>Single items</h3>
+    <p class="note">Leave out single classes, spells, feats and so on from the books in use, or include ones the sheet leaves out by default (such as firearms), with the sheet's own selection dialog.</p>
+    <div class="excl-kinds" id="excl-kinds"></div>
+  </div>
+  </div>
 </dialog>
 
 <!-- The app's own settings (top bar gear): look, about, MPMB's message log. The Sheet tab keeps what belongs to the sheet. -->

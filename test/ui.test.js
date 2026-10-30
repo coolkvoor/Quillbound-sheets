@@ -52,15 +52,24 @@ const DEVICES = {
     const idle = () => page.waitForFunction(() => !document.querySelector('#busy').classList.contains('on'));
     // add-on content first, as MPMB recommends
     if (CONTENT) {
+      // the Sources panel (the book in the top bar)
+      await page.click('#sources-open');
+      await page.waitForFunction(() => document.querySelector('#sources-panel').open);
       await page.setInputFiles('#content-file', CONTENT);
       await page.waitForSelector('#content-result.ok, #content-result.err', { timeout: 120000 });
       const res = await page.$eval('#content-result', (n) => n.innerText.replace(/\n+/g, ' | '));
       const off = await page.$('[data-source]:not(:checked)');
-      if (off) { await off.check(); await idle(); }
+      if (off) {
+        // the list is drawn again at once (the tick waits for the sheet), so tick it without checking the old box after
+        await off.evaluate((cb) => { cb.closest('details').open = true; cb.click(); });
+        await page.waitForFunction(() => !document.querySelector('[data-source]:not(:checked)') || !document.querySelector('#busy').classList.contains('on'));
+        await idle();
+      }
       const got = await page.evaluate(() => ({ species: Array.from(document.querySelectorAll('#dl-race option')).map((o) => o.value), hint: document.querySelector('#content-hint').innerText, chip: document.querySelector('#sources-chip').textContent }));
       console.log(`[${name}] content: ${res} | ${got.chip} | Aasimar listed: ${got.species.indexOf('Aasimar') !== -1} | ${got.hint}`);
-      await page.$eval('#content', (n) => n.scrollIntoView());
+      await page.$eval('#sources', (n) => n.scrollIntoView());
       await page.screenshot({ path: path.join(OUT, name + '-0-content.png') });
+      await page.click('#sources-close');
     }
     // build a character through the screen
     // MPMB's dialogs and questions wait for the user: answer them as a player taking what MPMB offers (OK, Yes)

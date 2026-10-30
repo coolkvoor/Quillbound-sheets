@@ -66,6 +66,11 @@ How the app came to be the way it is: the timeline, how decisions were reached, 
 - A stress-test character (four classes, add-on content, every extra page) showed the app couldn't open a saved PDF holding add-on content: pdf-lib decodes a text value with one function argument per character, and the 1 MB content file overflowed the stack. The loader now decodes long values in pieces.
 - Small duplicates merged: `engine.logSince(seq)` for "what MPMB said since step n", one `card()` in ui-pages.js, one "is this an MPMB sheet?" check in the worker. The PDF helpers (`deref`, `get`, `L`…) stay per file: each is a one-line closure over its own document.
 
+### 2026-10-30: Sources on its own screen (1.5.0)
+- Joost (MPMB) tried the one-file build on his phone: including sources was a hassle, the list was very long with no clear start or end, and there was no "include all". With his `all_WotC_2024_published` file the book list is short (4 books), but it marks 19 items (firearms, explosives, their ammunition) as left out by default, which only the single-item dialogs include. There the move buttons were `>>`, `>`, `<`, `<<` beside stacked lists (">>" is include all, which nobody would guess), and the Included list scrolled inside the scrolling dialog with no count and no end in sight.
+- Tested on the 2014 Colorful A4 sheet with a made-up file of 60 books in four groups: the Sources card was 6,182 px (7 phone screens), a group heading was drawn each time the group changed (books come in file order), every tick ran a full Apply with all boxes locked, and the "added" message named all 60 books. MPMB itself needs 50–100 ms in Node for any number of books.
+- Now: Sources is a full-screen panel from a book in the top bar (the owner's choice over a bottom-bar item: the bar holds up to nine tabs). The save chip became a round mark on phones so the name keeps its width (163 px at 393 px, as before). Books fold per group (478 px for the same 63 books), with Include all / Exclude all; ticks never lock. The dialogs name the move buttons and give long lists a search box and a count.
+
 ## Milestones (as planned on day one)
 
 1. Engine in the browser. Done in desktop Chrome tests (self-test 19/19); phone results still to come.

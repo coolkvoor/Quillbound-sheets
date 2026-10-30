@@ -930,6 +930,7 @@
   function setSaved(how) {
     const chip = $('#save-chip');
     chip.classList.toggle('warn', how === 'error');
+    chip.dataset.state = how;
     chip.textContent = how === 'pending' ? 'Saving…' : how === 'error' ? 'Not saved' : 'Saved';
     chip.title = how === 'error' ? 'This browser didn’t let the app save the character' : state.savedAt ? 'Saved on this device at ' + new Date(state.savedAt).toLocaleTimeString() : 'Saved on this device';
     const info = $('#char-saved');
@@ -1094,12 +1095,13 @@
       setTimeout(() => { delete row.dataset.editing; refreshDerived(); }, 0);
     });
     document.addEventListener('click', async (e) => {
-      const t = e.target.closest && e.target.closest('[data-toggle],[data-skill],[data-tab],[data-goto],[data-mpmb],[data-bookmark],[data-step],[data-shoot]');
+      const t = e.target.closest && e.target.closest('[data-toggle],[data-skill],[data-tab],[data-goto],[data-sources-open],[data-mpmb],[data-bookmark],[data-step],[data-shoot]');
       if (!t) return;
       if (t.dataset.step && state.worker) { const cur = Number(shown(state.snap.get(t.dataset.step))) || 0; send('commit', { name: t.dataset.step, value: String(Math.max(0, cur + Number(t.dataset.by))) }); return; }
       if (t.dataset.shoot && state.worker) { send('shootAmmo', { side: t.dataset.shoot }); return; }
       if (t.dataset.tab) { e.preventDefault(); goTo(t.dataset.tab); return; }
       if (t.dataset.goto) { e.preventDefault(); goTo(t.dataset.goto, 'sheetinfo'); return; }
+      if (t.hasAttribute('data-sources-open')) { e.preventDefault(); renderContent(); $('#sources-panel').showModal(); $('#sources-panel .panel-body').scrollTop = 0; return; }
       if (!state.worker) return;
       if (t.dataset.mpmb || t.dataset.bookmark) { tapMpmb(t); return; }
       if (t.dataset.toggle) { send('toggle', { name: t.dataset.toggle }); return; }
@@ -1154,6 +1156,7 @@
     $('#open-other').addEventListener('click', () => { $('#sheet').hidden = true; $('#start').hidden = false; $('#loading').hidden = true; $('#start-actions').hidden = false; initStart(); });
     $('#settings-open').addEventListener('click', () => { if (state.info) renderFacts(); renderCredits(); renderLog(); U.renderBackup(); $('#settings').showModal(); });
     $('#settings-close').addEventListener('click', () => $('#settings').close());
+    $('#sources-close').addEventListener('click', () => $('#sources-panel').close());
   }
 
   // ---------------------------------------------------------------- tabs that follow the scroll
