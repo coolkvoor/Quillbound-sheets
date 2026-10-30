@@ -12,33 +12,42 @@
   const shownEl = (n) => !!n && n.getClientRects().length > 0 && !n.closest('[hidden],[data-absent]');
   const first = (sel) => Array.from(document.querySelectorAll(sel)).filter(shownEl)[0] || null;
   const isOpen = (id) => { const d = document.getElementById(id); return !!d && d.open; };
+  // in the order of the screen, top to bottom: the top bar and tab bar, then each section, then the two panels
   const STEPS = [
     { at: '#save-chip', text: 'Your character saves on this device as you go.' },
-    { at: '#dice-open', text: 'Roll dice here.' },
     { at: 'nav.tabs', text: 'Jump to each part of your sheet. Some tabs only show up when you need them, like Spells or Companion.' },
+    // Main
+    { long: true, at: '#f-race', text: 'Start typing to pick from the sheet’s lists. Same for background, feats and items.' },
     { at: '#class-open', text: 'Pick your class, subclass and level. Level up and multiclass here too.' },
     { long: true, at: '#abil-open', text: 'Set your ability scores: point buy, rolled or typed in.' },
-    { long: true, at: '#f-race', text: 'Start typing to pick from the sheet’s lists. Same for background, feats and items.' },
+    { at: () => first('[data-mpmb="SkillsClick"]') || first('main [data-mpmb]'), text: 'Buttons like this run the sheet’s own menus and dialogs, as in Acrobat.' },
     { long: true, at: () => { const d = first('#skills [data-skill]'); return d ? d.parentNode : $('#skills'); }, text: 'Tap a skill’s dot: proficient, then expertise, then off.' },
+    // Combat
     { at: '[data-roll="d20"][data-kind="init"]', text: 'Tap a number to roll it. Attacks, saves and skills too.' },
-    { at: '.rests', text: 'Rested? Tap here. Short rest gives back the features that recharge on one. Long rest also gives back your spell slots.' },
+    { at: '#dice-open', text: 'Or roll any dice here.' },
     { long: true, at: '[data-mpmb="Buttons.HP Max"]', text: 'Tap Set and the sheet works out your max HP.' },
-    { long: true, at: () => $('#limited') && $('#limited').closest('.card'), text: 'Track the uses of your features here.',
-      missing: { when: () => !Array.from(document.querySelectorAll('#limited li[data-row]')).some(shownEl), text: 'No limited features yet. They show up here when you get them.' } },
+    // Spells
     { long: true, at: '#spells', text: 'Your spells: pick them, see your list and mark slots used.',
       missing: { when: () => !shownEl($('#tab-spells')), at: 'nav.tabs', text: 'No spells yet. A Spells tab shows up here once you can cast them.' } },
-    { at: () => first('main [data-mpmb]'), text: 'Buttons like this run the sheet’s own menus and dialogs, as in Acrobat.' },
-    { long: true, at: '[data-mpmb="Equipment.menu"]', text: 'Add gear and packs from the sheet’s list.' },
+    // Features
+    { at: '.rests', text: 'Rested? Tap here. Short rest gives back the features that recharge on one. Long rest also gives back your spell slots.' },
+    { long: true, at: () => $('#limited') && $('#limited').closest('.card'), text: 'Track the uses of your features here.',
+      missing: { when: () => !Array.from(document.querySelectorAll('#limited li[data-row]')).some(shownEl), text: 'No limited features yet. They show up here when you get them.' } },
+    // Gear
     { long: true, at: () => $('#attuned-chip') && $('#attuned-chip').closest('.card'), text: 'Magic items. The dot marks attunement.' },
-    { long: true, at: '#pages', text: 'Add pages: a companion, Wild Shape, notes or an Adventurers League log.' },
-    { long: true, at: '#mpmb-settings', text: 'The sheet’s settings: weight, units, fonts and automation.' },
+    { long: true, at: '[data-mpmb="Equipment.menu"]', text: 'Add gear and packs from the sheet’s list.' },
+    // Sheet
     { at: '#save-pdf', text: 'Download your character as a PDF. It opens in Adobe Acrobat too.' },
     { long: true, at: '#new-char', text: 'Start over, or bring in a character from another sheet.' },
+    { long: true, at: '#pages', text: 'Add pages: a companion, Wild Shape, notes or an Adventurers League log.' },
+    { long: true, at: '#mpmb-settings', text: 'The sheet’s settings: weight, units, fonts and automation.' },
+    // Sources (the book in the top bar)
     { at: '#sources-open', text: 'Tap the book to see your sources.', wait: () => isOpen('sources-panel') },
     { panel: 'sources-panel', at: '#content', text: 'Add content files here for more books. Get them from the community index.' },
     { panel: 'sources-panel', at: '#sources', text: 'Pick which books the sheet uses.' },
     { panel: 'sources-panel', at: '#single-items', text: 'Leave out or add single items, like firearms.' },
     { panel: 'sources-panel', at: '#sources-close', text: 'Tap Close.', wait: () => !isOpen('sources-panel') },
+    // Settings (the gear)
     { at: '#settings-open', text: 'Tap the gear for settings.', wait: () => isOpen('settings') },
     { panel: 'settings', at: '#look', text: 'Pick a look. “Match my sheet” follows your PDF.' },
     { panel: 'settings', at: '#backup-card', text: 'Backups: pick a folder and the app keeps a copy of your PDF there.' },

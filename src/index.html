@@ -127,7 +127,7 @@ header.top .line { font-size: 0.92rem; color: var(--muted); white-space: nowrap;
   header.top { gap: 4px; }
   .save-wrap { gap: 0; }
   .save-wrap .busy { position: absolute; top: -1px; right: -1px; width: 8px; height: 8px; }
-  #save-chip { font-size: 0; width: 24px; height: 24px; padding: 0; justify-content: center; flex: none; }
+  #save-chip { font-size: 0; width: 24px; height: 24px; padding: 0; gap: 0; justify-content: center; flex: none; }   /* no gap: the hidden "Saved" text is still a flex item and pushed the mark 3 px left */
   /* drawn shapes, not characters: a ✓ from a fallback font sat low and to the left (Brave on Android) */
   #save-chip::before { content: ""; width: 14px; height: 14px; background: currentColor; -webkit-mask: var(--mark) center / contain no-repeat; mask: var(--mark) center / contain no-repeat;
     --mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8.5l3.2 3.2L13 4.8' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
