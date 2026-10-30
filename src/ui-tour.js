@@ -68,19 +68,32 @@
     return { node, dim, block, ring, card, text, count, back, next };
   }
 
-  function start(long) {
-    end();
+  // the tour runs on a sample character (app.js withSample: a second copy of the sheet; the user's own character is
+  // saved first, nothing is stored meanwhile, and it comes back when the tour ends)
+  let starting = false;
+  async function start(long) {
+    if (tour || starting) return;
+    starting = true;
     for (const id of ['settings', 'sources-panel']) if (isOpen(id)) document.getElementById(id).close();
-    tour = { steps: STEPS.filter((s) => long || !s.long), i: 0, ui: layer(), target: null, key: '' };
-    show(0, 1);
-    const loop = () => { if (!tour) return; place(); tour.raf = requestAnimationFrame(loop); };
-    tour.raf = requestAnimationFrame(loop);
+    try {
+      await U.withSample((sample) => new Promise((resolve) => {
+        const steps = STEPS.filter((s) => long || !s.long);
+        if (sample) steps.unshift({ at: '#hdr-name', text: 'This is a sample character for the tour. Yours is safe and comes back when the tour ends.' });
+        tour = { steps, i: 0, ui: layer(), target: null, key: '', done: resolve };
+        starting = false;
+        show(0, 1);
+        const loop = () => { if (!tour) return; place(); tour.raf = requestAnimationFrame(loop); };
+        tour.raf = requestAnimationFrame(loop);
+      }));
+    } finally { starting = false; }
   }
   function end() {
     if (!tour) return;
     cancelAnimationFrame(tour.raf);
     tour.ui.node.remove();
+    const done = tour.done;
     tour = null;
+    if (done) done();
   }
   // the panel a step needs open (or none): going back may need one opened or closed again
   function ensurePanel(step) {
@@ -126,10 +139,21 @@
     ui.next.textContent = i === tour.steps.length - 1 ? 'Done' : 'Next';
     // a heading standing for a tall card goes near the top, so the card shows under it
     tour.tall = !!(t && t.dataset.tourTall);
-    if (t) { delete t.dataset.tourTall; t.scrollIntoView({ block: tour.tall ? 'start' : 'center', behavior: U.reduceMotion() ? 'auto' : 'smooth' }); }
+    if (t) { delete t.dataset.tourTall; reveal(t, tour.tall); }
     (step.wait ? ui.back : ui.next).focus({ preventScroll: true });
   }
 
+  // scroll the thing into view: in a panel its own list scrolls; on the page the window does, never past its end (asking
+  // for more made the phone shift the whole view and show a blank band)
+  function reveal(t, top) {
+    const behavior = U.reduceMotion() ? 'auto' : 'smooth';
+    if (t.closest('dialog')) { t.scrollIntoView({ block: top ? 'start' : 'center', behavior }); return; }
+    if (t.closest('header.top, nav.tabs')) return;   // always on screen
+    const r = t.getBoundingClientRect(), head = ($('header.top') || { offsetHeight: 0 }).offsetHeight;
+    const want = top ? r.top - head - 16 : r.top + r.height / 2 - window.innerHeight / 2;
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    window.scrollTo({ top: Math.max(0, Math.min(max, window.scrollY + want)), behavior });
+  }
   // follow the lit-up thing (it scrolls into view, the page reflows) and go on once a wait step is done
   function place() {
     const ui = tour.ui, step = tour.step;

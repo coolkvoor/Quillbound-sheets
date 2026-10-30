@@ -297,6 +297,9 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .tour-choices .btn { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; }
 .tour-choices .hint { font-family: var(--font-body); font-weight: 400; letter-spacing: 0; text-transform: none; }
 .tour-choices .btn.primary .hint { color: inherit; opacity: 0.9; }
+.tour-busy { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / 0.55); display: grid; place-items: center; }
+.tour-busy[hidden] { display: none; }
+.tour-busy .tour-card { position: static; }
 
 /* MPMB buttons, menus and pop-up panels */
 .card h3 .btn.sm { font-family: var(--font-body); letter-spacing: 0; font-weight: 500; }
@@ -1333,6 +1336,8 @@ window.MPMBTheme = (() => {
   <ul class="menu-list" id="menu-list"></ul>
 </dialog>
 
+<!-- While the tour's sample character is made (app.js withSample) -->
+<div class="tour-busy" id="tour-busy" role="status" hidden><div class="tour-card"><p class="tour-text">Making a sample character for the tour…</p></div></div>
 <!-- Offered once, after the first sheet opens (ui-tour.js) -->
 <dialog class="panel" id="tour-ask" aria-labelledby="tour-ask-title">
   <div class="panel-head"><h3 id="tour-ask-title">New here?</h3></div>

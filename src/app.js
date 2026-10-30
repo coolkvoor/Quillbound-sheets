@@ -37,11 +37,11 @@
   const DLG_KEY = 'mpmb-dialogs';
   const dialogPref = () => { try { return localStorage.getItem(DLG_KEY) === 'replay' ? 'replay' : 'wait'; } catch (e) { return 'wait'; } };
   const canAsk = () => isolated() && dialogPref() !== 'replay';
-  function connect() {
+  function connect(opts) {
     const w = newWorker();
     const pending = new Map();
     let seq = 0, stuck = false, asking = 0;
-    const sab = canAsk() ? new SharedArrayBuffer(8 + ASK_BYTES) : null;
+    const sab = canAsk() && !(opts && opts.noAsk) ? new SharedArrayBuffer(8 + ASK_BYTES) : null;
     const flag = sab ? new Int32Array(sab, 0, 2) : null, bytes = sab ? new Uint8Array(sab, 8) : null;
     function answerAsk(reply) {
       let b = new TextEncoder().encode(JSON.stringify(reply === undefined ? null : reply));
@@ -110,8 +110,9 @@
     });
   }
   async function idbGet(key) { try { const db = await idb(); return await new Promise((res, rej) => { const q = db.transaction(STORE).objectStore(STORE).get(key); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); } catch (e) { return null; } }
-  async function idbDel(key) { try { const db = await idb(); await new Promise((res, rej) => { const t = db.transaction(STORE, 'readwrite'); t.objectStore(STORE).delete(key); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) { /* storage may be unavailable */ } }
-  async function idbPut(key, val) { try { const db = await idb(); await new Promise((res, rej) => { const t = db.transaction(STORE, 'readwrite'); t.objectStore(STORE).put(val, key); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) { /* storage may be unavailable */ } }
+  async function idbDel(key) { if (state.tourSample) return; try { const db = await idb(); await new Promise((res, rej) => { const t = db.transaction(STORE, 'readwrite'); t.objectStore(STORE).delete(key); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) { /* storage may be unavailable */ } }
+  // while the tour shows its sample character nothing is stored: the user's own character stays as it was saved
+  async function idbPut(key, val) { if (state.tourSample) return; try { const db = await idb(); await new Promise((res, rej) => { const t = db.transaction(STORE, 'readwrite'); t.objectStore(STORE).put(val, key); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) { /* storage may be unavailable */ } }
 
   // ---------------------------------------------------------------- start screen
   const startErr = $('#start-error');
@@ -193,6 +194,59 @@
       state.worker = null;
       loading.hidden = true; $('#start-actions').hidden = false;
       showError(friendlyError(e));
+    }
+  }
+
+  // ---------------------------------------------------------------- the tour's sample character
+  // The tour runs on a made-up character in a second copy of this sheet, so every step has something to show. The
+  // user's own copy stays open as it is (its character saved first); nothing is stored while the sample is on screen
+  // (state.tourSample: autosave, backups and idbPut stand still), and the user's copy comes back when the tour ends.
+  const SAMPLE = [
+    ['PC Name', 'Sample character'], ['Str', '8'], ['Dex', '14'], ['Con', '14'], ['Int', '16'], ['Wis', '12'], ['Cha', '10'],
+    ['Race', 'Human'], ['Class and Levels', 'Wizard 3'], ['AC Armor Description', 'Unarmored'],
+    ['Attack.1.Weapon Selection', 'Quarterstaff'], ['Attack.2.Weapon Selection', 'Fire Bolt'], ['Extra.Magic Item 1', 'Cloak of Protection'],
+  ];
+  async function withSample(run) {
+    if (!state.worker || !state.bytes || state.tourSample) return run();
+    clearTimeout(saveTimer); saveTimer = 0;
+    await saveNow();
+    const own = { worker: state.worker, view: state.view, hideSpells: state.hideSpells, log: state.log, pages: state.pages };
+    const busy = $('#tour-busy');
+    busy.hidden = false;
+    let w = null;
+    state.tourSample = true;
+    try {
+      w = connect({ noAsk: true });
+      w.onStuck = () => { if (w) w.terminate(); };
+      const stored = await idbGet(state.sheetKey);
+      const buf = state.bytes.slice(0);
+      await w.call('open', { bytes: buf, fileName: state.fileName, saved: stored && stored.saved ? stored.saved : null, state: null }, [buf]);
+      await w.call('resetSheet', {});   // a saved PDF holds a character: start blank
+      // the reset sets the sheet's default colours; the sample keeps the user's, so the app looks the same
+      const colours = ['Color.Theme', 'Color.DragonHeads'].map((f) => [f, shown(state.snap.get(f))]).filter((c) => c[1]);
+      for (const [name, value] of SAMPLE.concat(colours)) await w.call('commit', { name, value });
+      const hasComp = (list) => { const c = (list || []).filter((p) => p.key === 'AScomp')[0]; return c && c.prefixes && c.prefixes.length ? c : null; };
+      if (!hasComp(await w.call('pageList', {}))) await w.call('addPage', { key: 'AScomp' }).catch(() => {});
+      const comp = hasComp(await w.call('pageList', {}));
+      if (comp) await w.call('commit', { name: comp.prefixes[0] + 'Comp.Race', value: 'Wolf' });
+      state.worker = w; state.view = {}; state.hideSpells = false;
+      state.snap.clear();
+      await showSheet(); await refreshPages();
+    } catch (e) {
+      // no sample: the tour shows the user's own character (still nothing is stored meanwhile)
+      if (w && state.worker !== w) w.terminate();
+      w = null;
+    }
+    busy.hidden = true;
+    try { await run(!!w); } finally {
+      if (w) {
+        state.worker = own.worker; state.view = own.view; state.hideSpells = own.hideSpells; state.log = own.log; state.pages = own.pages;
+        state.snap.clear();
+        w.terminate();
+        await showSheet(); await refreshPages();
+      }
+      state.tourSample = false;
+      setSaved('saved');
     }
   }
 
@@ -909,10 +963,10 @@
 
   // ---------------------------------------------------------------- autosave: the character stays on this device
   let saveTimer = 0, saving = false, saveAgain = false;
-  function saveSoon() { clearTimeout(saveTimer); setSaved('pending'); saveTimer = setTimeout(saveNow, 700); }
+  function saveSoon() { if (state.tourSample) return; clearTimeout(saveTimer); setSaved('pending'); saveTimer = setTimeout(saveNow, 700); }
   async function saveNow() {
     saveTimer = 0;
-    if (!state.worker || !state.charKey) return;
+    if (!state.worker || !state.charKey || state.tourSample) return;
     if (saving) { saveAgain = true; return; }
     // in the middle of a change with a dialog open, the live copy holds a half-made change: save after it
     if (state.changing) { saveTimer = setTimeout(saveNow, 700); return; }
@@ -1544,7 +1598,7 @@
   // what the other screen files use from here
   Object.assign(U, {
     send, lineMenu, modInput, buildIndex, apply, layoutGrids, refreshDerived, showNotice, toast, shown,
-    inlineMarkup, goTo, setBusy, idbGet, idbPut, idbDel, saveSoon, fmtS, openSheet, askYesNo, stopAutosave: () => { clearTimeout(saveTimer); saveTimer = 0; }
+    inlineMarkup, goTo, setBusy, idbGet, idbPut, idbDel, saveSoon, withSample, fmtS, openSheet, askYesNo, stopAutosave: () => { clearTimeout(saveTimer); saveTimer = 0; }
   });
   wireEvents();
   wireContent();
