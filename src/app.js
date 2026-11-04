@@ -450,7 +450,7 @@
           el('input', { cls: 'in', 'data-f': 'Feat Name ' + i, id: 'f-feat' + i, list: 'dl-feats', autocomplete: 'off', placeholder: 'Pick or type a feat', 'aria-label': 'Feat ' + i }),
           lineMenu('Feat Button ' + i, 'Feat ' + i),
         ]),
-        el('div', { cls: 'hint rich', 'data-rich': 'Feat Description ' + i }),
+        el('div', { cls: 'hint rich', 'data-rich': 'Feat Description ' + i, 'data-see-notes': '' }),
         el('input', { cls: 'in note', 'data-f': 'Feat Note ' + i, id: 'f-featnote' + i, autocomplete: 'off', placeholder: 'Note (e.g. the choice you made)', 'aria-label': 'Feat ' + i + ' note' }),
       ])]));
     }
@@ -573,7 +573,7 @@
             el('label', { cls: 'lbl', for: 'f-mid' + i, text: 'Description' }),
             el('button', { cls: 'btn sm mi-edit', type: 'button', 'data-midesc': String(i), hidden: '' }, [document.createTextNode('Edit')]),
           ]),
-          el('div', { cls: 'rich hint', 'data-rich': p + 'Description ' + i }),
+          el('div', { cls: 'rich hint', 'data-rich': p + 'Description ' + i, 'data-see-notes': '' }),
           el('textarea', { cls: 'in mi-desc', 'data-f': p + 'Description ' + i, id: 'f-mid' + i, rows: '3', placeholder: 'What the item does: effects, charges, attunement…', hidden: '' }),
         ]),
         el('label', { cls: 'f mi-part mi-n' }, [
@@ -675,7 +675,7 @@
     node.textContent = '';
     if (!snap || !snap.exists) return;
     const spans = snap.spans;
-    if (!spans || !spans.length) { node.textContent = shown(snap).replace(/\r\n?/g, '\n'); return; }
+    if (!spans || !spans.length) { node.textContent = shown(snap).replace(/\r\n?/g, '\n'); seeNotes(node); return; }
     for (const s of spans) {
       const t = String(s.text || '').replace(/\r\n?/g, '\n');
       if (!t) continue;
@@ -687,6 +687,13 @@
       node.append(n);
     }
     U.diceText(node);
+    seeNotes(node);
+  }
+  // a feat's or magic item's text that says "See Notes page": the sheet put the rest in Notes, a Notes card here
+  const SEE_NOTES = /\bsee notes\b|\bsee (?:the )?(?:third|3rd) page\b/i;
+  const notesButton = () => el('button', { cls: 'btn sm see-notes', type: 'button', 'data-goto': 'notes-card', 'data-goto-tab': 'features' }, [document.createTextNode('Go to Notes')]);
+  function seeNotes(node) {
+    if (node.hasAttribute('data-see-notes') && SEE_NOTES.test(node.textContent)) node.append(notesButton());
   }
   // MPMB's feature texts (Class Features, Racial Traits) as a list: one entry per feature, its description folded.
   // MPMB's markup: "**Wizard, level 3:**" heads a class; "#◆ Name# (Wizard 1, SRD'24 77) #[usage]#" starts a class
@@ -745,7 +752,7 @@
         if (t !== was || /\bsee notes\b/i.test(t)) see = true;
         const p = el('p'); inlineMarkup(t, p); body.append(p);
       }
-      if (see) body.append(el('button', { cls: 'btn sm see-notes', type: 'button', 'data-goto': 'notes-card', 'data-goto-tab': 'features' }, [document.createTextNode('Go to Notes')]));
+      if (see) body.append(notesButton());
       if (!it.text.length) body.append(el('p', { cls: 'muted', text: 'No description on the sheet.' }));
       d.append(body);
       U.diceText(d);

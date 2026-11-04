@@ -137,7 +137,7 @@ header.top .line { font-size: 0.92rem; color: var(--muted); white-space: nowrap;
 
 main.bands { padding: 8px 16px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
 section.band { scroll-margin-top: calc(var(--header-h) + 8px); padding-top: 12px; }
-.card > h3, .band-title { scroll-margin-top: calc(var(--header-h) + 16px); }   /* the tour scrolls a heading to the top, clear of the top bar */
+#notes-card, .card > h3, .band-title { scroll-margin-top: calc(var(--header-h) + 16px); }   /* the tour scrolls a heading to the top, clear of the top bar */
 .band-title { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; color: var(--accent); margin: 8px 0 10px; display: flex; align-items: baseline; gap: 10px; }
 .band-title small { font-family: var(--font-body); font-size: 0.85rem; font-weight: 500; color: var(--muted); }
 /* cards flow down columns like a folio: 1 column on phones, 2 on phone landscape and tablet portrait, 3 on tablet landscape */
@@ -631,6 +631,7 @@ details.more summary { cursor: pointer; padding: 10px 0; min-height: 44px; color
 .notes-f:not(.has-feats) details.notes-edit > summary { display: none; }
 .notes-f.has-feats details.notes-edit { border-top: 1px solid var(--line); margin-top: 4px; }
 .see-notes { margin-top: 2px; justify-self: start; }
+.rich .see-notes { display: block; margin-top: 6px; }
 .ac-parts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; }
 .ac-parts .wide { grid-column: span 2; }
 .ac-parts label.f b { display: block; padding: 10px 0; font-size: 1.1rem; }

@@ -14,7 +14,7 @@
  * Shared by the app and the Node tests. */
 (function (root) {
   'use strict';
-  const GROUP = /^\*\*(.+?):?\*\*\s*$/;
+  const GROUP = /^\*\*((?:(?!\*\*).)+?):?\*\*\s*$/;   // "**d100** **Effect**" (a table head) is not one
   const HEAD = /^#\s*◆\s*(.+?)#\s*(?:\(([^)]*)\))?\s*(?:#\[(.*?)\]#)?\s*(.*)$/;
   const HEAD2 = /^##\s*◆\s*(.+?)##\.?\s*(.*)$/;
   const PLAIN_HEAD = /^#\s*◆\s*[^#]+#\s*(?:\([^)]*\))?\s*$/;
