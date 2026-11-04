@@ -14,6 +14,7 @@
   const isOpen = (id) => { const d = document.getElementById(id); return !!d && d.open; };
   const noSpells = { when: () => !shownEl($('#tab-spells')), at: 'nav.tabs', text: 'This character has no spells. A Spells tab shows up here once it gets some.' };
   const noLimited = { when: () => !Array.from(document.querySelectorAll('#limited li[data-row]')).some(shownEl), text: 'No limited features yet. They show up here when you get them.' };
+  const noFeatures = { when: () => !first('[data-rich="Class Features"] details.feat'), text: 'No class yet. Its features show up here once you pick one.' };
   const noInstall = { when: () => !shownEl($('#install-card')), at: null, text: 'Want it as an app? Use your browser’s menu: Add to Home screen.' };
   const skillDot = () => { const d = first('#skills [data-skill]'); return d ? d.parentNode : $('#skills'); };
   const sheetButton = () => first('[data-mpmb="SkillsClick"]') || first('main [data-mpmb]');
@@ -35,6 +36,8 @@
     roll: { at: '[data-roll="d20"][data-kind="init"]', text: 'Tap any number to roll it: attacks, saves, skills.' },
     dice: { at: '#dice-open', text: 'Other dice? Roll them here.' },
     hp: { at: () => { const n = $('#f-hp'); return n && n.closest('.card'); }, text: 'Keep track of your hit points here.' },
+    actions: { at: () => $('#actions') && $('#actions').closest('.card'), text: 'Tap an action to read what it does, right here.' },
+    features: { at: () => { const n = $('[data-rich="Class Features"]'); return n && n.closest('.card'); }, text: 'Your class features. Tap one to read it; its options fold inside it.', missing: noFeatures },
     rests: { at: '.rests', text: 'Rested? Tap here. Short rest gives back the features that recharge on one. Long rest also gives back your spell slots.' },
     limited: { at: () => $('#limited') && $('#limited').closest('.card'), text: 'Mark a feature’s use here when you use it.', missing: noLimited },
     saved: { at: '#save-chip', text: 'Your character is saved in this browser as you go. Clearing the browser’s data deletes it.' },
@@ -50,16 +53,17 @@
   const FULL = [
     ['Set up', ['book', 'content', 'books', 'closeBook']],
     ['Build', ['species', 'cls', 'bg', 'abilities', 'sheetBtn', 'skills', 'spells', 'gear', 'pages']],
-    ['Play', ['roll', 'dice', 'hp', 'rests', 'limited']],
+    ['Play', ['roll', 'dice', 'hp', 'actions', 'rests', 'limited', 'features']],
     ['Keep it safe', ['saved', 'pdf', 'gearOpen', 'backups', 'install']],
     ['Make it yours', ['look', 'again']],
   ];
   const QUICK = [
-    ['Quick tour', ['book', 'content', 'books', 'single', 'closeBook', 'sheetBtn', 'roll', 'saved', 'pdf', 'gearOpen', 'look', 'backups', 'install', 'again']],
+    ['Quick tour', ['book', 'content', 'books', 'single', 'closeBook', 'sheetBtn', 'roll', 'actions', 'features', 'saved', 'pdf', 'gearOpen', 'look', 'backups', 'install', 'again']],
   ];
   const QUICK_TEXT = {
     book: 'Your sources are behind the book: content files and books. Set them first. Tap it.',
     roll: 'Tap any number to roll it. The die at the top rolls anything else.',
+    features: 'What the sheet puts on its third page, like a Monk’s Focus options, shows here inside its feature.',
     saved: 'Your character is saved in this browser, not in your PDF.',
     pdf: 'Download PDF writes it into the sheet, for Acrobat or another device.',
     look: 'The sheet’s looks are here, not on the sheet. “Match my sheet” follows your PDF.',

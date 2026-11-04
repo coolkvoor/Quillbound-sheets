@@ -1,6 +1,7 @@
 // The tour, clicked through as a user would: both tours, phone and tablet, light and dark.
 // Usage: node test/tour.test.js [phone|tablet] [light|dark] [quick|full]   (default: all of them)
-// Env: SHEET=path.pdf (default test/sheet.pdf; a saved character PDF is a good test too), DIST=folder (default dist-single).
+// Env: SHEET=path.pdf (default test/sheet.pdf; a saved character PDF is a good test too), DIST=folder (default dist-single),
+// SHOTS=folder (a screenshot of every step).
 // Checks per run: every step lights up something or shows its "missing" text, each chapter only scrolls down the page,
 // the panels open and close on the real taps, the user's own character is the same before, during and after the tour,
 // and no page errors. One run also reloads in the middle of a tour.
@@ -49,6 +50,7 @@ async function walk(page, kind, tag) {
     });
     if (!st) break;
     seen.push(st);
+    if (process.env.SHOTS) { fs.mkdirSync(process.env.SHOTS, { recursive: true }); await page.screenshot({ path: path.join(process.env.SHOTS, (tag + ' ' + kind + ' ' + String(n + 1).padStart(2, '0')).replace(/[^\w]+/g, '-') + '.png') }); }
     const chapter = st.label.split(' · ')[0];
     if (chapter && chapter !== lastChapter) { chapters.push(chapter); lastChapter = chapter; lastY = -1; }
     if (!st.text.trim() || (!st.ring && !st.miss)) check(tag + ' step "' + st.label + '" lights up something', false, st.text);
