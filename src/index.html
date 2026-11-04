@@ -137,7 +137,7 @@ header.top .line { font-size: 0.92rem; color: var(--muted); white-space: nowrap;
 
 main.bands { padding: 8px 16px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
 section.band { scroll-margin-top: calc(var(--header-h) + 8px); padding-top: 12px; }
-.card > h3, .band-title { scroll-margin-top: calc(var(--header-h) + 16px); }   /* the tour scrolls a heading to the top, clear of the top bar */
+#notes-card, details.feat, .card > h3, .band-title { scroll-margin-top: calc(var(--header-h) + 16px); }   /* the tour scrolls a heading to the top, clear of the top bar */
 .band-title { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; color: var(--accent); margin: 8px 0 10px; display: flex; align-items: baseline; gap: 10px; }
 .band-title small { font-family: var(--font-body); font-size: 0.85rem; font-weight: 500; color: var(--muted); }
 /* cards flow down columns like a folio: 1 column on phones, 2 on phone landscape and tablet portrait, 3 on tablet landscape */
@@ -281,6 +281,21 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .excl-kinds .chip { flex: none; }
 #content-hint { margin: 0; }
 
+/* search (ui-search.js) */
+.search-top { padding: 8px 16px 4px; }
+.search-top .in { width: 100%; }
+#search-results { display: grid; gap: 2px; align-content: start; }
+.search-band { font-family: var(--font-display); font-weight: 700; color: var(--accent); margin: 10px 0 2px; }
+.search-band:first-child { margin-top: 0; }
+.search-hit { display: grid; gap: 2px; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 10px 0; font: inherit; color: inherit; cursor: pointer; min-height: 48px; }
+.search-title { font-weight: 700; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.search-card { font-weight: 400; font-size: 0.82rem; color: var(--muted); }
+.search-snip { font-size: 0.9rem; color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
+.search-snip mark { background: var(--accent-soft); color: var(--ink); border-radius: 3px; padding: 0 1px; }
+.search-flash { animation: search-flash 2s ease-out; border-radius: 8px; }
+@keyframes search-flash { 0%, 40% { box-shadow: 0 0 0 3px var(--accent); background: var(--accent-soft); } 100% { box-shadow: 0 0 0 3px transparent; } }
+@media (prefers-reduced-motion: reduce) { .search-flash { animation: none; box-shadow: 0 0 0 3px var(--accent); } }
+
 /* the tour (ui-tour.js): the page dimmed but for the lit-up thing, and a small card */
 .tour { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
 .tour-dim { position: fixed; inset: 0; background: rgb(0 0 0 / 0.55); pointer-events: auto; }
@@ -292,6 +307,7 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 @media (prefers-reduced-motion: reduce) { .tour-ring { transition: none; } .tour.waiting .tour-ring { animation: none; } }
 .tour-card { position: fixed; left: 16px; right: 16px; max-width: 360px; margin: 0 auto; background: var(--surface); color: var(--ink); border-radius: 14px; padding: 14px 16px 12px; box-shadow: 0 8px 30px rgb(0 0 0 / 0.35); pointer-events: auto; }
 .tour-text { margin: 0 0 10px; font-size: 1.02rem; line-height: 1.4; }
+.tour-card:focus { outline: none; }
 .tour.missing .tour-text { color: var(--muted); }
 .tour-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .tour-n { flex: 1 1 auto; font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
@@ -299,9 +315,12 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .tour-choices .btn { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; }
 .tour-choices .hint { font-family: var(--font-body); font-weight: 400; letter-spacing: 0; text-transform: none; }
 .tour-choices .btn.primary .hint { color: inherit; opacity: 0.9; }
-.tour-busy { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / 0.55); display: grid; place-items: center; }
-.tour-busy[hidden] { display: none; }
-.tour-busy .tour-card { position: static; }
+/* the character guide: the page stays usable, only a ring and the card */
+.tour.free .tour-dim, .tour.free .tour-block { display: none; }
+.tour[hidden] { display: none; }
+.tour.done .tour-ring { box-shadow: 0 0 0 3px var(--good), 0 0 0 6px rgb(255 255 255 / 0.5); }
+.tour.free .tour-ring { animation: tour-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .tour.free .tour-ring { animation: none; } }
 
 /* MPMB buttons, menus and pop-up panels */
 .card h3 .btn.sm { font-family: var(--font-body); letter-spacing: 0; font-weight: 500; }
@@ -502,6 +521,11 @@ details.feat .chip.use { color: var(--accent); border-color: var(--accent-soft);
 details.feat .fsrc { flex-basis: 100%; font-size: 0.8rem; color: var(--muted); }
 details.feat .fbody { padding: 0 0 12px; display: grid; gap: 6px; font-size: 0.97rem; line-height: 1.5; }
 details.feat .fbody p, .fpara { margin: 0; }
+/* a feature's options the sheet keeps in Notes (Monk's Focus features, Brutal Strike effects): folds inside it */
+details.feat .fsub { margin-top: 4px; padding-left: 12px; border-left: 2px solid var(--accent-soft); }
+details.feat .fsub details.feat summary { min-height: 40px; padding-top: 8px; padding-bottom: 8px; }
+details.feat .fsub .fname { font-weight: 600; }
+details.feat .chip.sub-n { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { details.feat summary::after { transition: none; } }
 
 /* XP, conditions, ammunition */
@@ -626,6 +650,23 @@ select option, select optgroup { background-color: var(--surface); color: var(--
 .dc-row .f.mod { margin: 0; }
 details.more { margin: 8px 0; border-top: 1px solid var(--line); }
 details.more summary { cursor: pointer; padding: 10px 0; min-height: 44px; color: var(--accent); }
+/* Notes boxes: the sheet's features shown as a list, the text folded under Edit; plain notes are just the box */
+.notes-f details.notes-edit { margin: 0; border: 0; }
+.notes-f:not(.has-feats) details.notes-edit > summary { display: none; }
+.notes-f.has-feats details.notes-edit { border-top: 1px solid var(--line); margin-top: 4px; }
+.see-notes { margin-top: 2px; justify-self: start; }
+/* an action line opens its feature (#feat-info) */
+.act-name { background: none; border: 0; padding: 6px 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; min-height: 40px; text-decoration: underline; text-decoration-color: var(--accent-soft); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+#feat-info .panel-head .lbl { display: block; }
+#feat-info .fi-part + .fi-part { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
+#feat-info .fi-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+#feat-info .fi-head .fname { font-weight: 700; font-size: 1.05rem; }
+#feat-info .fi-head .chip.use { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); white-space: normal; }
+#feat-info .fi-from { margin: 2px 0 8px; font-size: 0.85rem; color: var(--muted); }
+#feat-info .fbody { display: grid; gap: 6px; line-height: 1.5; }
+#feat-info .fbody p { margin: 0; }
+#feat-info .fi-basic { margin: 0; padding-left: 1.1rem; display: grid; gap: 6px; line-height: 1.45; }
+.rich .see-notes { display: block; margin-top: 6px; }
 .ac-parts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; }
 .ac-parts .wide { grid-column: span 2; }
 .ac-parts label.f b { display: block; padding: 10px 0; font-size: 1.1rem; }
@@ -925,6 +966,7 @@ window.MPMBTheme = (() => {
       <div class="line" id="hdr-line">Choose a species and class to begin</div>
     </div>
     <span class="save-wrap"><span class="chip" id="save-chip" title="Saved on this device">Saved</span><span class="busy" id="busy" aria-hidden="true"></span></span>
+    <button class="btn sm icon-btn" id="search-open" type="button" aria-label="Search the sheet" title="Search" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
     <button class="btn sm icon-btn" id="sources-open" type="button" aria-label="Sources" title="Sources" aria-haspopup="dialog" data-sources-open><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7"/></svg></button>
     <button class="btn sm icon-btn" id="dice-open" type="button" aria-label="Dice" title="Dice" aria-haspopup="dialog"></button>
     <button class="btn sm icon-btn" id="settings-open" type="button" aria-label="Settings" title="Settings" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -1150,9 +1192,10 @@ window.MPMBTheme = (() => {
             </div>
           </details>
         </div>
-        <div class="card">
+        <div class="card" id="notes-card">
           <h3>Notes</h3>
-          <label class="f"><span>Notes</span><textarea class="in" rows="6" data-f="Extra.Notes" id="f-notes"></textarea></label>
+          <div class="f notes-f"><span class="lbl">Notes</span><div class="features" data-rich="Extra.Notes" data-features="notes" hidden></div>
+            <details class="more notes-edit" open><summary>Edit notes</summary><textarea class="in" rows="6" data-f="Extra.Notes" id="f-notes" aria-label="Notes"></textarea></details></div>
           <div id="notes-pages"></div>
           <button class="btn sm" id="notes-add" type="button" hidden>Add a notes page</button>
         </div>
@@ -1338,19 +1381,25 @@ window.MPMBTheme = (() => {
   <ul class="menu-list" id="menu-list"></ul>
 </dialog>
 
-<!-- While the tour's sample character is made (app.js withSample) -->
-<div class="tour-busy" id="tour-busy" role="status" hidden><div class="tour-card"><p class="tour-text">Making a sample character for the tour…</p></div></div>
-<!-- Offered once, after the first sheet opens (ui-tour.js) -->
+<!-- Search the sheet (ui-search.js) -->
+<dialog class="panel full" id="search" aria-labelledby="search-title">
+  <div class="panel-head"><h3 id="search-title">Search</h3><button class="btn sm" id="search-close" type="button">Close</button></div>
+  <div class="search-top"><input class="in" id="search-box" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="Feature, spell, item, skill…" aria-label="Search the sheet"></div>
+  <div class="panel-body" id="search-results" aria-live="polite"></div>
+</dialog>
+
+<!-- Offered once, after the first sheet opens, by what the sheet holds (ui-tour.js offerTour) -->
 <dialog class="panel" id="tour-ask" aria-labelledby="tour-ask-title">
   <div class="panel-head"><h3 id="tour-ask-title">New here?</h3></div>
   <div class="panel-body">
-    <p>Want a short tour of the app's buttons?</p>
+    <p id="tour-ask-text">Want a tour of where everything is?</p>
     <div class="stack tour-choices">
-      <button class="btn primary" type="button" data-tour="long">Full tour <span class="hint">I'm new to the sheet</span></button>
-      <button class="btn" type="button" data-tour="short">Quick tour <span class="hint">I know the sheet</span></button>
+      <button class="btn primary" type="button" data-tour="build">Help me make a character <span class="hint">Step by step, on your own sheet</span></button>
+      <button class="btn primary" type="button" data-tour="full">Full tour <span class="hint">Everything on your character, and where it is</span></button>
+      <button class="btn" type="button" data-tour="quick">Quick tour <span class="hint">I know the sheet: show me around</span></button>
       <button class="btn" type="button" data-tour="no">No thanks</button>
     </div>
-    <p class="note">You can start it later in Settings.</p>
+    <p class="note">You can start these later in Settings.</p>
   </div>
 </dialog>
 
@@ -1430,9 +1479,13 @@ window.MPMBTheme = (() => {
       <p class="note">A backup is the character written into your sheet's PDF, as Download PDF makes it: open it in the app (Open another sheet) or in Acrobat.</p>
     </div>
     <div class="card" id="tour-card">
-      <h3>Tour</h3>
-      <p class="note">A walk past the app's buttons. It changes nothing on your sheet.</p>
-      <div class="row"><button class="btn" type="button" data-tour="short">Quick tour</button><button class="btn" type="button" data-tour="long">Full tour</button></div>
+      <h3>Tours and guide</h3>
+      <div class="stack tour-choices">
+        <button class="btn" type="button" data-tour="build">Help me make a character <span class="hint">Step by step on this sheet; what you fill in is kept</span></button>
+        <button class="btn" type="button" data-tour="full">Full tour <span class="hint">Everything on your character, and where it is</span></button>
+        <button class="btn" type="button" data-tour="quick">Quick tour <span class="hint">A short look around</span></button>
+      </div>
+      <p class="note">The tours change nothing on your sheet. The guide skips what is already done, so you can stop and go on later.</p>
     </div>
     <div class="card">
       <h3>About</h3>
@@ -1602,6 +1655,11 @@ window.MPMBTheme = (() => {
     </div>
   </div>
 </dialog>
+<dialog class="panel" id="feat-info" aria-labelledby="fi-title">
+  <div class="panel-head"><div class="grow"><span class="lbl" id="fi-kind">Action</span><h3 id="fi-title">Action</h3></div><button class="btn sm" id="fi-close" type="button">Close</button></div>
+  <div class="panel-body" id="fi-body"></div>
+  <div class="panel-foot"><button class="btn sm" id="fi-show" type="button">Show in the feature list</button></div>
+</dialog>
 <dialog class="panel" id="spell-info" aria-labelledby="si-title">
   <div class="panel-head"><h3 id="si-title">Spell</h3><button class="btn sm" id="si-close" type="button">Close</button></div>
   <div class="panel-body" id="si-body"></div>
@@ -1620,4 +1678,5 @@ window.MPMBTheme = (() => {
 <script src="ui-suggest.js"></script>
 <script src="ui-dice.js"></script>
 <script src="ui-tour.js"></script>
+<script src="ui-search.js"></script>
 <script src="app.js"></script>

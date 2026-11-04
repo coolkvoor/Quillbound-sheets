@@ -122,6 +122,16 @@ const DEVICES = {
     const tab = await page.$eval('[aria-current="true"]', (n) => n.dataset.tab);
     await page.click('[data-tab="sheetinfo"]'); await page.waitForTimeout(900);
     console.log(`[${name}] tab after jump: ${tab}`);
+    // search: a class feature by a word in it, and the result takes you there
+    await page.click('#search-open');
+    await page.fill('#search-box', 'arcane recovery');
+    await page.waitForTimeout(500);
+    const found = await page.$$eval('#search-results .search-hit', (ns) => ns.map((n) => n.querySelector('.search-title').textContent));
+    await page.click('#search-results .search-hit');
+    await page.waitForTimeout(900);
+    const lit = await page.evaluate(() => { const n = document.querySelector('.search-flash'); return n ? n.textContent.slice(0, 40) : ''; });
+    console.log(`[${name}] search "arcane recovery": ${found.join(' | ')} → ${lit}`);
+    if (!found.length || !/Arcane Recovery/.test(lit)) throw new Error('search did not find or show Arcane Recovery');
     await page.screenshot({ path: path.join(OUT, name + '-4-sheet.png') });
     if (CONTENT) {
       // the content stays with the sheet: reload the app and reopen

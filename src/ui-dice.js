@@ -520,7 +520,7 @@
   const v = (name) => U.shown(state.snap.get(name)).trim();
   const isBonus = (t) => /^[+-]?\d+$/.test(String(t).replace(/[−–]/g, '-').replace(/\s+/g, ''));
   const rollable = (b) => {
-    const k = b.dataset.roll, t = b.dataset.expr || b.textContent;
+    const k = b.dataset.roll, t = resolveTerms(b.dataset.expr || b.textContent);
     return k === 'd20' ? isBonus(t) : k === 'dice' ? !!(parse(t) && parse(t).dice.length) : true;
   };
   // after a value changes (apply in app.js): a number that can't be rolled (empty, "DC 13") is plain text
@@ -565,7 +565,7 @@
     if (k === 'dice') {
       let w = what;
       if (kind === 'damage') { const t = b.closest('.attack').querySelector('[data-out$="Damage Type"]'); w += ' · damage' + (t && t.textContent.trim() ? ', ' + t.textContent.trim().toLowerCase() : ''); }
-      return { expr: b.dataset.expr || b.textContent, what: w, kind };
+      return { expr: resolveTerms(b.dataset.expr || b.textContent), what: w, kind };
     }
     if (k === 'hd') {
       const d = v(b.dataset.die).replace(/^d/i, ''), m = Number(v(b.dataset.mod)) || 0;
@@ -576,8 +576,20 @@
     return null;
   }
 
-  // dice written in a text ("2d6 Fire dmg", "1d4+1") become chips that roll them
-  const DICE_IN_TEXT = /(^|[^A-Za-z0-9])(\d{0,3}d(?:\d{1,3}|%)(?:\s?[+−-]\s?\d{1,3})?)(?![A-Za-z0-9])/g;
+  // dice written in a text ("2d6 Fire dmg", "1d4+1") become chips that roll them, with what the sheet adds to them:
+  // numbers and the character's own modifiers ("1d10+5+Dex mod", "2d8+Dex md", "1d6 + my Wis modifier", "1d4+PB"),
+  // filled in when rolled (resolveTerms), so they follow the scores
+  const TERM = '(?:\\d{1,3}|(?:my\\s)?(?:Str|Dex|Con|Int|Wis|Cha)\\s?(?:modifier|mod|md)|Prof(?:iciency)?(?:\\s?bonus)?|PB)';
+  const DICE_IN_TEXT = new RegExp('(^|[^A-Za-z0-9])(\\d{0,3}d(?:\\d{1,3}|%)(?:\\s?[+−-]\\s?' + TERM + ')*)(?![A-Za-z0-9])', 'gi');
+  const TERM_WORD = /([+−-])\s?(?:my\s)?(?:(Str|Dex|Con|Int|Wis|Cha)\s?(?:modifier|mod|md)|Prof(?:iciency)?(?:\s?bonus)?|PB)/gi;
+  const ABBR = { str: 'Str', dex: 'Dex', con: 'Con', int: 'Int', wis: 'Wis', cha: 'Cha' };
+  // a dice text with the modifiers' words as the character's numbers ("1d10+5+Dex mod" → "1d10+5+3")
+  const resolveTerms = (t) => String(t).replace(TERM_WORD, (m, sign, ab) => {
+    let n = Number(String(v(ab ? ABBR[ab.toLowerCase()] + ' Mod' : 'Proficiency Bonus')).replace(/[−–]/g, '-'));
+    if (!Number.isFinite(n)) n = 0;
+    if (sign !== '+') n = -n;
+    return (n < 0 ? '-' : '+') + Math.abs(n);
+  });
   function diceText(node) {
     if (!node) return;
     const walk = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, { acceptNode: (t) => (t.parentElement.closest('button, input, textarea, select, .dice-chip') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT) });
@@ -588,7 +600,7 @@
       let at = 0, any = false;
       for (const m of s.matchAll(DICE_IN_TEXT)) {
         const start = m.index + m[1].length, expr = m[2];
-        const p = parse(expr);
+        const p = parse(resolveTerms(expr));
         if (!p || !p.dice.length) continue;
         any = true;
         frag.append(document.createTextNode(s.slice(at, start)));

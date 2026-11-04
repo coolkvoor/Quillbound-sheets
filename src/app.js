@@ -110,9 +110,9 @@
     });
   }
   async function idbGet(key) { try { const db = await idb(); return await new Promise((res, rej) => { const q = db.transaction(STORE).objectStore(STORE).get(key); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); }); } catch (e) { return null; } }
-  async function idbDel(key) { if (state.tourSample) return; try { const db = await idb(); await new Promise((res, rej) => { const t = db.transaction(STORE, 'readwrite'); t.objectStore(STORE).delete(key); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) { /* storage may be unavailable */ } }
+  async function idbDel(key) { try { const db = await idb(); await new Promise((res, rej) => { const t = db.transaction(STORE, 'readwrite'); t.objectStore(STORE).delete(key); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) { /* storage may be unavailable */ } }
   // while the tour shows its sample character nothing is stored: the user's own character stays as it was saved
-  async function idbPut(key, val) { if (state.tourSample) return; try { const db = await idb(); await new Promise((res, rej) => { const t = db.transaction(STORE, 'readwrite'); t.objectStore(STORE).put(val, key); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) { /* storage may be unavailable */ } }
+  async function idbPut(key, val) { try { const db = await idb(); await new Promise((res, rej) => { const t = db.transaction(STORE, 'readwrite'); t.objectStore(STORE).put(val, key); t.oncomplete = res; t.onerror = () => rej(t.error); }); } catch (e) { /* storage may be unavailable */ } }
 
   // ---------------------------------------------------------------- start screen
   const startErr = $('#start-error');
@@ -194,59 +194,6 @@
       state.worker = null;
       loading.hidden = true; $('#start-actions').hidden = false;
       showError(friendlyError(e));
-    }
-  }
-
-  // ---------------------------------------------------------------- the tour's sample character
-  // The tour runs on a made-up character in a second copy of this sheet, so every step has something to show. The
-  // user's own copy stays open as it is (its character saved first); nothing is stored while the sample is on screen
-  // (state.tourSample: autosave, backups and idbPut stand still), and the user's copy comes back when the tour ends.
-  const SAMPLE = [
-    ['PC Name', 'Sample character'], ['Str', '8'], ['Dex', '14'], ['Con', '14'], ['Int', '16'], ['Wis', '12'], ['Cha', '10'],
-    ['Race', 'Human'], ['Class and Levels', 'Wizard 3'], ['Background', 'Acolyte'], ['AC Armor Description', 'Unarmored'],
-    ['Attack.1.Weapon Selection', 'Quarterstaff'], ['Attack.2.Weapon Selection', 'Fire Bolt'], ['Extra.Magic Item 1', 'Cloak of Protection'],
-  ];
-  async function withSample(run) {
-    if (!state.worker || !state.bytes || state.tourSample) return run();
-    clearTimeout(saveTimer); saveTimer = 0;
-    await saveNow();
-    const own = { worker: state.worker, view: state.view, hideSpells: state.hideSpells, log: state.log, pages: state.pages };
-    const busy = $('#tour-busy');
-    busy.hidden = false;
-    let w = null;
-    state.tourSample = true;
-    try {
-      w = connect({ noAsk: true });
-      w.onStuck = () => { if (w) w.terminate(); };
-      const stored = await idbGet(state.sheetKey);
-      const buf = state.bytes.slice(0);
-      await w.call('open', { bytes: buf, fileName: state.fileName, saved: stored && stored.saved ? stored.saved : null, state: null }, [buf]);
-      await w.call('resetSheet', {});   // a saved PDF holds a character: start blank
-      // the reset sets the sheet's default colours; the sample keeps the user's, so the app looks the same
-      const colours = ['Color.Theme', 'Color.DragonHeads'].map((f) => [f, shown(state.snap.get(f))]).filter((c) => c[1]);
-      for (const [name, value] of SAMPLE.concat(colours)) await w.call('commit', { name, value });
-      const hasComp = (list) => { const c = (list || []).filter((p) => p.key === 'AScomp')[0]; return c && c.prefixes && c.prefixes.length ? c : null; };
-      if (!hasComp(await w.call('pageList', {}))) await w.call('addPage', { key: 'AScomp' }).catch(() => {});
-      const comp = hasComp(await w.call('pageList', {}));
-      if (comp) await w.call('commit', { name: comp.prefixes[0] + 'Comp.Race', value: 'Wolf' });
-      state.worker = w; state.view = {}; state.hideSpells = false;
-      state.snap.clear();
-      await showSheet(); await refreshPages();
-    } catch (e) {
-      // no sample: the tour shows the user's own character (still nothing is stored meanwhile)
-      if (w && state.worker !== w) w.terminate();
-      w = null;
-    }
-    busy.hidden = true;
-    try { await run(!!w); } finally {
-      if (w) {
-        state.worker = own.worker; state.view = own.view; state.hideSpells = own.hideSpells; state.log = own.log; state.pages = own.pages;
-        state.snap.clear();
-        w.terminate();
-        await showSheet(); await refreshPages();
-      }
-      state.tourSample = false;
-      setSaved('saved');
     }
   }
 
@@ -450,7 +397,7 @@
           el('input', { cls: 'in', 'data-f': 'Feat Name ' + i, id: 'f-feat' + i, list: 'dl-feats', autocomplete: 'off', placeholder: 'Pick or type a feat', 'aria-label': 'Feat ' + i }),
           lineMenu('Feat Button ' + i, 'Feat ' + i),
         ]),
-        el('div', { cls: 'hint rich', 'data-rich': 'Feat Description ' + i }),
+        el('div', { cls: 'hint rich', 'data-rich': 'Feat Description ' + i, 'data-see-notes': '' }),
         el('input', { cls: 'in note', 'data-f': 'Feat Note ' + i, id: 'f-featnote' + i, autocomplete: 'off', placeholder: 'Note (e.g. the choice you made)', 'aria-label': 'Feat ' + i + ' note' }),
       ])]));
     }
@@ -458,7 +405,7 @@
   function buildActions() {
     const box = $('#actions');
     box.textContent = '';
-    for (const [pre, n, label] of ACTIONS) for (let i = 1; i <= rows(pre, n); i++) box.append(el('li', { 'data-row': pre + ' ' + i }, [el('span', { cls: 'grow', 'data-out': pre + ' ' + i }), el('span', { cls: 'chip', text: label }), lineMenu('Button.' + pre + ' ' + i, label + ' ' + i)]));
+    for (const [pre, n, label] of ACTIONS) for (let i = 1; i <= rows(pre, n); i++) box.append(el('li', { 'data-row': pre + ' ' + i }, [el('button', { cls: 'grow act-name', type: 'button', 'data-out': pre + ' ' + i, 'data-act': pre + ' ' + i, 'aria-haspopup': 'dialog' }), el('span', { cls: 'chip', text: label }), lineMenu('Button.' + pre + ' ' + i, label + ' ' + i)]));
     box.append(el('li', { cls: 'empty-note muted', text: 'No actions yet.' }));
   }
 
@@ -573,7 +520,7 @@
             el('label', { cls: 'lbl', for: 'f-mid' + i, text: 'Description' }),
             el('button', { cls: 'btn sm mi-edit', type: 'button', 'data-midesc': String(i), hidden: '' }, [document.createTextNode('Edit')]),
           ]),
-          el('div', { cls: 'rich hint', 'data-rich': p + 'Description ' + i }),
+          el('div', { cls: 'rich hint', 'data-rich': p + 'Description ' + i, 'data-see-notes': '' }),
           el('textarea', { cls: 'in mi-desc', 'data-f': p + 'Description ' + i, id: 'f-mid' + i, rows: '3', placeholder: 'What the item does: effects, charges, attunement…', hidden: '' }),
         ]),
         el('label', { cls: 'f mi-part mi-n' }, [
@@ -675,7 +622,7 @@
     node.textContent = '';
     if (!snap || !snap.exists) return;
     const spans = snap.spans;
-    if (!spans || !spans.length) { node.textContent = shown(snap).replace(/\r\n?/g, '\n'); return; }
+    if (!spans || !spans.length) { node.textContent = shown(snap).replace(/\r\n?/g, '\n'); seeNotes(node); return; }
     for (const s of spans) {
       const t = String(s.text || '').replace(/\r\n?/g, '\n');
       if (!t) continue;
@@ -687,6 +634,13 @@
       node.append(n);
     }
     U.diceText(node);
+    seeNotes(node);
+  }
+  // a feat's or magic item's text that says "See Notes page": the sheet put the rest in Notes, a Notes card here
+  const SEE_NOTES = /\bsee notes\b|\bsee (?:the )?(?:third|3rd) page\b/i;
+  const notesButton = () => el('button', { cls: 'btn sm see-notes', type: 'button', 'data-goto': 'notes-card', 'data-goto-tab': 'features' }, [document.createTextNode('Go to Notes')]);
+  function seeNotes(node) {
+    if (node.hasAttribute('data-see-notes') && SEE_NOTES.test(node.textContent)) node.append(notesButton());
   }
   // MPMB's feature texts (Class Features, Racial Traits) as a list: one entry per feature, its description folded.
   // MPMB's markup: "**Wizard, level 3:**" heads a class; "#◆ Name# (Wizard 1, SRD'24 77) #[usage]#" starts a class
@@ -703,31 +657,224 @@
       else into.append(document.createTextNode(p));
     }
   }
-  // MPMB's feature texts as a list that folds open (parsing in features.js)
-  function renderFeatures(node, snap) {
-    const raw = snap && snap.exists ? String(snap.value || '') : '';
+  // MPMB's feature texts as lists that fold open (parsing in features.js). Class Features, Species traits and the
+  // Notes boxes are drawn together: the sheet writes some class features in Notes (Monk's Focus features, Brutal
+  // Strike effects, what didn't fit), and the class list shows them where they belong (MPMBFeatures.merge, with the
+  // sheet's links from the worker's featureLinks); the Notes boxes keep the rest. The PDF keeps its text as it is.
+  const SEE_THIRD = /\(see (?:the )?(?:third|3rd) page\)|see (?:the )?(?:third|3rd) page|\(see notes(?: page)?\)|\bsee notes(?: page)?\b/gi;
+  function featureEl(it, keyBase, inNotes) {
+    const key = keyBase + '|' + it.name;
+    const kids = it.children || [];
+    const d = el('details', { cls: 'feat' + (kids.length ? ' has-sub' : '') });
+    d.open = openFeatures.has(key);
+    d.addEventListener('toggle', (e) => { if (e.target !== d) return; if (d.open) openFeatures.add(key); else openFeatures.delete(key); });
+    const sum = el('summary', {}, [el('span', { cls: 'fname', text: it.name })]);
+    if (it.usage) sum.append(el('span', { cls: 'chip use', text: it.usage }));
+    if (kids.length) sum.append(el('span', { cls: 'chip sub-n', text: kids.length + (kids.length === 1 ? ' option' : ' options') }));
+    if (it.src) sum.append(el('span', { cls: 'fsrc', text: it.src }));
+    d.append(sum);
+    d.dataset.fname = it.name;
+    d.append(featureBody(it, key, inNotes));
+    return d;
+  }
+  // a feature's description, its options folded below it
+  function featureBody(it, key, inNotes) {
+    const kids = it.children || [];
+    const body = el('div', { cls: 'fbody' });
+    let see = false;
+    for (let t of it.text) {
+      if (!inNotes) {
+        // "(see third page)": the rest is in Notes. Its options are right below when they were found there.
+        const was = t;
+        if (kids.length) {
+          t = t.replace(SEE_THIRD, (m) => (m[0] === '(' ? '(below)' : 'see below'));
+          if (/^\(below\)\.?$/i.test(t.trim())) continue;
+        } else {
+          t = t.replace(/\(see (?:the )?(?:third|3rd) page\)/gi, '(see Notes)').replace(/see (?:the )?(?:third|3rd) page/gi, 'see Notes');
+          if (/^\(see Notes\)\.?$/i.test(t.trim())) t = 'The details are in Notes.';
+          if (t !== was || /\bsee notes\b/i.test(t)) see = true;
+        }
+      }
+      const p = el('p'); inlineMarkup(t, p); body.append(p);
+    }
+    if (see) body.append(notesButton());
+    if (!it.text.length && !kids.length) body.append(el('p', { cls: 'muted', text: 'No description on the sheet.' }));
+    if (kids.length) {
+      const sub = el('div', { cls: 'fsub' });
+      for (const c of kids) sub.append(featureEl(c, key, inNotes));
+      body.append(sub);
+    }
+    return body;
+  }
+  function drawFeatures(node, items, keyBase, inNotes) {
     node.textContent = '';
-    // Text saved before the line-break fix (descriptions piled up, features left empty): offer a rebuild
-    if (node.dataset.features === 'class') { const note = $('#cf-stale'); if (note) note.hidden = !MPMBFeatures.staleClassText(raw); }
-    if (!raw.trim()) return;
-    for (const it of MPMBFeatures.parse(raw)) {
+    for (const it of items) {
       if (it.group) { node.append(el('div', { cls: 'fgroup', text: it.group })); continue; }
       if (it.para) { const p = el('p', { cls: 'fpara' }); inlineMarkup(it.para, p); node.append(p); continue; }
-      const key = node.dataset.features + '|' + it.name;
-      const d = el('details', { cls: 'feat' });
-      d.open = openFeatures.has(key);
-      d.addEventListener('toggle', () => { if (d.open) openFeatures.add(key); else openFeatures.delete(key); });
-      const sum = el('summary', {}, [el('span', { cls: 'fname', text: it.name })]);
-      if (it.usage) sum.append(el('span', { cls: 'chip use', text: it.usage }));
-      if (it.src) sum.append(el('span', { cls: 'fsrc', text: it.src }));
-      d.append(sum);
-      const body = el('div', { cls: 'fbody' });
-      for (const t of it.text) { const p = el('p'); inlineMarkup(t, p); body.append(p); }
-      if (!it.text.length) body.append(el('p', { cls: 'muted', text: 'No description on the sheet.' }));
-      d.append(body);
-      U.diceText(d);
-      node.append(d);
+      node.append(featureEl(it, keyBase, inNotes));
     }
+    U.diceText(node);
+  }
+  const shownFeatures = { class: [], species: [] };   // the lists as drawn (class features with what came from Notes)
+  let featuresQueued = false;
+  function renderFeatures() {
+    if (featuresQueued) return;
+    featuresQueued = true;
+    queueMicrotask(() => { featuresQueued = false; drawAllFeatures(); });
+  }
+  function drawAllFeatures() {
+    const raw = (name) => { const s = state.snap.get(name); return s && s.exists ? String(s.value || '') : ''; };
+    const nodes = $$('[data-features]');
+    const notesNodes = nodes.filter((n) => n.dataset.features === 'notes');
+    const notes = notesNodes.map((n) => ({ field: n.dataset.rich, items: MPMBFeatures.parse(raw(n.dataset.rich)) }));
+    let claimed = new Set();
+    for (const node of nodes) {
+      const kind = node.dataset.features, text = raw(node.dataset.rich);
+      if (kind === 'class') {
+        // Text saved before the line-break fix (descriptions piled up, features left empty): offer a rebuild
+        const note = $('#cf-stale'); if (note) note.hidden = !MPMBFeatures.staleClassText(text);
+        const m = MPMBFeatures.merge(MPMBFeatures.parse(text), notes, state.featureLinks);
+        claimed = m.claimed;
+        shownFeatures.class = text.trim() ? m.items : [];
+        drawFeatures(node, text.trim() ? m.items : [], node.dataset.rich, false);
+      } else if (kind !== 'notes') { shownFeatures[kind] = text.trim() ? MPMBFeatures.parse(text) : []; drawFeatures(node, shownFeatures[kind], node.dataset.rich, false); }
+    }
+    // a Notes box: with a feature heading in it the box shows as a list (what the class list didn't take) and its text
+    // folds under Edit; plain notes stay a text box
+    notesNodes.forEach((node, b) => {
+      const wrap = node.closest('.notes-f'), text = raw(node.dataset.rich);
+      const feats = /(^|[\r\n])\s*(#\s*◆|\*\*[^\r\n]+\*\*\s*($|[\r\n]))/.test(text);
+      node.hidden = !feats;
+      if (wrap && wrap.classList.contains('has-feats') !== feats) {
+        wrap.classList.toggle('has-feats', feats);
+        const ed = wrap.querySelector('.notes-edit');
+        if (ed && !ed.contains(document.activeElement)) ed.open = !feats;
+      }
+      if (!feats) { node.textContent = ''; return; }
+      const box = notes[b], moved = [];
+      const left = box.items.filter((it, i) => { if (it.name && claimed.has(box.field + '|' + i)) { moved.push(it.name); return false; } return true; });
+      drawFeatures(node, left, node.dataset.rich, true);
+      if (moved.length) node.append(el('p', { cls: 'hint notes-moved', text: (moved.length === 1 ? moved[0] + ' is' : moved.join(', ') + ' are') + ' shown with your class features.' }));
+    });
+  }
+  // ---------------------------------------------------------------- an action's feature, in a panel
+  // MPMB keeps where each action line came from in its tooltip ("…was gained from: • Monk: Deflect Attacks"): a class
+  // or subclass and the feature's name, a species and its trait, a feat or a magic item, or "Default action" (the
+  // basic actions every character has). Tapping the line shows that feature here, without scrolling to it.
+  const BASIC = {
+    attack: 'Make an attack with a weapon or an Unarmed Strike (more than one with Extra Attack).',
+    magic: 'Cast a spell that takes an action, or use a magic item or feature that takes a Magic action.',
+    utilize: 'Use a nonmagical object: open a door, pull a lever, light a torch.',
+    dash: 'Move up to your Speed again this turn.',
+    disengage: "Your movement doesn't provoke Opportunity Attacks for the rest of the turn.",
+    dodge: 'Until your next turn, attacks against you have Disadvantage and you have Advantage on Dexterity saves (not while Incapacitated or with Speed 0).',
+    hide: 'Make a DC 15 Dexterity (Stealth) check while out of sight (heavily obscured or behind cover) to gain the Invisible condition.',
+    search: 'Make a Wisdom check (Insight, Medicine, Perception or Survival) to notice something.',
+    study: 'Make an Intelligence check (Arcana, History, Investigation, Nature or Religion) to recall or work something out.',
+    influence: "Make a Charisma check (or Wisdom for Animal Handling) to change a creature's attitude.",
+    ready: 'Pick a trigger and what you will do; when it happens, use your Reaction to do it.',
+    help: 'Give an ally Advantage on their next ability check, or on their next attack against a creature within 5 ft of you.',
+    'escape grapple': 'Make a Strength (Athletics) or Dexterity (Acrobatics) check against the grapple’s escape DC.',
+    'opportunity attack': 'When a creature you can see leaves your reach, use your Reaction to make one melee attack against it.',
+  };
+  function actionSources(snap) {
+    return String((snap && snap.tooltip) || '').split(/\r\n?|\n/).filter((l) => /^\s*•/.test(l)).map((l) => l.replace(/^\s*•\s*/, '').replace(/\.\s*$/, '').trim()).filter(Boolean);
+  }
+  function findFeature(list, name) {
+    const want = name.toLowerCase();
+    let hit = null;
+    const walk = (it, path) => { if (hit) return; if (it.name && it.name.toLowerCase() === want) { hit = { it, path }; return; } for (const c of it.children || []) walk(c, path.concat([it.name])); };
+    for (const it of list) walk(it, []);
+    return hit;
+  }
+  // a source as something to show: { kind: 'feature' | 'text' | 'basic', … }
+  function resolveSource(src) {
+    const v = (n) => shown(state.snap.get(n)).trim();
+    if (/^default (bonus )?(action|reaction)$/i.test(src)) return { kind: 'basic' };
+    const name = src.indexOf(':') !== -1 ? src.slice(src.indexOf(':') + 1).trim() : src;
+    for (const kind of ['class', 'species']) {
+      const f = findFeature(shownFeatures[kind] || [], name);
+      if (f) return { kind: 'feature', list: kind, it: f.it, path: f.path };
+    }
+    // a feat or a magic item: its own description field
+    for (let i = 1; i <= rows('feats', FEATS); i++) if (v('Feat Name ' + i).toLowerCase() === src.toLowerCase() || v('Feat Name ' + i).toLowerCase() === name.toLowerCase()) return { kind: 'text', title: v('Feat Name ' + i), field: 'Feat Description ' + i, from: 'Feat' };
+    for (let i = 1; state.snap.has('Extra.Magic Item ' + i); i++) { const n = v('Extra.Magic Item ' + i); if (n && (n.toLowerCase() === src.toLowerCase() || n.toLowerCase() === name.toLowerCase())) return { kind: 'text', title: n, field: 'Extra.Magic Item Description ' + i, from: 'Magic item' }; }
+    return null;
+  }
+  function openAction(row) {
+    const snap = state.snap.get(row);
+    const line = shown(snap);
+    if (!line) return;
+    const dlg = $('#feat-info'), body = $('#fi-body');
+    body.textContent = '';
+    $('#fi-title').textContent = line;
+    $('#fi-kind').textContent = /^Bonus/.test(row) ? 'Bonus action' : /^Reaction/.test(row) ? 'Reaction' : 'Action';
+    let jump = null;
+    const srcs = actionSources(snap);
+    const found = srcs.map((s) => ({ s, r: resolveSource(s) }));
+    if (!srcs.length) found.push({ s: '', r: /^(attack|opportunity attack)\b/i.test(line) || line.split(/\s*\/\s*/).every((p) => BASIC[p.toLowerCase()]) ? { kind: 'basic' } : null });
+    for (const { s, r } of found) {
+      const part = el('section', { cls: 'fi-part' });
+      if (r && r.kind === 'basic') {
+        part.append(el('p', { cls: 'fi-from', text: 'A basic action every character has' }));
+        const ul = el('ul', { cls: 'fi-basic' });
+        for (const p of line.split(/\s*\/\s*/)) { const t = BASIC[p.toLowerCase()]; ul.append(el('li', {}, [el('strong', { text: p }), document.createTextNode(t ? ' ' + t : '')])); }
+        part.append(ul);
+      } else if (r && r.kind === 'feature') {
+        const it = r.it;
+        const head = el('div', { cls: 'fi-head' }, [el('span', { cls: 'fname', text: it.name })]);
+        if (it.usage) head.append(el('span', { cls: 'chip use', text: it.usage }));
+        part.append(head);
+        part.append(el('p', { cls: 'fi-from', text: [s.indexOf(':') !== -1 ? s.slice(0, s.indexOf(':')) : '', it.src].filter(Boolean).join(' · ') + (r.path.length ? ' · part of ' + r.path[r.path.length - 1] : '') }));
+        part.append(featureBody(it, 'pop|' + it.name, false));
+        if (!jump) jump = { list: r.list, names: r.path.concat([it.name]) };
+      } else if (r && r.kind === 'text') {
+        part.append(el('div', { cls: 'fi-head' }, [el('span', { cls: 'fname', text: r.title })]));
+        part.append(el('p', { cls: 'fi-from', text: r.from }));
+        const d = el('div', { cls: 'rich' });
+        renderRich(d, state.snap.get(r.field));
+        part.append(d);
+      } else {
+        part.append(el('p', { cls: 'muted', text: s ? 'From ' + s + '. The app couldn’t find its description on the sheet.' : 'The sheet doesn’t say where this one comes from.' }));
+      }
+      body.append(part);
+    }
+    U.diceText(body);
+    const go = $('#fi-show');
+    go.hidden = !jump;
+    go.onclick = () => { dlg.close(); if (jump) showFeatureInList(jump); };
+    dlg.showModal();
+    body.scrollTop = 0;
+  }
+  // the feature in its list, unfolded (and the feature it is part of)
+  function showFeatureInList(j) {
+    const box = $(j.list === 'species' ? '[data-rich="Racial Traits"]' : '[data-rich="Class Features"]');
+    if (!box) return;
+    let scope = box, d = null;
+    for (const n of j.names) {
+      d = Array.from(scope.querySelectorAll('details.feat')).filter((x) => x.dataset.fname === n)[0];
+      if (!d) break;
+      d.open = true;
+      scope = d;
+    }
+    const target = d || box;
+    setTab('features');
+    spyLock = Date.now() + 700;
+    target.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+  }
+
+  // the sheet's links from its extra choices to their features ("Focus Feature" → Monk's Focus), read again when the
+  // classes change
+  let linksAsked = 0;
+  function refreshFeatureLinks() {
+    const w = state.worker, ask = ++linksAsked;
+    if (!w) return;
+    w.call('featureLinks', {}).then((l) => {
+      if (ask !== linksAsked || state.worker !== w) return;
+      const was = JSON.stringify(state.featureLinks || null);
+      state.featureLinks = l && Array.isArray(l.links) ? l : null;
+      if (JSON.stringify(state.featureLinks) !== was) renderFeatures();
+    }).catch(() => {});
   }
   // name -> elements bound to it, per binding kind (rebuilt after the screens are built)
   let index = null;
@@ -782,7 +929,8 @@
       if (n.dataset.roll) U.markRoll(n);
       else if (n.classList.contains('desc')) U.diceText(n);   // an attack's notes: "Versatile (1d8)"
     }
-    for (const n of sel('data-rich')) { if (n.dataset.features) renderFeatures(n, snap); else renderRich(n, snap); }
+    for (const n of sel('data-rich')) { if (n.dataset.features) renderFeatures(); else renderRich(n, snap); }
+    if (snap.name === 'Class Features') refreshFeatureLinks();
     for (const n of sel('data-tip')) renderTip(n, snap);
     for (const n of sel('data-toggle')) n.setAttribute('aria-pressed', snap.checked ? 'true' : 'false');
     for (const n of sel('data-mpmb')) n.hidden = !snap.exists || !!snap.hidden;
@@ -970,10 +1118,10 @@
 
   // ---------------------------------------------------------------- autosave: the character stays on this device
   let saveTimer = 0, saving = false, saveAgain = false;
-  function saveSoon() { if (state.tourSample) return; clearTimeout(saveTimer); setSaved('pending'); saveTimer = setTimeout(saveNow, 700); }
+  function saveSoon() { clearTimeout(saveTimer); setSaved('pending'); saveTimer = setTimeout(saveNow, 700); }
   async function saveNow() {
     saveTimer = 0;
-    if (!state.worker || !state.charKey || state.tourSample) return;
+    if (!state.worker || !state.charKey) return;
     if (saving) { saveAgain = true; return; }
     // in the middle of a change with a dialog open, the live copy holds a half-made change: save after it
     if (state.changing) { saveTimer = setTimeout(saveNow, 700); return; }
@@ -1155,13 +1303,18 @@
       const row = e.target.closest('[data-mi]');
       setTimeout(() => { delete row.dataset.editing; refreshDerived(); }, 0);
     });
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest && e.target.closest('[data-act]');
+      if (a) { e.preventDefault(); openAction(a.dataset.act); }
+    });
+    $('#fi-close').addEventListener('click', () => $('#feat-info').close());
     document.addEventListener('click', async (e) => {
       const t = e.target.closest && e.target.closest('[data-toggle],[data-skill],[data-tab],[data-goto],[data-sources-open],[data-mpmb],[data-bookmark],[data-step],[data-shoot]');
       if (!t) return;
       if (t.dataset.step && state.worker) { const cur = Number(shown(state.snap.get(t.dataset.step))) || 0; send('commit', { name: t.dataset.step, value: String(Math.max(0, cur + Number(t.dataset.by))) }); return; }
       if (t.dataset.shoot && state.worker) { send('shootAmmo', { side: t.dataset.shoot }); return; }
       if (t.dataset.tab) { e.preventDefault(); goTo(t.dataset.tab); return; }
-      if (t.dataset.goto) { e.preventDefault(); goTo(t.dataset.goto, 'sheetinfo'); return; }
+      if (t.dataset.goto) { e.preventDefault(); goTo(t.dataset.goto, t.dataset.gotoTab || 'sheetinfo'); return; }
       if (t.hasAttribute('data-sources-open')) { e.preventDefault(); renderContent(); $('#sources-panel').showModal(); $('#sources-panel .panel-body').scrollTop = 0; return; }
       if (!state.worker) return;
       if (t.dataset.mpmb || t.dataset.bookmark) { tapMpmb(t); return; }
@@ -1607,11 +1760,12 @@
   // what the other screen files use from here
   Object.assign(U, {
     send, lineMenu, modInput, buildIndex, apply, layoutGrids, refreshDerived, showNotice, toast, shown,
-    inlineMarkup, goTo, setBusy, idbGet, idbPut, idbDel, saveSoon, withSample, fmtS, openSheet, askYesNo, stopAutosave: () => { clearTimeout(saveTimer); saveTimer = 0; }
+    inlineMarkup, goTo, setBusy, idbGet, idbPut, idbDel, saveSoon, fmtS, openSheet, askYesNo, stopAutosave: () => { clearTimeout(saveTimer); saveTimer = 0; }
   });
   wireEvents();
   wireContent();
   U.wireTour();
+  U.wireSearch();
   wireImport();
   U.wireSuggest();
   U.wireDice();
