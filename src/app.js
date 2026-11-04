@@ -458,7 +458,7 @@
   function buildActions() {
     const box = $('#actions');
     box.textContent = '';
-    for (const [pre, n, label] of ACTIONS) for (let i = 1; i <= rows(pre, n); i++) box.append(el('li', { 'data-row': pre + ' ' + i }, [el('span', { cls: 'grow', 'data-out': pre + ' ' + i }), el('span', { cls: 'chip', text: label }), lineMenu('Button.' + pre + ' ' + i, label + ' ' + i)]));
+    for (const [pre, n, label] of ACTIONS) for (let i = 1; i <= rows(pre, n); i++) box.append(el('li', { 'data-row': pre + ' ' + i }, [el('button', { cls: 'grow act-name', type: 'button', 'data-out': pre + ' ' + i, 'data-act': pre + ' ' + i, 'aria-haspopup': 'dialog' }), el('span', { cls: 'chip', text: label }), lineMenu('Button.' + pre + ' ' + i, label + ' ' + i)]));
     box.append(el('li', { cls: 'empty-note muted', text: 'No actions yet.' }));
   }
 
@@ -726,6 +726,13 @@
     if (kids.length) sum.append(el('span', { cls: 'chip sub-n', text: kids.length + (kids.length === 1 ? ' option' : ' options') }));
     if (it.src) sum.append(el('span', { cls: 'fsrc', text: it.src }));
     d.append(sum);
+    d.dataset.fname = it.name;
+    d.append(featureBody(it, key, inNotes));
+    return d;
+  }
+  // a feature's description, its options folded below it
+  function featureBody(it, key, inNotes) {
+    const kids = it.children || [];
     const body = el('div', { cls: 'fbody' });
     let see = false;
     for (let t of it.text) {
@@ -750,8 +757,7 @@
       for (const c of kids) sub.append(featureEl(c, key, inNotes));
       body.append(sub);
     }
-    d.append(body);
-    return d;
+    return body;
   }
   function drawFeatures(node, items, keyBase, inNotes) {
     node.textContent = '';
@@ -762,6 +768,7 @@
     }
     U.diceText(node);
   }
+  const shownFeatures = { class: [], species: [] };   // the lists as drawn (class features with what came from Notes)
   let featuresQueued = false;
   function renderFeatures() {
     if (featuresQueued) return;
@@ -781,8 +788,9 @@
         const note = $('#cf-stale'); if (note) note.hidden = !MPMBFeatures.staleClassText(text);
         const m = MPMBFeatures.merge(MPMBFeatures.parse(text), notes, state.featureLinks);
         claimed = m.claimed;
+        shownFeatures.class = text.trim() ? m.items : [];
         drawFeatures(node, text.trim() ? m.items : [], node.dataset.rich, false);
-      } else if (kind !== 'notes') drawFeatures(node, text.trim() ? MPMBFeatures.parse(text) : [], node.dataset.rich, false);
+      } else if (kind !== 'notes') { shownFeatures[kind] = text.trim() ? MPMBFeatures.parse(text) : []; drawFeatures(node, shownFeatures[kind], node.dataset.rich, false); }
     }
     // a Notes box: with a feature heading in it the box shows as a list (what the class list didn't take) and its text
     // folds under Edit; plain notes stay a text box
@@ -802,6 +810,112 @@
       if (moved.length) node.append(el('p', { cls: 'hint notes-moved', text: (moved.length === 1 ? moved[0] + ' is' : moved.join(', ') + ' are') + ' shown with your class features.' }));
     });
   }
+  // ---------------------------------------------------------------- an action's feature, in a panel
+  // MPMB keeps where each action line came from in its tooltip ("…was gained from: • Monk: Deflect Attacks"): a class
+  // or subclass and the feature's name, a species and its trait, a feat or a magic item, or "Default action" (the
+  // basic actions every character has). Tapping the line shows that feature here, without scrolling to it.
+  const BASIC = {
+    attack: 'Make an attack with a weapon or an Unarmed Strike (more than one with Extra Attack).',
+    magic: 'Cast a spell that takes an action, or use a magic item or feature that takes a Magic action.',
+    utilize: 'Use a nonmagical object: open a door, pull a lever, light a torch.',
+    dash: 'Move up to your Speed again this turn.',
+    disengage: "Your movement doesn't provoke Opportunity Attacks for the rest of the turn.",
+    dodge: 'Until your next turn, attacks against you have Disadvantage and you have Advantage on Dexterity saves (not while Incapacitated or with Speed 0).',
+    hide: 'Make a DC 15 Dexterity (Stealth) check while out of sight (heavily obscured or behind cover) to gain the Invisible condition.',
+    search: 'Make a Wisdom check (Insight, Medicine, Perception or Survival) to notice something.',
+    study: 'Make an Intelligence check (Arcana, History, Investigation, Nature or Religion) to recall or work something out.',
+    influence: "Make a Charisma check (or Wisdom for Animal Handling) to change a creature's attitude.",
+    ready: 'Pick a trigger and what you will do; when it happens, use your Reaction to do it.',
+    help: 'Give an ally Advantage on their next ability check, or on their next attack against a creature within 5 ft of you.',
+    'escape grapple': 'Make a Strength (Athletics) or Dexterity (Acrobatics) check against the grapple’s escape DC.',
+    'opportunity attack': 'When a creature you can see leaves your reach, use your Reaction to make one melee attack against it.',
+  };
+  function actionSources(snap) {
+    return String((snap && snap.tooltip) || '').split(/\r\n?|\n/).filter((l) => /^\s*•/.test(l)).map((l) => l.replace(/^\s*•\s*/, '').replace(/\.\s*$/, '').trim()).filter(Boolean);
+  }
+  function findFeature(list, name) {
+    const want = name.toLowerCase();
+    let hit = null;
+    const walk = (it, path) => { if (hit) return; if (it.name && it.name.toLowerCase() === want) { hit = { it, path }; return; } for (const c of it.children || []) walk(c, path.concat([it.name])); };
+    for (const it of list) walk(it, []);
+    return hit;
+  }
+  // a source as something to show: { kind: 'feature' | 'text' | 'basic', … }
+  function resolveSource(src) {
+    const v = (n) => shown(state.snap.get(n)).trim();
+    if (/^default (bonus )?(action|reaction)$/i.test(src)) return { kind: 'basic' };
+    const name = src.indexOf(':') !== -1 ? src.slice(src.indexOf(':') + 1).trim() : src;
+    for (const kind of ['class', 'species']) {
+      const f = findFeature(shownFeatures[kind] || [], name);
+      if (f) return { kind: 'feature', list: kind, it: f.it, path: f.path };
+    }
+    // a feat or a magic item: its own description field
+    for (let i = 1; i <= rows('feats', FEATS); i++) if (v('Feat Name ' + i).toLowerCase() === src.toLowerCase() || v('Feat Name ' + i).toLowerCase() === name.toLowerCase()) return { kind: 'text', title: v('Feat Name ' + i), field: 'Feat Description ' + i, from: 'Feat' };
+    for (let i = 1; state.snap.has('Extra.Magic Item ' + i); i++) { const n = v('Extra.Magic Item ' + i); if (n && (n.toLowerCase() === src.toLowerCase() || n.toLowerCase() === name.toLowerCase())) return { kind: 'text', title: n, field: 'Extra.Magic Item Description ' + i, from: 'Magic item' }; }
+    return null;
+  }
+  function openAction(row) {
+    const snap = state.snap.get(row);
+    const line = shown(snap);
+    if (!line) return;
+    const dlg = $('#feat-info'), body = $('#fi-body');
+    body.textContent = '';
+    $('#fi-title').textContent = line;
+    $('#fi-kind').textContent = /^Bonus/.test(row) ? 'Bonus action' : /^Reaction/.test(row) ? 'Reaction' : 'Action';
+    let jump = null;
+    const srcs = actionSources(snap);
+    const found = srcs.map((s) => ({ s, r: resolveSource(s) }));
+    if (!srcs.length) found.push({ s: '', r: /^(attack|opportunity attack)\b/i.test(line) || line.split(/\s*\/\s*/).every((p) => BASIC[p.toLowerCase()]) ? { kind: 'basic' } : null });
+    for (const { s, r } of found) {
+      const part = el('section', { cls: 'fi-part' });
+      if (r && r.kind === 'basic') {
+        part.append(el('p', { cls: 'fi-from', text: 'A basic action every character has' }));
+        const ul = el('ul', { cls: 'fi-basic' });
+        for (const p of line.split(/\s*\/\s*/)) { const t = BASIC[p.toLowerCase()]; ul.append(el('li', {}, [el('strong', { text: p }), document.createTextNode(t ? ' ' + t : '')])); }
+        part.append(ul);
+      } else if (r && r.kind === 'feature') {
+        const it = r.it;
+        const head = el('div', { cls: 'fi-head' }, [el('span', { cls: 'fname', text: it.name })]);
+        if (it.usage) head.append(el('span', { cls: 'chip use', text: it.usage }));
+        part.append(head);
+        part.append(el('p', { cls: 'fi-from', text: [s.indexOf(':') !== -1 ? s.slice(0, s.indexOf(':')) : '', it.src].filter(Boolean).join(' · ') + (r.path.length ? ' · part of ' + r.path[r.path.length - 1] : '') }));
+        part.append(featureBody(it, 'pop|' + it.name, false));
+        if (!jump) jump = { list: r.list, names: r.path.concat([it.name]) };
+      } else if (r && r.kind === 'text') {
+        part.append(el('div', { cls: 'fi-head' }, [el('span', { cls: 'fname', text: r.title })]));
+        part.append(el('p', { cls: 'fi-from', text: r.from }));
+        const d = el('div', { cls: 'rich' });
+        renderRich(d, state.snap.get(r.field));
+        part.append(d);
+      } else {
+        part.append(el('p', { cls: 'muted', text: s ? 'From ' + s + '. The app couldn’t find its description on the sheet.' : 'The sheet doesn’t say where this one comes from.' }));
+      }
+      body.append(part);
+    }
+    U.diceText(body);
+    const go = $('#fi-show');
+    go.hidden = !jump;
+    go.onclick = () => { dlg.close(); if (jump) showFeatureInList(jump); };
+    dlg.showModal();
+    body.scrollTop = 0;
+  }
+  // the feature in its list, unfolded (and the feature it is part of)
+  function showFeatureInList(j) {
+    const box = $(j.list === 'species' ? '[data-rich="Racial Traits"]' : '[data-rich="Class Features"]');
+    if (!box) return;
+    let scope = box, d = null;
+    for (const n of j.names) {
+      d = Array.from(scope.querySelectorAll('details.feat')).filter((x) => x.dataset.fname === n)[0];
+      if (!d) break;
+      d.open = true;
+      scope = d;
+    }
+    const target = d || box;
+    setTab('features');
+    spyLock = Date.now() + 700;
+    target.scrollIntoView({ behavior: reduceMotion() ? 'auto' : 'smooth', block: 'start' });
+  }
+
   // the sheet's links from its extra choices to their features ("Focus Feature" → Monk's Focus), read again when the
   // classes change
   let linksAsked = 0;
@@ -1242,6 +1356,11 @@
       const row = e.target.closest('[data-mi]');
       setTimeout(() => { delete row.dataset.editing; refreshDerived(); }, 0);
     });
+    document.addEventListener('click', (e) => {
+      const a = e.target.closest && e.target.closest('[data-act]');
+      if (a) { e.preventDefault(); openAction(a.dataset.act); }
+    });
+    $('#fi-close').addEventListener('click', () => $('#feat-info').close());
     document.addEventListener('click', async (e) => {
       const t = e.target.closest && e.target.closest('[data-toggle],[data-skill],[data-tab],[data-goto],[data-sources-open],[data-mpmb],[data-bookmark],[data-step],[data-shoot]');
       if (!t) return;

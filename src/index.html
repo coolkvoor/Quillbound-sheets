@@ -137,7 +137,7 @@ header.top .line { font-size: 0.92rem; color: var(--muted); white-space: nowrap;
 
 main.bands { padding: 8px 16px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
 section.band { scroll-margin-top: calc(var(--header-h) + 8px); padding-top: 12px; }
-#notes-card, .card > h3, .band-title { scroll-margin-top: calc(var(--header-h) + 16px); }   /* the tour scrolls a heading to the top, clear of the top bar */
+#notes-card, details.feat, .card > h3, .band-title { scroll-margin-top: calc(var(--header-h) + 16px); }   /* the tour scrolls a heading to the top, clear of the top bar */
 .band-title { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; color: var(--accent); margin: 8px 0 10px; display: flex; align-items: baseline; gap: 10px; }
 .band-title small { font-family: var(--font-body); font-size: 0.85rem; font-weight: 500; color: var(--muted); }
 /* cards flow down columns like a folio: 1 column on phones, 2 on phone landscape and tablet portrait, 3 on tablet landscape */
@@ -636,6 +636,17 @@ details.more summary { cursor: pointer; padding: 10px 0; min-height: 44px; color
 .notes-f:not(.has-feats) details.notes-edit > summary { display: none; }
 .notes-f.has-feats details.notes-edit { border-top: 1px solid var(--line); margin-top: 4px; }
 .see-notes { margin-top: 2px; justify-self: start; }
+/* an action line opens its feature (#feat-info) */
+.act-name { background: none; border: 0; padding: 6px 0; margin: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; min-height: 40px; text-decoration: underline; text-decoration-color: var(--accent-soft); text-decoration-thickness: 2px; text-underline-offset: 4px; }
+#feat-info .panel-head .lbl { display: block; }
+#feat-info .fi-part + .fi-part { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 12px; }
+#feat-info .fi-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+#feat-info .fi-head .fname { font-weight: 700; font-size: 1.05rem; }
+#feat-info .fi-head .chip.use { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); white-space: normal; }
+#feat-info .fi-from { margin: 2px 0 8px; font-size: 0.85rem; color: var(--muted); }
+#feat-info .fbody { display: grid; gap: 6px; line-height: 1.5; }
+#feat-info .fbody p { margin: 0; }
+#feat-info .fi-basic { margin: 0; padding-left: 1.1rem; display: grid; gap: 6px; line-height: 1.45; }
 .rich .see-notes { display: block; margin-top: 6px; }
 .ac-parts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; }
 .ac-parts .wide { grid-column: span 2; }
@@ -1613,6 +1624,11 @@ window.MPMBTheme = (() => {
       <ol class="dice-hist" id="dice-hist"></ol>
     </div>
   </div>
+</dialog>
+<dialog class="panel" id="feat-info" aria-labelledby="fi-title">
+  <div class="panel-head"><div class="grow"><span class="lbl" id="fi-kind">Action</span><h3 id="fi-title">Action</h3></div><button class="btn sm" id="fi-close" type="button">Close</button></div>
+  <div class="panel-body" id="fi-body"></div>
+  <div class="panel-foot"><button class="btn sm" id="fi-show" type="button">Show in the feature list</button></div>
 </dialog>
 <dialog class="panel" id="spell-info" aria-labelledby="si-title">
   <div class="panel-head"><h3 id="si-title">Spell</h3><button class="btn sm" id="si-close" type="button">Close</button></div>

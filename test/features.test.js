@@ -1,6 +1,7 @@
 // Feature texts: every class and subclass levelled 1 → 20 one level at a time (as the app does), read with the app's
-// own parser (src/features.js). Every feature must have a description, and the app must not offer "Rebuild feature
-// texts". The one exception is MPMB's: a heading with a usage loses its short text when MPMB rewrites it on a level up
+// own parser (src/features.js). Every feature must have a description, the app must not offer "Rebuild feature
+// texts", what the sheet put in Notes must be shown with the class (merge), and every action line must find the
+// feature its tooltip names. The one exception is MPMB's: a heading with a usage loses its short text when MPMB rewrites it on a level up
 // (Wild Shape's "(see 3rd page)"), as in Acrobat.
 // Usage: node test/features.test.js        SRD classes
 //        node test/features.test.js all    also with the first add-on content file in resources/ (slow)
@@ -86,7 +87,7 @@ function runClass(e, c) {
   for (const sub of c.subclasses.length ? c.subclasses : ['']) {
     classes.apply(e, []);
     e.evalExpr('Value("Class Features", "")');
-    const empty = {}, errors = [], unplaced = {};
+    const empty = {}, errors = [], unplaced = {}, lost = {};
     let stale = 0;
     for (let lv = 1; lv <= 20; lv++) {
       const r = classes.apply(e, [{ cls: c.name, sub: lv >= c.subclassLevel ? sub : '', level: lv }]);
@@ -100,6 +101,19 @@ function runClass(e, c) {
       for (const b of boxes) b.items.forEach((it, i) => {
         if (it.name && !m.claimed.has(b.field + '|' + i) && !BOOK_ONLY.test(it.src) && !unplaced[it.name]) unplaced[it.name] = it.name + ' (' + it.src + ') @' + lv;
       });
+      // every action line names its source in its tooltip ("• Monk: Deflect Attacks"): the app opens that feature
+      const names = new Set();
+      const walk = (it) => { if (it.name) names.add(it.name.toLowerCase()); (it.children || []).forEach(walk); };
+      m.items.forEach(walk);
+      for (const pre of ['Action ', 'Bonus Action ', 'Reaction ']) for (let i = 1; e.snapshot(pre + i).exists; i++) {
+        const sn = e.snapshot(pre + i);
+        if (!String(sn.value || '')) continue;
+        for (const src of String(sn.tooltip || '').split(/\r\n?|\n/).filter((l) => /^\s*•/.test(l)).map((l) => l.replace(/^\s*•\s*/, '').replace(/\.\s*$/, '').trim())) {
+          if (/^default /i.test(src)) continue;
+          const y = src.slice(src.indexOf(':') + 1).trim().toLowerCase();
+          if (!names.has(y) && !lost[src]) lost[src] = sn.value + ' ← ' + src + ' @' + lv;
+        }
+      }
       builds++;
     }
     const label = c.name + (sub ? ' / ' + sub : '');
@@ -107,6 +121,7 @@ function runClass(e, c) {
     check(label + ': every feature has a description', !Object.keys(empty).length, Object.values(empty).join('; '));
     check(label + ': no rebuild offered', !stale, 'at level ' + stale);
     check(label + ': features in Notes shown with the class', !Object.keys(unplaced).length, Object.values(unplaced).join('; '));
+    check(label + ': every action line finds its feature', !Object.keys(lost).length, Object.values(lost).join('; '));
   }
   return builds;
 }
