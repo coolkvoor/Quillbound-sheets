@@ -281,6 +281,21 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .excl-kinds .chip { flex: none; }
 #content-hint { margin: 0; }
 
+/* search (ui-search.js) */
+.search-top { padding: 8px 16px 4px; }
+.search-top .in { width: 100%; }
+#search-results { display: grid; gap: 2px; align-content: start; }
+.search-band { font-family: var(--font-display); font-weight: 700; color: var(--accent); margin: 10px 0 2px; }
+.search-band:first-child { margin-top: 0; }
+.search-hit { display: grid; gap: 2px; text-align: left; background: none; border: 0; border-bottom: 1px solid var(--line); padding: 10px 0; font: inherit; color: inherit; cursor: pointer; min-height: 48px; }
+.search-title { font-weight: 700; display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; }
+.search-card { font-weight: 400; font-size: 0.82rem; color: var(--muted); }
+.search-snip { font-size: 0.9rem; color: var(--muted); line-height: 1.4; overflow-wrap: anywhere; }
+.search-snip mark { background: var(--accent-soft); color: var(--ink); border-radius: 3px; padding: 0 1px; }
+.search-flash { animation: search-flash 2s ease-out; border-radius: 8px; }
+@keyframes search-flash { 0%, 40% { box-shadow: 0 0 0 3px var(--accent); background: var(--accent-soft); } 100% { box-shadow: 0 0 0 3px transparent; } }
+@media (prefers-reduced-motion: reduce) { .search-flash { animation: none; box-shadow: 0 0 0 3px var(--accent); } }
+
 /* the tour (ui-tour.js): the page dimmed but for the lit-up thing, and a small card */
 .tour { position: fixed; inset: 0; z-index: 60; pointer-events: none; }
 .tour-dim { position: fixed; inset: 0; background: rgb(0 0 0 / 0.55); pointer-events: auto; }
@@ -951,6 +966,7 @@ window.MPMBTheme = (() => {
       <div class="line" id="hdr-line">Choose a species and class to begin</div>
     </div>
     <span class="save-wrap"><span class="chip" id="save-chip" title="Saved on this device">Saved</span><span class="busy" id="busy" aria-hidden="true"></span></span>
+    <button class="btn sm icon-btn" id="search-open" type="button" aria-label="Search the sheet" title="Search" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
     <button class="btn sm icon-btn" id="sources-open" type="button" aria-label="Sources" title="Sources" aria-haspopup="dialog" data-sources-open><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><path d="M9 7h7"/></svg></button>
     <button class="btn sm icon-btn" id="dice-open" type="button" aria-label="Dice" title="Dice" aria-haspopup="dialog"></button>
     <button class="btn sm icon-btn" id="settings-open" type="button" aria-label="Settings" title="Settings" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -1365,6 +1381,13 @@ window.MPMBTheme = (() => {
   <ul class="menu-list" id="menu-list"></ul>
 </dialog>
 
+<!-- Search the sheet (ui-search.js) -->
+<dialog class="panel full" id="search" aria-labelledby="search-title">
+  <div class="panel-head"><h3 id="search-title">Search</h3><button class="btn sm" id="search-close" type="button">Close</button></div>
+  <div class="search-top"><input class="in" id="search-box" type="search" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" placeholder="Feature, spell, item, skill…" aria-label="Search the sheet"></div>
+  <div class="panel-body" id="search-results" aria-live="polite"></div>
+</dialog>
+
 <!-- Offered once, after the first sheet opens, by what the sheet holds (ui-tour.js offerTour) -->
 <dialog class="panel" id="tour-ask" aria-labelledby="tour-ask-title">
   <div class="panel-head"><h3 id="tour-ask-title">New here?</h3></div>
@@ -1655,4 +1678,5 @@ window.MPMBTheme = (() => {
 <script src="ui-suggest.js"></script>
 <script src="ui-dice.js"></script>
 <script src="ui-tour.js"></script>
+<script src="ui-search.js"></script>
 <script src="app.js"></script>

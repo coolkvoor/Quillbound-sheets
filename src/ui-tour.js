@@ -40,6 +40,7 @@
     skills: { at: skillDot, text: 'Tap a skill’s dot for proficiency. Tap again for expertise.' },
     roll: { at: '[data-roll="d20"][data-kind="init"]', text: 'Tap any number to roll it: attacks, saves, skills.' },
     dice: { at: '#dice-open', text: 'Other dice? Roll them here.' },
+    search: { at: '#search-open', text: 'Looking for something? Search the whole sheet: features, spells, gear, notes.' },
     hp: { at: () => { const n = $('#f-hp'); return n && n.closest('.card'); }, text: 'Keep track of your hit points here.' },
     actions: { at: () => $('#actions') && $('#actions').closest('.card'), text: 'Tap an action to read what it does, right here.' },
     spells: { at: () => first('#casters button.primary') || $('#spells'), text: 'Your spells: choose them here, then tap one for its details.', missing: noSpells },
@@ -68,13 +69,13 @@
   const FULL = [
     ['Sources', ['book', 'content', 'books', 'closeBook']],
     ['Your character', ['name', 'species', 'cls', 'bg', 'abilities', 'sheetBtn', 'skills']],
-    ['Play', ['roll', 'dice', 'hp', 'actions', 'spells', 'rests', 'limited', 'features', 'feats', 'notes']],
+    ['Play', ['roll', 'dice', 'search', 'hp', 'actions', 'spells', 'rests', 'limited', 'features', 'feats', 'notes']],
     ['Gear and pages', ['magic', 'gear', 'companion', 'pages']],
     ['Keep it safe', ['pdfFirst', 'savedAfter', 'gearOpen', 'backups', 'install']],
     ['Make it yours', ['look', 'again']],
   ];
   const QUICK = [
-    ['Quick tour', ['book', 'content', 'books', 'single', 'closeBook', 'sheetBtn', 'roll', 'actions', 'features', 'saved', 'pdf', 'gearOpen', 'look', 'backups', 'install', 'again']],
+    ['Quick tour', ['book', 'content', 'books', 'single', 'closeBook', 'sheetBtn', 'roll', 'search', 'actions', 'features', 'saved', 'pdf', 'gearOpen', 'look', 'backups', 'install', 'again']],
   ];
   const QUICK_TEXT = {
     book: 'Your sources are behind the book: content files and books. Set them first. Tap it.',

@@ -1765,6 +1765,7 @@
   wireEvents();
   wireContent();
   U.wireTour();
+  U.wireSearch();
   wireImport();
   U.wireSuggest();
   U.wireDice();
