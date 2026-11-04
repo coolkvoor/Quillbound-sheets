@@ -55,7 +55,24 @@
     return { alerts, errors, dialogs: dialogs.map((d) => d.name + '/' + d.answered) };
   }
 
-  const api = { options, apply };
+  // which feature the sheet's extra choices belong to: links, [label, parent feature name] for each class feature with an
+  // extraname ("Focus Feature" → Monk's Focus), its own or one of its choices' ("Monk 5" → Monk's Focus, "Druid 2" →
+  // Wild Shape). The sheet writes those choices in Notes with the label as their source; the app shows them under the
+  // feature (features.js merge). names: each class's names (class and subclass, long and short), as its notes may use
+  // another one than its features ("Warrior of Shadow 11" and "Shadow 3").
+  function links(engine) {
+    return JSON.parse(engine.evalExpr('JSON.stringify((function () { var out = [], seen = {};'
+      + ' function add(l, n) { if (typeof l !== "string" || !l || typeof n !== "string" || seen[l + "|" + n]) return; seen[l + "|" + n] = 1; out.push([l, n]); }'
+      + ' for (var c in classes.known) { var cl = CurrentClasses[c]; if (!cl || !cl.features) continue;'
+      + '  for (var p in cl.features) { var f = cl.features[p]; if (!f || typeof f !== "object") continue; var n = typeof f.name === "string" ? f.name : p;'
+      + '   add(f.extraname, n);'
+      + '   for (var k in f) { var o = f[k]; if (o && typeof o === "object" && !isArray(o) && typeof o.extraname === "string") add(o.extraname, n); } } }'
+      + ' var names = []; for (var c2 in classes.known) { var k2 = CurrentClasses[c2]; if (!k2) continue; var nm = [];'
+      + '  ["name", "nameShort", "subname", "subnameShort", "fullname"].forEach(function (x) { if (typeof k2[x] === "string" && k2[x]) nm.push(k2[x]); }); names.push(nm); }'
+      + ' return { links: out, names: names }; })())'));
+  }
+
+  const api = { options, apply, links };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.MPMBClasses = api;
 })(typeof self !== 'undefined' ? self : this);

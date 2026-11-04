@@ -710,54 +710,110 @@
       else into.append(document.createTextNode(p));
     }
   }
-  // MPMB's feature texts as a list that folds open (parsing in features.js)
-  function renderFeatures(node, snap) {
-    const raw = snap && snap.exists ? String(snap.value || '') : '';
+  // MPMB's feature texts as lists that fold open (parsing in features.js). Class Features, Species traits and the
+  // Notes boxes are drawn together: the sheet writes some class features in Notes (Monk's Focus features, Brutal
+  // Strike effects, what didn't fit), and the class list shows them where they belong (MPMBFeatures.merge, with the
+  // sheet's links from the worker's featureLinks); the Notes boxes keep the rest. The PDF keeps its text as it is.
+  const SEE_THIRD = /\(see (?:the )?(?:third|3rd) page\)|see (?:the )?(?:third|3rd) page|\(see notes(?: page)?\)|\bsee notes(?: page)?\b/gi;
+  function featureEl(it, keyBase, inNotes) {
+    const key = keyBase + '|' + it.name;
+    const kids = it.children || [];
+    const d = el('details', { cls: 'feat' + (kids.length ? ' has-sub' : '') });
+    d.open = openFeatures.has(key);
+    d.addEventListener('toggle', (e) => { if (e.target !== d) return; if (d.open) openFeatures.add(key); else openFeatures.delete(key); });
+    const sum = el('summary', {}, [el('span', { cls: 'fname', text: it.name })]);
+    if (it.usage) sum.append(el('span', { cls: 'chip use', text: it.usage }));
+    if (kids.length) sum.append(el('span', { cls: 'chip sub-n', text: kids.length + (kids.length === 1 ? ' option' : ' options') }));
+    if (it.src) sum.append(el('span', { cls: 'fsrc', text: it.src }));
+    d.append(sum);
+    const body = el('div', { cls: 'fbody' });
+    let see = false;
+    for (let t of it.text) {
+      if (!inNotes) {
+        // "(see third page)": the rest is in Notes. Its options are right below when they were found there.
+        const was = t;
+        if (kids.length) {
+          t = t.replace(SEE_THIRD, (m) => (m[0] === '(' ? '(below)' : 'see below'));
+          if (/^\(below\)\.?$/i.test(t.trim())) continue;
+        } else {
+          t = t.replace(/\(see (?:the )?(?:third|3rd) page\)/gi, '(see Notes)').replace(/see (?:the )?(?:third|3rd) page/gi, 'see Notes');
+          if (/^\(see Notes\)\.?$/i.test(t.trim())) t = 'The details are in Notes.';
+          if (t !== was || /\bsee notes\b/i.test(t)) see = true;
+        }
+      }
+      const p = el('p'); inlineMarkup(t, p); body.append(p);
+    }
+    if (see) body.append(notesButton());
+    if (!it.text.length && !kids.length) body.append(el('p', { cls: 'muted', text: 'No description on the sheet.' }));
+    if (kids.length) {
+      const sub = el('div', { cls: 'fsub' });
+      for (const c of kids) sub.append(featureEl(c, key, inNotes));
+      body.append(sub);
+    }
+    d.append(body);
+    return d;
+  }
+  function drawFeatures(node, items, keyBase, inNotes) {
     node.textContent = '';
-    // Text saved before the line-break fix (descriptions piled up, features left empty): offer a rebuild
-    if (node.dataset.features === 'class') { const note = $('#cf-stale'); if (note) note.hidden = !MPMBFeatures.staleClassText(raw); }
-    // a Notes box: the sheet puts features there that don't fit (Monk's Focus features, Brutal Strike's effects).
-    // With a feature heading in it the box shows as a list and its text folds under Edit; plain notes stay a text box.
-    const wrap = node.dataset.features === 'notes' && node.closest('.notes-f');
-    if (wrap) {
-      const feats = /(^|[\r\n])\s*(#\s*◆|\*\*[^\r\n]+\*\*\s*($|[\r\n]))/.test(raw);
+    for (const it of items) {
+      if (it.group) { node.append(el('div', { cls: 'fgroup', text: it.group })); continue; }
+      if (it.para) { const p = el('p', { cls: 'fpara' }); inlineMarkup(it.para, p); node.append(p); continue; }
+      node.append(featureEl(it, keyBase, inNotes));
+    }
+    U.diceText(node);
+  }
+  let featuresQueued = false;
+  function renderFeatures() {
+    if (featuresQueued) return;
+    featuresQueued = true;
+    queueMicrotask(() => { featuresQueued = false; drawAllFeatures(); });
+  }
+  function drawAllFeatures() {
+    const raw = (name) => { const s = state.snap.get(name); return s && s.exists ? String(s.value || '') : ''; };
+    const nodes = $$('[data-features]');
+    const notesNodes = nodes.filter((n) => n.dataset.features === 'notes');
+    const notes = notesNodes.map((n) => ({ field: n.dataset.rich, items: MPMBFeatures.parse(raw(n.dataset.rich)) }));
+    let claimed = new Set();
+    for (const node of nodes) {
+      const kind = node.dataset.features, text = raw(node.dataset.rich);
+      if (kind === 'class') {
+        // Text saved before the line-break fix (descriptions piled up, features left empty): offer a rebuild
+        const note = $('#cf-stale'); if (note) note.hidden = !MPMBFeatures.staleClassText(text);
+        const m = MPMBFeatures.merge(MPMBFeatures.parse(text), notes, state.featureLinks);
+        claimed = m.claimed;
+        drawFeatures(node, text.trim() ? m.items : [], node.dataset.rich, false);
+      } else if (kind !== 'notes') drawFeatures(node, text.trim() ? MPMBFeatures.parse(text) : [], node.dataset.rich, false);
+    }
+    // a Notes box: with a feature heading in it the box shows as a list (what the class list didn't take) and its text
+    // folds under Edit; plain notes stay a text box
+    notesNodes.forEach((node, b) => {
+      const wrap = node.closest('.notes-f'), text = raw(node.dataset.rich);
+      const feats = /(^|[\r\n])\s*(#\s*◆|\*\*[^\r\n]+\*\*\s*($|[\r\n]))/.test(text);
       node.hidden = !feats;
-      if (wrap.classList.contains('has-feats') !== feats) {
+      if (wrap && wrap.classList.contains('has-feats') !== feats) {
         wrap.classList.toggle('has-feats', feats);
         const ed = wrap.querySelector('.notes-edit');
         if (ed && !ed.contains(document.activeElement)) ed.open = !feats;
       }
-      if (!feats) return;
-    }
-    if (!raw.trim()) return;
-    for (const it of MPMBFeatures.parse(raw)) {
-      if (it.group) { node.append(el('div', { cls: 'fgroup', text: it.group })); continue; }
-      if (it.para) { const p = el('p', { cls: 'fpara' }); inlineMarkup(it.para, p); node.append(p); continue; }
-      const key = node.dataset.rich + '|' + it.name;
-      const d = el('details', { cls: 'feat' });
-      d.open = openFeatures.has(key);
-      d.addEventListener('toggle', () => { if (d.open) openFeatures.add(key); else openFeatures.delete(key); });
-      const sum = el('summary', {}, [el('span', { cls: 'fname', text: it.name })]);
-      if (it.usage) sum.append(el('span', { cls: 'chip use', text: it.usage }));
-      if (it.src) sum.append(el('span', { cls: 'fsrc', text: it.src }));
-      d.append(sum);
-      const body = el('div', { cls: 'fbody' });
-      let see = false;
-      for (let t of it.text) {
-        // "(see third page)": the rest is in the third page's Notes, a Notes card here
-        if (wrap) { const p = el('p'); inlineMarkup(t, p); body.append(p); continue; }
-        const was = t;
-        t = t.replace(/\(see (?:the )?(?:third|3rd) page\)/gi, '(see Notes)').replace(/see (?:the )?(?:third|3rd) page/gi, 'see Notes');
-        if (/^\(see Notes\)\.?$/i.test(t.trim())) t = 'The details are in Notes.';
-        if (t !== was || /\bsee notes\b/i.test(t)) see = true;
-        const p = el('p'); inlineMarkup(t, p); body.append(p);
-      }
-      if (see) body.append(notesButton());
-      if (!it.text.length) body.append(el('p', { cls: 'muted', text: 'No description on the sheet.' }));
-      d.append(body);
-      U.diceText(d);
-      node.append(d);
-    }
+      if (!feats) { node.textContent = ''; return; }
+      const box = notes[b], moved = [];
+      const left = box.items.filter((it, i) => { if (it.name && claimed.has(box.field + '|' + i)) { moved.push(it.name); return false; } return true; });
+      drawFeatures(node, left, node.dataset.rich, true);
+      if (moved.length) node.append(el('p', { cls: 'hint notes-moved', text: (moved.length === 1 ? moved[0] + ' is' : moved.join(', ') + ' are') + ' shown with your class features.' }));
+    });
+  }
+  // the sheet's links from its extra choices to their features ("Focus Feature" → Monk's Focus), read again when the
+  // classes change
+  let linksAsked = 0;
+  function refreshFeatureLinks() {
+    const w = state.worker, ask = ++linksAsked;
+    if (!w) return;
+    w.call('featureLinks', {}).then((l) => {
+      if (ask !== linksAsked || state.worker !== w) return;
+      const was = JSON.stringify(state.featureLinks || null);
+      state.featureLinks = l && Array.isArray(l.links) ? l : null;
+      if (JSON.stringify(state.featureLinks) !== was) renderFeatures();
+    }).catch(() => {});
   }
   // name -> elements bound to it, per binding kind (rebuilt after the screens are built)
   let index = null;
@@ -812,7 +868,8 @@
       if (n.dataset.roll) U.markRoll(n);
       else if (n.classList.contains('desc')) U.diceText(n);   // an attack's notes: "Versatile (1d8)"
     }
-    for (const n of sel('data-rich')) { if (n.dataset.features) renderFeatures(n, snap); else renderRich(n, snap); }
+    for (const n of sel('data-rich')) { if (n.dataset.features) renderFeatures(); else renderRich(n, snap); }
+    if (snap.name === 'Class Features') refreshFeatureLinks();
     for (const n of sel('data-tip')) renderTip(n, snap);
     for (const n of sel('data-toggle')) n.setAttribute('aria-pressed', snap.checked ? 'true' : 'false');
     for (const n of sel('data-mpmb')) n.hidden = !snap.exists || !!snap.hidden;

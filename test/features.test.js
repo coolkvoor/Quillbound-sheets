@@ -28,6 +28,26 @@ check('parser: description in brackets on the heading line (chip and text)', p[2
 check('parser: feature choice', p[3].name === 'Scholar: Arcana' && p[3].usage === 'Expertise in Arcana' && p[3].text[0] === 'Expertise in Arcana', JSON.stringify(p[3]));
 check('parser: text after the usage', p[4].usage === 'regain 1/SR, 2× per Long Rest' && p[4].text[0] === '(see 3rd page)', JSON.stringify(p[4]));
 check('parser: plain heading with text below', p[5].name === 'Reckless Attack' && p[5].text.length === 1, JSON.stringify(p[5]));
+{
+  const cls = features.parse([
+    '**Monk (Warrior of the Open Hand), level 17:**',
+    "#◆ Monk's Focus# (Monk 2, PHB'24 101) #[17× per Short Rest]# (see third page)",
+    "#◆ Slow Fall# (Monk 4, PHB'24 103)", 'text',
+    "#◆ Fleet Step# (Open Hand 11, PHB'24 107)", 'text',
+  ].join('\r'));
+  const notes = [{ field: 'Extra.Notes', items: features.parse([
+    "#◆ Flurry of Blows# (Focus Feature, PHB'24 102) #[1 Focus Point]#", 'two strikes',
+    "#◆ Stunning Strike# (Monk 5, PHB'24 103)", 'stun',
+    "#◆ Quivering Palm# (Open Hand 17, PHB'24 107)", 'palm',
+    "#◆ Tenets of the Way# (PHB'24 113)", 'stay',
+    'my own note',
+  ].join('\r')) }];
+  const m = features.merge(cls, notes, [['Focus Feature', "Monk's Focus"], ['Monk 5', 'Stunning Strike'], ['Open Hand 17', 'Quivering Palm']]);
+  const names = m.items.filter((x) => x.name).map((x) => x.name);
+  check('merge: a choice inside its feature', m.items[1].children.length === 1 && m.items[1].children[0].name === 'Flurry of Blows', JSON.stringify(m.items[1]));
+  check('merge: a class feature in level order', names.join('|') === "Monk's Focus|Slow Fall|Stunning Strike|Fleet Step|Quivering Palm", names.join('|'));
+  check('merge: unlabelled entries and own notes stay in Notes', m.claimed.size === 3 && !m.claimed.has('Extra.Notes|3'), JSON.stringify([...m.claimed]));
+}
 check('stale: a plain heading without text is old text', features.staleClassText("#◆ Ritual Adept# (Wizard 1, SRD'24 78)\r#◆ Scholar# (Wizard 2)\rtext"));
 check('stale: a heading with a usage and nothing else is not', !features.staleClassText("#◆ Wild Shape# (Druid 2, SRD'24 42) #[regain 1/SR, 3× per Long Rest]#\r#◆ Next# (Druid 3)\rtext"));
 
@@ -53,12 +73,20 @@ function newSheet() {
   }
   return e;
 }
+// the Notes boxes (the third page's and every Notes page's columns), as the app reads them
+function notesBoxes(e) {
+  const pages = JSON.parse(e.evalExpr('JSON.stringify(What("Template.extras.ASnotes").split(",").slice(1))'));
+  return ['Extra.Notes'].concat(...pages.map((p) => [p + 'Notes.Left', p + 'Notes.Right']))
+    .map((f) => ({ field: f, items: features.parse(String(e.snapshot(f).value || '')) }));
+}
+// a Notes entry with only a book as its source ("Tenets of the Oath of Devotion (PHB'24 113)") names no class: it stays
+const BOOK_ONLY = /^[A-Z][A-Za-z]*'\d\d\b/;
 function runClass(e, c) {
   let builds = 0;
   for (const sub of c.subclasses.length ? c.subclasses : ['']) {
     classes.apply(e, []);
     e.evalExpr('Value("Class Features", "")');
-    const empty = {}, errors = [];
+    const empty = {}, errors = [], unplaced = {};
     let stale = 0;
     for (let lv = 1; lv <= 20; lv++) {
       const r = classes.apply(e, [{ cls: c.name, sub: lv >= c.subclassLevel ? sub : '', level: lv }]);
@@ -66,12 +94,19 @@ function runClass(e, c) {
       const text = String(e.snapshot('Class Features').value || '');
       for (const it of features.parse(text)) if (it.name && !it.text.length && !it.usage && !empty[it.name]) empty[it.name] = it.name + ' @' + lv;
       if (features.staleClassText(text) && !stale) stale = lv;
+      // what the sheet wrote in Notes with a class label ("Focus Feature", "Monk 5") is shown in the class list
+      const boxes = notesBoxes(e);
+      const m = features.merge(features.parse(text), boxes, classes.links(e));
+      for (const b of boxes) b.items.forEach((it, i) => {
+        if (it.name && !m.claimed.has(b.field + '|' + i) && !BOOK_ONLY.test(it.src) && !unplaced[it.name]) unplaced[it.name] = it.name + ' (' + it.src + ') @' + lv;
+      });
       builds++;
     }
     const label = c.name + (sub ? ' / ' + sub : '');
     check(label + ': no errors', !errors.length, errors[0]);
     check(label + ': every feature has a description', !Object.keys(empty).length, Object.values(empty).join('; '));
     check(label + ': no rebuild offered', !stale, 'at level ' + stale);
+    check(label + ': features in Notes shown with the class', !Object.keys(unplaced).length, Object.values(unplaced).join('; '));
   }
   return builds;
 }

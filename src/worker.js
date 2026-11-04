@@ -92,7 +92,7 @@ function mustBeMpmb(model) {
   if (!(major === 14 || major >= 24)) throw new Error('OLD_SHEET: v' + model.info.SheetVersion);
 }
 // requests that only read: the saved state stays valid
-const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'parseModel', 'pageList', 'xpInfo', 'notesText', 'toolNames', 'spellSheet', 'spellKey', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare', 'iconImage']);
+const READS = new Set(['watch', 'log', 'exportState', 'names', 'modelJSON', 'parseModel', 'pageList', 'xpInfo', 'notesText', 'featureLinks', 'toolNames', 'spellSheet', 'spellKey', 'spellDetails', 'stoppedStep', 'savePdf', 'channel', 'prepare', 'iconImage']);
 
 function logSummary() {
   const l = engine.log;
@@ -253,6 +253,8 @@ const ops = {
     return JSON.parse(engine.evalExpr('JSON.stringify(What("Template.extras.ASnotes").split(",").slice(1).map(function (p) {'
       + ' return { prefix: p, left: String(What(p + "Notes.Left") || ""), right: String(What(p + "Notes.Right") || "") }; }))'));
   },
+  // which class feature the sheet's extra choices belong to (classes.js links)
+  featureLinks() { return MPMBClasses.links(engine); },
   clearNotesPages() { return actionOp(() => { engine.action('DoTemplate("ASnotes", "RemoveAll", false, true)', 'clearNotesPages'); return {}; }); },
   // suggestions for the tool lines: MPMB's tools (with add-on content)
   toolNames() { return JSON.parse(engine.evalExpr('JSON.stringify((function () { var r = []; for (var k in ToolsList) { var n = ToolsList[k].name || k; if (r.indexOf(n) === -1) r.push(n); } return r.sort(); })())')); },

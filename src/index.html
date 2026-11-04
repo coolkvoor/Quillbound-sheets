@@ -502,6 +502,11 @@ details.feat .chip.use { color: var(--accent); border-color: var(--accent-soft);
 details.feat .fsrc { flex-basis: 100%; font-size: 0.8rem; color: var(--muted); }
 details.feat .fbody { padding: 0 0 12px; display: grid; gap: 6px; font-size: 0.97rem; line-height: 1.5; }
 details.feat .fbody p, .fpara { margin: 0; }
+/* a feature's options the sheet keeps in Notes (Monk's Focus features, Brutal Strike effects): folds inside it */
+details.feat .fsub { margin-top: 4px; padding-left: 12px; border-left: 2px solid var(--accent-soft); }
+details.feat .fsub details.feat summary { min-height: 40px; padding-top: 8px; padding-bottom: 8px; }
+details.feat .fsub .fname { font-weight: 600; }
+details.feat .chip.sub-n { color: var(--muted); }
 @media (prefers-reduced-motion: reduce) { details.feat summary::after { transition: none; } }
 
 /* XP, conditions, ammunition */
