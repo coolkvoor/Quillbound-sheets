@@ -626,6 +626,11 @@ select option, select optgroup { background-color: var(--surface); color: var(--
 .dc-row .f.mod { margin: 0; }
 details.more { margin: 8px 0; border-top: 1px solid var(--line); }
 details.more summary { cursor: pointer; padding: 10px 0; min-height: 44px; color: var(--accent); }
+/* Notes boxes: the sheet's features shown as a list, the text folded under Edit; plain notes are just the box */
+.notes-f details.notes-edit { margin: 0; border: 0; }
+.notes-f:not(.has-feats) details.notes-edit > summary { display: none; }
+.notes-f.has-feats details.notes-edit { border-top: 1px solid var(--line); margin-top: 4px; }
+.see-notes { margin-top: 2px; justify-self: start; }
 .ac-parts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; }
 .ac-parts .wide { grid-column: span 2; }
 .ac-parts label.f b { display: block; padding: 10px 0; font-size: 1.1rem; }
@@ -1150,9 +1155,10 @@ window.MPMBTheme = (() => {
             </div>
           </details>
         </div>
-        <div class="card">
+        <div class="card" id="notes-card">
           <h3>Notes</h3>
-          <label class="f"><span>Notes</span><textarea class="in" rows="6" data-f="Extra.Notes" id="f-notes"></textarea></label>
+          <div class="f notes-f"><span class="lbl">Notes</span><div class="features" data-rich="Extra.Notes" data-features="notes" hidden></div>
+            <details class="more notes-edit" open><summary>Edit notes</summary><textarea class="in" rows="6" data-f="Extra.Notes" id="f-notes" aria-label="Notes"></textarea></details></div>
           <div id="notes-pages"></div>
           <button class="btn sm" id="notes-add" type="button" hidden>Add a notes page</button>
         </div>

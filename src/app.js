@@ -709,11 +709,24 @@
     node.textContent = '';
     // Text saved before the line-break fix (descriptions piled up, features left empty): offer a rebuild
     if (node.dataset.features === 'class') { const note = $('#cf-stale'); if (note) note.hidden = !MPMBFeatures.staleClassText(raw); }
+    // a Notes box: the sheet puts features there that don't fit (Monk's Focus features, Brutal Strike's effects).
+    // With a feature heading in it the box shows as a list and its text folds under Edit; plain notes stay a text box.
+    const wrap = node.dataset.features === 'notes' && node.closest('.notes-f');
+    if (wrap) {
+      const feats = /(^|[\r\n])\s*(#\s*◆|\*\*[^\r\n]+\*\*\s*($|[\r\n]))/.test(raw);
+      node.hidden = !feats;
+      if (wrap.classList.contains('has-feats') !== feats) {
+        wrap.classList.toggle('has-feats', feats);
+        const ed = wrap.querySelector('.notes-edit');
+        if (ed && !ed.contains(document.activeElement)) ed.open = !feats;
+      }
+      if (!feats) return;
+    }
     if (!raw.trim()) return;
     for (const it of MPMBFeatures.parse(raw)) {
       if (it.group) { node.append(el('div', { cls: 'fgroup', text: it.group })); continue; }
       if (it.para) { const p = el('p', { cls: 'fpara' }); inlineMarkup(it.para, p); node.append(p); continue; }
-      const key = node.dataset.features + '|' + it.name;
+      const key = node.dataset.rich + '|' + it.name;
       const d = el('details', { cls: 'feat' });
       d.open = openFeatures.has(key);
       d.addEventListener('toggle', () => { if (d.open) openFeatures.add(key); else openFeatures.delete(key); });
@@ -722,7 +735,17 @@
       if (it.src) sum.append(el('span', { cls: 'fsrc', text: it.src }));
       d.append(sum);
       const body = el('div', { cls: 'fbody' });
-      for (const t of it.text) { const p = el('p'); inlineMarkup(t, p); body.append(p); }
+      let see = false;
+      for (let t of it.text) {
+        // "(see third page)": the rest is in the third page's Notes, a Notes card here
+        if (wrap) { const p = el('p'); inlineMarkup(t, p); body.append(p); continue; }
+        const was = t;
+        t = t.replace(/\(see (?:the )?(?:third|3rd) page\)/gi, '(see Notes)').replace(/see (?:the )?(?:third|3rd) page/gi, 'see Notes');
+        if (/^\(see Notes\)\.?$/i.test(t.trim())) t = 'The details are in Notes.';
+        if (t !== was || /\bsee notes\b/i.test(t)) see = true;
+        const p = el('p'); inlineMarkup(t, p); body.append(p);
+      }
+      if (see) body.append(el('button', { cls: 'btn sm see-notes', type: 'button', 'data-goto': 'notes-card', 'data-goto-tab': 'features' }, [document.createTextNode('Go to Notes')]));
       if (!it.text.length) body.append(el('p', { cls: 'muted', text: 'No description on the sheet.' }));
       d.append(body);
       U.diceText(d);
@@ -1161,7 +1184,7 @@
       if (t.dataset.step && state.worker) { const cur = Number(shown(state.snap.get(t.dataset.step))) || 0; send('commit', { name: t.dataset.step, value: String(Math.max(0, cur + Number(t.dataset.by))) }); return; }
       if (t.dataset.shoot && state.worker) { send('shootAmmo', { side: t.dataset.shoot }); return; }
       if (t.dataset.tab) { e.preventDefault(); goTo(t.dataset.tab); return; }
-      if (t.dataset.goto) { e.preventDefault(); goTo(t.dataset.goto, 'sheetinfo'); return; }
+      if (t.dataset.goto) { e.preventDefault(); goTo(t.dataset.goto, t.dataset.gotoTab || 'sheetinfo'); return; }
       if (t.hasAttribute('data-sources-open')) { e.preventDefault(); renderContent(); $('#sources-panel').showModal(); $('#sources-panel .panel-body').scrollTop = 0; return; }
       if (!state.worker) return;
       if (t.dataset.mpmb || t.dataset.bookmark) { tapMpmb(t); return; }

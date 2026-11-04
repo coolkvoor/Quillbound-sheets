@@ -377,13 +377,20 @@
   // MPMB's Notes pages (template ASnotes; the PDF as distributed has one): two columns each, and the page's Options
   // button (lines on or off per column, add a page, remove this one)
   let notesPrefixes = null;
+  // a notes column: the sheet's features in it as a list (renderFeatures in app.js), its text folded under Edit
+  function notesBox(name, label) {
+    return el('div', { cls: 'f notes-f' }, [el('span', { cls: 'lbl', text: label }),
+      el('div', { cls: 'features', 'data-rich': name, 'data-features': 'notes', hidden: '' }),
+      el('details', { cls: 'more notes-edit', open: '' }, [el('summary', { text: 'Edit notes' }),
+        el('textarea', { cls: 'in', rows: '6', 'data-f': name, id: fid(name), 'aria-label': label })])]);
+  }
   function buildNotesPage(P, i, total) {
     const n = total > 1 ? ' ' + i : '';
     return el('div', { cls: 'stack', 'data-notespage': P }, [
       el('div', { cls: 'row' }, [el('span', { cls: 'lbl grow', text: 'Notes page' + n }),
         el('button', { cls: 'btn sm', type: 'button', 'data-mpmb': P + 'Notes.Options', 'data-title': 'Notes page' + n, 'data-pages': '1' }, [document.createTextNode('Options')])]),
-      el('label', { cls: 'f' }, [el('span', { text: 'Left column' }), el('textarea', { cls: 'in', rows: '6', 'data-f': P + 'Notes.Left', id: fid(P + 'Notes.Left') })]),
-      el('label', { cls: 'f' }, [el('span', { text: 'Right column' }), el('textarea', { cls: 'in', rows: '6', 'data-f': P + 'Notes.Right', id: fid(P + 'Notes.Right') })]),
+      notesBox(P + 'Notes.Left', 'Left column'),
+      notesBox(P + 'Notes.Right', 'Right column'),
     ]);
   }
   async function syncNotes(list) {
