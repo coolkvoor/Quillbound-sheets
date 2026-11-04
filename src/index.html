@@ -292,6 +292,7 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 @media (prefers-reduced-motion: reduce) { .tour-ring { transition: none; } .tour.waiting .tour-ring { animation: none; } }
 .tour-card { position: fixed; left: 16px; right: 16px; max-width: 360px; margin: 0 auto; background: var(--surface); color: var(--ink); border-radius: 14px; padding: 14px 16px 12px; box-shadow: 0 8px 30px rgb(0 0 0 / 0.35); pointer-events: auto; }
 .tour-text { margin: 0 0 10px; font-size: 1.02rem; line-height: 1.4; }
+.tour-card:focus { outline: none; }
 .tour.missing .tour-text { color: var(--muted); }
 .tour-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
 .tour-n { flex: 1 1 auto; font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
@@ -299,9 +300,12 @@ textarea.in.code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospa
 .tour-choices .btn { display: flex; flex-direction: column; align-items: center; gap: 2px; min-height: 52px; }
 .tour-choices .hint { font-family: var(--font-body); font-weight: 400; letter-spacing: 0; text-transform: none; }
 .tour-choices .btn.primary .hint { color: inherit; opacity: 0.9; }
-.tour-busy { position: fixed; inset: 0; z-index: 60; background: rgb(0 0 0 / 0.55); display: grid; place-items: center; }
-.tour-busy[hidden] { display: none; }
-.tour-busy .tour-card { position: static; }
+/* the character guide: the page stays usable, only a ring and the card */
+.tour.free .tour-dim, .tour.free .tour-block { display: none; }
+.tour[hidden] { display: none; }
+.tour.done .tour-ring { box-shadow: 0 0 0 3px var(--good), 0 0 0 6px rgb(255 255 255 / 0.5); }
+.tour.free .tour-ring { animation: tour-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .tour.free .tour-ring { animation: none; } }
 
 /* MPMB buttons, menus and pop-up panels */
 .card h3 .btn.sm { font-family: var(--font-body); letter-spacing: 0; font-weight: 500; }
@@ -1361,19 +1365,18 @@ window.MPMBTheme = (() => {
   <ul class="menu-list" id="menu-list"></ul>
 </dialog>
 
-<!-- While the tour's sample character is made (app.js withSample) -->
-<div class="tour-busy" id="tour-busy" role="status" hidden><div class="tour-card"><p class="tour-text">Making a sample character for the tour…</p></div></div>
-<!-- Offered once, after the first sheet opens (ui-tour.js) -->
+<!-- Offered once, after the first sheet opens, by what the sheet holds (ui-tour.js offerTour) -->
 <dialog class="panel" id="tour-ask" aria-labelledby="tour-ask-title">
   <div class="panel-head"><h3 id="tour-ask-title">New here?</h3></div>
   <div class="panel-body">
-    <p>Want a short tour of the app's buttons?</p>
+    <p id="tour-ask-text">Want a tour of where everything is?</p>
     <div class="stack tour-choices">
-      <button class="btn primary" type="button" data-tour="long">Full tour <span class="hint">I'm new to the sheet</span></button>
-      <button class="btn" type="button" data-tour="short">Quick tour <span class="hint">I know the sheet</span></button>
+      <button class="btn primary" type="button" data-tour="build">Help me make a character <span class="hint">Step by step, on your own sheet</span></button>
+      <button class="btn primary" type="button" data-tour="full">Full tour <span class="hint">Everything on your character, and where it is</span></button>
+      <button class="btn" type="button" data-tour="quick">Quick tour <span class="hint">I know the sheet: show me around</span></button>
       <button class="btn" type="button" data-tour="no">No thanks</button>
     </div>
-    <p class="note">You can start it later in Settings.</p>
+    <p class="note">You can start these later in Settings.</p>
   </div>
 </dialog>
 
@@ -1453,9 +1456,13 @@ window.MPMBTheme = (() => {
       <p class="note">A backup is the character written into your sheet's PDF, as Download PDF makes it: open it in the app (Open another sheet) or in Acrobat.</p>
     </div>
     <div class="card" id="tour-card">
-      <h3>Tour</h3>
-      <p class="note">A walk past the app's buttons. It changes nothing on your sheet.</p>
-      <div class="row"><button class="btn" type="button" data-tour="short">Quick tour</button><button class="btn" type="button" data-tour="long">Full tour</button></div>
+      <h3>Tours and guide</h3>
+      <div class="stack tour-choices">
+        <button class="btn" type="button" data-tour="build">Help me make a character <span class="hint">Step by step on this sheet; what you fill in is kept</span></button>
+        <button class="btn" type="button" data-tour="full">Full tour <span class="hint">Everything on your character, and where it is</span></button>
+        <button class="btn" type="button" data-tour="quick">Quick tour <span class="hint">A short look around</span></button>
+      </div>
+      <p class="note">The tours change nothing on your sheet. The guide skips what is already done, so you can stop and go on later.</p>
     </div>
     <div class="card">
       <h3>About</h3>
