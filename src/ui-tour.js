@@ -144,6 +144,10 @@
     if (tour) end();
     for (const id of ['settings', 'sources-panel']) if (isOpen(id)) document.getElementById(id).close();
     sourcesSeen = false;
+    // every card shows while a tour runs (folded and hidden ones too, ui-arrange.js), so no step points at nothing
+    if (U.setArranging) U.setArranging(false);
+    document.documentElement.classList.add('touring');
+    U.layoutGrids(true);
     const steps = buildSteps(kind);
     tour = { kind, steps, i: 0, ui: layer(), target: null, key: '' };
     tour.ui.node.classList.toggle('free', kind === 'build');
@@ -157,6 +161,8 @@
     cancelAnimationFrame(tour.raf);
     tour.ui.node.remove();
     tour = null;
+    document.documentElement.classList.remove('touring');
+    U.layoutGrids(true);
   }
   // the panel a step needs open (or none): going back may need one opened or closed again (not in the guide: there the
   // user opens and closes things)

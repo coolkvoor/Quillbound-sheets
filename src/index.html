@@ -26,7 +26,7 @@
   --font-display: "Alegreya SC", "Iowan Old Style", Georgia, serif;
   --font-body: "Alegreya Sans", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
   --radius: 12px;
-  --tabbar-h: 60px;
+  --tabbar-h: 60px; --vitals-h: 44px; --bottom-h: calc(var(--tabbar-h) + var(--vitals-h));
   --header-h: 56px;
 }
 @media (prefers-color-scheme: dark) {
@@ -135,7 +135,7 @@ header.top .line { font-size: 0.92rem; color: var(--muted); white-space: nowrap;
   #save-chip[data-state="error"]::before { --mark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3v6.5' stroke='%23000' stroke-width='2.2' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='12.6' r='1.3'/%3E%3C/svg%3E"); }
 }
 
-main.bands { padding: 8px 16px calc(var(--tabbar-h) + 24px + env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
+main.bands { padding: 8px 16px calc(var(--bottom-h) + 24px + env(safe-area-inset-bottom, 0px)); max-width: 1500px; margin: 0 auto; }
 section.band { scroll-margin-top: calc(var(--header-h) + 8px); padding-top: 12px; }
 #notes-card, details.feat, .card > h3, .band-title { scroll-margin-top: calc(var(--header-h) + 16px); }   /* the tour scrolls a heading to the top, clear of the top bar */
 .band-title { font-family: var(--font-display); font-size: 1.35rem; font-weight: 700; color: var(--accent); margin: 8px 0 10px; display: flex; align-items: baseline; gap: 10px; }
@@ -405,8 +405,8 @@ dialog.panel::backdrop { background: rgb(10 6 20 / 0.5); }
 .menu-list li.label { padding: 8px 16px 2px; font-size: 0.85rem; color: var(--muted); }
 .menu-list li.note { margin: 4px 16px 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); }
 .notice-msg { white-space: pre-wrap; overflow-wrap: anywhere; margin: 0; }
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tabbar-h) + 14px + env(safe-area-inset-bottom, 0px)); z-index: 8; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 10px 16px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgb(0 0 0 / 0.25); }
-.update-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--tabbar-h) + 14px + env(safe-area-inset-bottom, 0px)); z-index: 7; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: max-content; max-width: calc(100% - 32px); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 10px 16px; box-shadow: 0 4px 18px rgb(0 0 0 / 0.25); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h) + 14px + env(safe-area-inset-bottom, 0px)); z-index: 8; background: var(--ink); color: var(--bg); border-radius: 10px; padding: 10px 16px; max-width: calc(100% - 32px); box-shadow: 0 4px 18px rgb(0 0 0 / 0.25); }
+.update-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h) + 14px + env(safe-area-inset-bottom, 0px)); z-index: 7; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: max-content; max-width: calc(100% - 32px); background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px 10px 16px; box-shadow: 0 4px 18px rgb(0 0 0 / 0.25); }
 #update-text { flex: 1 1 14rem; }
 .update-bar .btns { display: flex; gap: 8px; }
 
@@ -715,7 +715,60 @@ nav.tabs a[aria-current="true"] { color: var(--accent); }
 /* nine tabs (Wild Shape and Log both shown) on a phone */
 @media (max-width: 420px) { nav.tabs ul:has(> #tab-wildshape:not([hidden])):has(> #tab-advlog:not([hidden])) { padding: 0 1px; } nav.tabs ul:has(> #tab-wildshape:not([hidden])):has(> #tab-advlog:not([hidden])) a { font-size: 0.64rem; letter-spacing: -0.015em; } }
 nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
-@media (max-height: 460px) { :root { --tabbar-h: 48px; --header-h: 48px; } header.top { min-height: 48px; padding-block: 4px; } }
+@media (max-height: 460px) { :root { --tabbar-h: 48px; --header-h: 48px; --vitals-h: 36px; } header.top { min-height: 48px; padding-block: 4px; } }
+/* vitals strip (ui-vitals.js): hit points, armor class, initiative over the tabs */
+.vitals { display: flex; justify-content: center; align-items: stretch; gap: 6px; height: var(--vitals-h); max-width: 52rem; margin: 0 auto; padding: 4px 8px 0; box-sizing: border-box; }
+.vitals .vt { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--btn); color: var(--btn-ink); padding: 0 12px; font: inherit; font-size: 0.95rem; cursor: pointer; touch-action: manipulation; min-width: 0; }
+.vitals .vt-hp { flex: 1 1 auto; max-width: 15rem; justify-content: center; }
+.vitals .vt-k { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--muted); }
+.vitals .vt b { font-size: 1.1rem; }
+.vitals .vt-max { color: var(--muted); }
+.vitals .vt-temp { font-size: 0.8rem; font-weight: 700; color: var(--good); border: 1px solid currentColor; border-radius: 999px; padding: 0 6px; }
+.vitals .vt-hp[data-state="low"] b { color: var(--warn); }
+.vitals .vt-hp[data-state="down"] { border-color: var(--bad); }
+.vitals .vt-hp[data-state="down"] b { color: var(--bad); }
+.vitals .vt-init { cursor: default; padding-right: 4px; }
+.vitals .vt-init button.roll { min-height: 30px; min-width: 40px; padding: 0 6px; font-size: 1.05rem; font-weight: 700; }
+@media (max-height: 460px) { .vitals { padding-top: 3px; } .vitals .vt b { font-size: 1rem; } }
+.hq-big { text-align: center; margin: 4px 0 0; font-size: 1.1rem; color: var(--muted); }
+.hq-big b { font-size: 2.6rem; color: var(--ink); }
+.hq-center { text-align: center; }
+.hq-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 12px 0; }
+.hq-row { display: flex; gap: 8px; margin: 8px 0; }
+.hq-row .in { flex: 1 1 5rem; min-width: 0; text-align: center; font-size: 1.2rem; }
+.hq-row .btn { flex: 1 1 auto; }
+
+/* fold and hide cards (ui-arrange.js). In play the heading of a folded card is one line that opens it for a look. */
+section.band.has-arr { position: relative; }
+section.band.has-arr > .band-title { max-width: calc(100% - 52px); }
+.arr-open { position: absolute; right: 0; top: 10px; }
+.arranging .arr-open { display: none; }
+.card > h3 > .arr-chev { display: none; order: -1; }
+.card > h3 > .arr-ctl { display: none; order: 9; gap: 6px; margin-left: auto; }
+.card > h3 > .arr-ctl > .btn { font-family: var(--font-body); letter-spacing: 0; text-transform: none; font-weight: 600; }
+.card > h3 > .arr-ctl > .btn::before { content: attr(data-label); }
+.card > h3 > .arr-ctl > .btn[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+html:not(.touring) .card.folded:not(.peek) > :not(h3) { display: none; }
+html:not(.touring) .card.folded:not(.peek) > h3 { margin-bottom: 0; }
+html:not(.touring) .card.folded > h3, html:not(.touring) .card.user-hidden.peek > h3 { justify-content: flex-start; }
+html:not(.touring) .card.folded > h3 > :is(.btn, .chip), html:not(.touring) .card.user-hidden.peek > h3 > :is(.btn, .chip) { margin-left: auto; }
+html:not(.touring):not(.arranging) .card.user-hidden:not(.peek) { display: none; }
+html:not(.touring) .card.folded > h3, html:not(.touring) .card.user-hidden.peek > h3 { cursor: pointer; }
+html:not(.touring) .card.folded > h3 > .arr-chev, html:not(.touring) .card.user-hidden.peek > h3 > .arr-chev { display: inline-block; }
+.arr-chev::before { content: "▸"; display: inline-block; font-family: var(--font-body); color: var(--muted); transition: transform 0.15s; }
+.card.peek > h3 > .arr-chev::before { transform: rotate(90deg); }
+.arranging .card { outline: 2px dashed color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+.arranging .card > h3 { flex-wrap: wrap; }
+.arranging .card > h3 > .arr-ctl { display: inline-flex; }
+.arranging .card > h3 > .arr-chev { display: none; }
+.arranging .card.folded > :not(h3), .arranging .card.user-hidden > :not(h3) { display: none; }
+.arranging .card.user-hidden { opacity: 0.6; }
+.arranging main.bands { padding-bottom: calc(var(--bottom-h) + 150px + env(safe-area-inset-bottom, 0px)); }
+.arr-note { margin: 4px 0 12px; color: var(--muted); font-size: 0.9rem; text-align: center; }
+.arrange-bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(var(--bottom-h) + 10px + env(safe-area-inset-bottom, 0px)); z-index: 7; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: max-content; max-width: calc(100% - 24px); background: var(--surface); color: var(--ink); border: 2px solid var(--accent); border-radius: 12px; padding: 10px 12px; box-shadow: 0 4px 18px rgb(0 0 0 / 0.3); font-size: 0.9rem; }
+.arrange-bar[hidden] { display: none; }
+.arrange-bar > span:first-child { flex: 1 1 14rem; }
+.arrange-btns { display: flex; gap: 8px; margin-left: auto; }
 /* ---------- looks ---------- */
 /* Colorful, after MPMB's colourful sheet: band titles on a black brush stroke streaked with the sheet's colour and a
    red seal (the app's own shape, not the sheet's emblem); card titles with a red slash and a brush underline; ability
@@ -1357,6 +1410,13 @@ window.MPMBTheme = (() => {
   </main>
 
   <nav class="tabs" aria-label="Sections">
+    <!-- the vitals strip (ui-vitals.js): always on screen -->
+    <div class="vitals" id="vitals">
+      <span id="vitals-src" hidden><span data-out="HP Current"></span><span data-out="HP Max"></span><span data-out="HP Temp"></span></span>
+      <button class="vt vt-hp" id="vt-hp" type="button" aria-haspopup="dialog"><span class="vt-k">HP</span><b class="num" id="vt-hp-cur">–</b><span class="vt-max num" id="vt-hp-max"></span><span class="vt-temp num" id="vt-hp-temp" hidden></span></button>
+      <button class="vt" id="vt-ac" type="button" aria-label="Armor class: go to Defense"><span class="vt-k">AC</span><b class="v num" data-out="AC">–</b></button>
+      <span class="vt vt-init"><span class="vt-k">Init</span><button class="roll v num" type="button" data-out="Initiative bonus" data-roll="d20" data-kind="init" data-what="Initiative" data-adv="Init Adv" aria-label="Roll initiative" disabled>–</button></span>
+    </div>
     <ul>
       <li><a href="#main" data-tab="main" aria-current="true">Main</a></li>
       <li><a href="#combat" data-tab="combat">Combat</a></li>
@@ -1369,7 +1429,29 @@ window.MPMBTheme = (() => {
       <li><a href="#sheetinfo" data-tab="sheetinfo">Sheet</a></li>
     </ul>
   </nav>
+  <!-- Arrange mode (ui-arrange.js) -->
+  <div class="arrange-bar" id="arrange-bar" hidden role="region" aria-label="Arrange cards">
+    <span><b>Arrange cards.</b> Fold what you don't need right now, hide what you never use. Only here can they change.</span>
+    <span class="arrange-btns"><button class="btn sm" id="arrange-reset" type="button">Reset layout</button><button class="btn sm primary" id="arrange-done" type="button">Done</button></span>
+  </div>
 </div>
+
+<!-- Hit points from the vitals strip (ui-vitals.js) -->
+<dialog class="panel" id="hp-quick" aria-labelledby="hq-title">
+  <div class="panel-head"><h3 id="hq-title">Hit points</h3><button class="btn sm" id="hq-close" type="button">Close</button></div>
+  <div class="panel-body">
+    <p class="hq-big"><b class="num" id="hq-now">–</b><span class="num" id="hq-max"></span></p>
+    <p class="hint hq-center" id="hq-temp"></p>
+    <p class="note hq-center" id="hq-down" hidden>At 0 hit points: death saves are on the Hit points card.</p>
+    <div class="hq-steps"><button class="btn" type="button" data-hq="-5">−5</button><button class="btn" type="button" data-hq="-1">−1</button><button class="btn" type="button" data-hq="1">+1</button><button class="btn" type="button" data-hq="5">+5</button></div>
+    <div class="hq-row"><input class="in num" id="hq-amount" type="text" inputmode="numeric" autocomplete="off" placeholder="Amount" aria-label="Amount of hit points">
+      <button class="btn danger" id="hq-damage" type="button">Damage</button><button class="btn primary" id="hq-heal" type="button">Heal</button></div>
+    <div class="hq-row"><button class="btn" id="hq-settemp" type="button">Set as temporary</button></div>
+    <p class="hint hq-center" id="hq-last" aria-live="polite"></p>
+    <p class="hint">Damage uses up temporary hit points first; healing stops at your maximum.</p>
+    <button class="linkish" id="hq-card" type="button">Hit dice, death saves and maximum: go to the Hit points card</button>
+  </div>
+</dialog>
 
 <!-- MPMB's pop-up menus, shown as a sheet from the bottom -->
 <dialog class="panel" id="menu" aria-labelledby="menu-title">
@@ -1679,4 +1761,6 @@ window.MPMBTheme = (() => {
 <script src="ui-dice.js"></script>
 <script src="ui-tour.js"></script>
 <script src="ui-search.js"></script>
+<script src="ui-vitals.js"></script>
+<script src="ui-arrange.js"></script>
 <script src="app.js"></script>
