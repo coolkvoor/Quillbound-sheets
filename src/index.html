@@ -732,6 +732,10 @@ nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0
 @media (max-height: 460px) { .vitals { padding-top: 3px; } .vitals .vt b { font-size: 1rem; } }
 .vitals .vt-more { display: flex; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
 .vitals .vt-more::-webkit-scrollbar { display: none; }
+.vitals .vt-more.more-right { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
+.vitals .vt-more.more-left { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px); mask-image: linear-gradient(to right, transparent, #000 28px); }
+.vitals .vt-more.more-left.more-right { -webkit-mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent); }
+@media (pointer: fine) { .vitals .vt-more { cursor: grab; } .vitals .vt-more .vt { cursor: pointer; } }
 .vitals .vt-more > .vt, .vitals .vt-pins > .vt { flex: none; }
 .vitals .vt-pins { display: contents; }
 .vitals .vt-pin[data-empty="1"] b { color: var(--muted); }

@@ -224,6 +224,36 @@
     $('#pins-panel').showModal();
   }
 
+  // the bar's right part scrolls sideways: by touch, and on a computer by the mouse wheel and by dragging with the
+  // mouse (a phone's swipe already works; a wheel only scrolls up and down by itself). Faded edges show there's more.
+  // A chip focused with Tab scrolls into view on its own.
+  function wireScroll(box) {
+    const edges = () => {
+      const max = box.scrollWidth - box.clientWidth;
+      box.classList.toggle('more-left', box.scrollLeft > 2);
+      box.classList.toggle('more-right', max - box.scrollLeft > 2);
+    };
+    box.addEventListener('scroll', edges, { passive: true });
+    new ResizeObserver(edges).observe(box);
+    new MutationObserver(edges).observe(box, { childList: true, subtree: true });
+    box.addEventListener('wheel', (e) => {
+      if (box.scrollWidth <= box.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      const before = box.scrollLeft;
+      box.scrollLeft += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      if (box.scrollLeft !== before) e.preventDefault();   // at an end, the page scrolls as usual
+    }, { passive: false });
+    let drag = null;
+    box.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button === 0) drag = { x: e.clientX, left: box.scrollLeft, moved: false }; });
+    window.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x;
+      if (Math.abs(dx) > 5) drag.moved = true;
+      if (drag.moved) box.scrollLeft = drag.left - dx;
+    });
+    window.addEventListener('pointerup', () => { if (drag && drag.moved) { const stop = (e) => { e.stopPropagation(); e.preventDefault(); }; box.addEventListener('click', stop, { capture: true, once: true }); setTimeout(() => box.removeEventListener('click', stop, { capture: true }), 0); } drag = null; });
+    edges();
+  }
+
   function wireVitals() {
     showOn(isOn());
     // the bar's numbers are bound to the sheet's fields; redraw it whenever one of them is filled in (and after every
@@ -260,6 +290,7 @@
     $('#pq-close').addEventListener('click', () => $('#pin-quick').close());
     $('#pq-go').addEventListener('click', () => { const a = openPin && about(openPin); $('#pin-quick').close(); if (a) a.go(); });
     $('#pq-unpin').addEventListener('click', async () => { $('#pin-quick').close(); if (openPin) await togglePin(openPin); });
+    wireScroll($('#vitals .vt-more'));
     $('#vt-add').addEventListener('click', openChooser);
     $('#qb-choose').addEventListener('click', openChooser);
     $('#pins-close').addEventListener('click', () => $('#pins-panel').close());
