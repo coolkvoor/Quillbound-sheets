@@ -980,6 +980,7 @@
   }
   function refreshDerived() {
     showInspiration();
+    if (U.refreshVitals) queueMicrotask(U.refreshVitals);   // the quick bar's pins (ui-vitals.js), once this has run
     const v = (n) => shown(state.snap.get(n)).trim();
     const name = v('PC Name');
     fitName($('#hdr-name'), name || 'Unnamed character');
@@ -1768,6 +1769,7 @@
   // what the other screen files use from here
   Object.assign(U, {
     send, lineMenu, modInput, buildIndex, apply, layoutGrids, refreshDerived, showNotice, toast, shown,
+    inspiration: { count: () => showInspiration(), step: stepInspiration },
     inlineMarkup, goTo, setBusy, idbGet, idbPut, idbDel, saveSoon, fmtS, openSheet, askYesNo, stopAutosave: () => { clearTimeout(saveTimer); saveTimer = 0; }
   });
   wireEvents();

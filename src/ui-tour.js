@@ -23,6 +23,7 @@
   const noFeatures = { when: () => !first('[data-rich="Class Features"] details.feat'), text: 'No class yet. Its features show up here once you pick one.' };
   const noInstall = { when: () => !shownEl($('#install-card')), at: null, text: 'Want it as an app? Use your browser’s menu: Add to Home screen.' };
   const noCompanion = { when: () => !shownEl($('#companion')), at: '#pages', text: 'No companion yet. A familiar, mount or pet gets its own page: add one here, under Pages.' };
+  const noBar = { when: () => document.documentElement.classList.contains('no-vitals'), at: null, text: 'The quick bar is off. Switch it on in Settings → Quick bar to keep your hit points in view.' };
   const skillDot = () => { const d = first('#skills [data-skill]'); return d ? d.parentNode : $('#skills'); };
   const sheetButton = () => first('[data-mpmb="SkillsClick"]') || first('main [data-mpmb]');
   const card = (sel) => () => { const n = first(sel); return n && n.closest('.card'); };
@@ -41,6 +42,9 @@
     roll: { at: '[data-roll="d20"][data-kind="init"]', text: 'Tap any number to roll it: attacks, saves, skills.' },
     dice: { at: '#dice-open', text: 'Other dice? Roll them here.' },
     search: { at: '#search-open', text: 'Looking for something? Search the whole sheet: features, spells, gear, notes.' },
+    quickBar: { at: '#vitals', text: 'The quick bar: hit points, armor class and initiative, always in view. Tap HP to take damage or heal.', missing: noBar },
+    pinAdd: { at: '#vt-add', text: 'Tap + to add what you use up in play: Focus Points, Channel Divinity, spell slots, Inspiration.' },
+    arrange: { at: '.arr-open', text: 'Too much to scroll? The pencil folds the cards you don’t need right now, or hides the ones you never use.' },
     hp: { at: () => { const n = $('#f-hp'); return n && n.closest('.card'); }, text: 'Keep track of your hit points here.' },
     actions: { at: () => $('#actions') && $('#actions').closest('.card'), text: 'Tap an action to read what it does, right here.' },
     spells: { at: () => first('#casters button.primary') || $('#spells'), text: 'Your spells: choose them here, then tap one for its details.', missing: noSpells },
@@ -61,6 +65,7 @@
     gearOpen: { at: '#settings-open', text: 'Tap the gear.', wait: () => isOpen('settings') },
     install: { panel: 'settings', at: '#install-card', text: 'Install the app. It then works offline.', missing: noInstall },
     backups: { panel: 'settings', at: '#backup-card', text: 'Backups: the app can keep a copy of your PDF in a folder for you.' },
+    quickSet: { panel: 'settings', at: '#quickbar-card', text: 'Don’t want the quick bar? Switch it off here, or choose what’s on it.' },
     look: { panel: 'settings', at: '#look', text: 'Pick a look. “Match my sheet” follows your PDF.' },
     again: { panel: 'settings', at: '#tour-card', text: 'The tours and the character guide are here whenever you want them. Have fun!' },
   };
@@ -69,13 +74,13 @@
   const FULL = [
     ['Sources', ['book', 'content', 'books', 'closeBook']],
     ['Your character', ['name', 'species', 'cls', 'bg', 'abilities', 'sheetBtn', 'skills']],
-    ['Play', ['roll', 'dice', 'search', 'hp', 'actions', 'spells', 'rests', 'limited', 'features', 'feats', 'notes']],
+    ['Play', ['roll', 'dice', 'search', 'quickBar', 'pinAdd', 'hp', 'actions', 'spells', 'rests', 'limited', 'features', 'feats', 'notes']],
     ['Gear and pages', ['magic', 'gear', 'companion', 'pages']],
     ['Keep it safe', ['pdfFirst', 'savedAfter', 'gearOpen', 'backups', 'install']],
-    ['Make it yours', ['look', 'again']],
+    ['Make it yours', ['arrange', 'look', 'quickSet', 'again']],
   ];
   const QUICK = [
-    ['Quick tour', ['book', 'content', 'books', 'single', 'closeBook', 'sheetBtn', 'roll', 'search', 'actions', 'features', 'saved', 'pdf', 'gearOpen', 'look', 'backups', 'install', 'again']],
+    ['Quick tour', ['book', 'content', 'books', 'single', 'closeBook', 'arrange', 'sheetBtn', 'roll', 'search', 'quickBar', 'pinAdd', 'actions', 'features', 'saved', 'pdf', 'gearOpen', 'look', 'quickSet', 'backups', 'install', 'again']],
   ];
   const QUICK_TEXT = {
     book: 'Your sources are behind the book: content files and books. Set them first. Tap it.',
@@ -98,7 +103,7 @@
     bBackground: { at: '#f-bg', text: 'Pick your background. It sets skills, a feat and ability score increases.', done: () => v('Background') !== '' },
     bAbilities: { at: '#abil-open', text: 'Set your ability scores. Put your background’s increases in its column.', done: () => ['Str', 'Dex', 'Con', 'Int', 'Wis', 'Cha'].every((a) => v(a) !== '') },
     bSkills: { at: skillDot, text: 'Tap the dot of each skill your class lets you pick. Your background’s skills are already marked.' },
-    bHp: { at: () => first('[data-mpmb="Buttons.HP Max"]'), text: 'Set your maximum hit points: tap Set and choose how.', done: () => v('HP Max') !== '' },
+    bHp: { at: () => first('[data-mpmb="Buttons.HP Max"]'), text: 'Set your maximum hit points: tap Set and choose how. They then stay in the quick bar at the bottom.', done: () => v('HP Max') !== '' },
     bSpells: { at: () => first('#casters button.primary'), text: 'You can cast spells: tap Choose spells and pick them.', done: () => !$('#spell-actions').hidden },
     bGear: { at: '[data-mpmb="Equipment.menu"]', text: 'Add your starting gear: the menu has your class’s and background’s packs.', done: gearFilled },
     bName: { at: '#f-name', text: 'Last, give your character a name.', done: () => v('PC Name') !== '' },
