@@ -244,6 +244,9 @@
     }, { passive: false });
     let drag = null;
     box.addEventListener('pointerdown', (e) => { if (e.pointerType === 'mouse' && e.button === 0) drag = { x: e.clientX, left: box.scrollLeft, moved: false }; });
+    // a drag past the end must not start selecting the page's text or drag a chip away
+    box.addEventListener('dragstart', (e) => e.preventDefault());
+    document.addEventListener('selectstart', (e) => { if (drag) e.preventDefault(); });
     window.addEventListener('pointermove', (e) => {
       if (!drag) return;
       const dx = e.clientX - drag.x;

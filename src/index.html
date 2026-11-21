@@ -717,7 +717,7 @@ nav.tabs a[aria-current="true"] { color: var(--accent); }
 nav.tabs a[aria-current="true"]::after { content: ""; position: absolute; top: 0; left: 22%; right: 22%; height: 3px; border-radius: 0 0 3px 3px; background: var(--accent); }
 @media (max-height: 460px) { :root { --tabbar-h: 48px; --header-h: 48px; --vitals-h: 36px; } header.top { min-height: 48px; padding-block: 4px; } }
 /* vitals strip (ui-vitals.js): hit points, armor class, initiative over the tabs */
-.vitals { display: flex; justify-content: center; align-items: stretch; gap: 6px; height: var(--vitals-h); max-width: 52rem; margin: 0 auto; padding: 4px 8px 0; box-sizing: border-box; }
+.vitals { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; display: flex; justify-content: center; align-items: stretch; gap: 6px; height: var(--vitals-h); max-width: 52rem; margin: 0 auto; padding: 4px 8px 0; box-sizing: border-box; }
 .vitals .vt { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--btn); color: var(--btn-ink); padding: 0 12px; font: inherit; font-size: 0.95rem; cursor: pointer; touch-action: manipulation; min-width: 0; }
 .vitals .vt-hp { flex: 1 1 auto; max-width: 15rem; justify-content: center; }
 .vitals .vt-k { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; color: var(--muted); }
