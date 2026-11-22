@@ -980,6 +980,7 @@
   }
   function refreshDerived() {
     showInspiration();
+    if (U.refreshVitals) queueMicrotask(U.refreshVitals);   // the quick bar's pins (ui-vitals.js), once this has run
     const v = (n) => shown(state.snap.get(n)).trim();
     const name = v('PC Name');
     fitName($('#hdr-name'), name || 'Unnamed character');
@@ -1363,7 +1364,11 @@
       armedNew = 0; clearTimeout(saveTimer);
       await idbDel(state.charKey);
       await idbDel('view:' + state.charKey);
-      if (state.view && state.view.inspCount) await idbPut('view:' + state.charKey, { inspCount: true });   // the table's house rule stays
+      // the table's house rule and the folded and hidden cards stay
+      const keep = {};
+      if (state.view && state.view.inspCount) keep.inspCount = true;
+      if (state.view && state.view.cards) keep.cards = state.view.cards;
+      if (Object.keys(keep).length) await idbPut('view:' + state.charKey, keep);
       state.savedAt = 0;
       $('#sheet').hidden = true; $('#start').hidden = false;
       openSheet(state.bytes.slice(0), state.fileName, false);
@@ -1747,6 +1752,10 @@
     $('#paste-box').hidden = true;
     $('#start').hidden = true;
     $('#sheet').hidden = false;
+    // this character's folded and hidden cards (ui-arrange.js); a character opens out of Arrange mode
+    document.documentElement.classList.remove('arranging');
+    $('#arrange-bar').hidden = true;
+    U.applyArrange();
     layoutGrids(true);   // after the sheet is visible, so the cards have their heights
     fitName($('#hdr-name'));
     window.scrollTo(0, 0);
@@ -1760,12 +1769,15 @@
   // what the other screen files use from here
   Object.assign(U, {
     send, lineMenu, modInput, buildIndex, apply, layoutGrids, refreshDerived, showNotice, toast, shown,
+    inspiration: { count: () => showInspiration(), step: stepInspiration },
     inlineMarkup, goTo, setBusy, idbGet, idbPut, idbDel, saveSoon, fmtS, openSheet, askYesNo, stopAutosave: () => { clearTimeout(saveTimer); saveTimer = 0; }
   });
   wireEvents();
   wireContent();
   U.wireTour();
   U.wireSearch();
+  U.wireVitals();
+  U.wireArrange();
   wireImport();
   U.wireSuggest();
   U.wireDice();

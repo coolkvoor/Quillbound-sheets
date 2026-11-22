@@ -11,8 +11,17 @@
   // card's heading. A match inside a smaller one is shown as that one only.
   const UNITS = 'details.feat, li, .skill, .f, .stat, .tg, .card > h3, .fpara';
   const MAX = 60;
+  // what players type for the words the screens show ("hp" for the Hit points card): an exact query also finds these,
+  // and a unit named so comes first of all
+  const ALIASES = {
+    hp: ['hit points'], health: ['hit points'], 'temp hp': ['temporary'], thp: ['temporary'], ac: ['armor class'],
+    init: ['initiative'], pb: ['proficiency bonus', 'proficiency'], prof: ['proficiency'], hd: ['hit dice'], dc: ['save dc'],
+    xp: ['experience'], exp: ['experience'], spd: ['speed'], atk: ['attacks'], str: ['strength'], dex: ['dexterity'],
+    con: ['constitution'], int: ['intelligence'], wis: ['wisdom'], cha: ['charisma'], cond: ['conditions'],
+    slots: ['spell slots'], ammo: ['ammunition'], money: ['coins'], gold: ['coins'], items: ['magic items', 'equipment']
+  };
   // on screen, or folded away (a closed feature), or in Settings (closed while the search is open)
-  const shownEl = (n) => !!n && !n.closest('[hidden],[data-absent]') && (n.getClientRects().length > 0 || !!n.closest('details:not([open]), #settings'));
+  const shownEl = (n) => !!n && !n.closest('[hidden],[data-absent]') && (n.getClientRects().length > 0 || !!n.closest('details:not([open]), #settings, .card.folded, .card.user-hidden'));   // folded or hidden by the user (ui-arrange.js): found, and shown for a moment
   const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   const clean = (s) => String(s || '').replace(/\s+/g, ' ').trim();
 
@@ -43,9 +52,13 @@
     const h = card && card.querySelector(':scope > h3');
     const cardName = h ? clean(h.firstChild && h.firstChild.nodeType === 3 ? h.firstChild.data : h.textContent) : '';
     if (n.closest('#settings')) return { band: 'Settings', card: cardName };
+    if (card && card.classList.contains('user-hidden')) return Object.assign(bandOf(n), { card: cardName + ' (hidden card)' });
+    return Object.assign(bandOf(n), { card: cardName });
+  }
+  function bandOf(n) {
     const band = n.closest('section.band');
     const bt = band && band.querySelector('.band-title');
-    return { band: bt ? clean(bt.firstChild && bt.firstChild.nodeType === 3 ? bt.firstChild.data : bt.textContent) : '', card: cardName, bandId: band && band.id };
+    return { band: bt ? clean(bt.firstChild && bt.firstChild.nodeType === 3 ? bt.firstChild.data : bt.textContent) : '', bandId: band && band.id };
   }
   // a short title for a result: a feature's name, a field's label, a list line's first words
   function titleOf(n, text) {
@@ -58,6 +71,7 @@
   }
   // what to show under the title: for a feature its description (where the word is, else its start)
   function detailOf(h, q) {
+    q = h.term || q;
     if (h.n.matches('details.feat')) {
       const body = h.n.querySelector(':scope > .fbody');
       const d = body ? textOf(body) : '';
@@ -75,14 +89,17 @@
   function find(query) {
     const q = norm(clean(query));
     if (q.length < 2) return [];
+    const terms = [q].concat(ALIASES[q] || []);
     const scopes = [$('#bands'), $('#settings .panel-body')].filter(Boolean);
     const hits = [];
     for (const scope of scopes) {
       for (const n of scope.querySelectorAll(UNITS)) {
         if (!shownEl(n) || n.closest('#tour, .empty-note')) continue;
         const text = textOf(n);
-        if (!text || norm(text).indexOf(q) === -1) continue;
-        hits.push({ n, text });
+        if (!text) continue;
+        const t = norm(text), term = terms.filter((x) => t.indexOf(x) !== -1).pop();   // an alias's words before the letters typed
+        if (!term) continue;
+        hits.push({ n, text, term });
       }
     }
     // keep the smallest: drop a unit that holds another hit
@@ -91,8 +108,10 @@
     // in the page's order of tabs; within a tab, what is named so first (the Stealth skill before a line that names it)
     const bandAt = {};
     keep.forEach((h) => { if (!(h.where.band in bandAt)) bandAt[h.where.band] = h.i; });
-    const score = (h) => { const t = norm(h.title); return t.indexOf(q) === 0 ? 0 : t.indexOf(q) !== -1 ? 1 : 2; };
-    keep.sort((a, b) => bandAt[a.where.band] - bandAt[b.where.band] || score(a) - score(b) || a.i - b.i);
+    const score = (h) => { const t = norm(h.title); return t.indexOf(h.term) === 0 ? 0 : t.indexOf(h.term) !== -1 ? 1 : 2; };
+    // a thing named by an alias ("hp" → the Hit points card) goes first, before the page's order
+    const named = (h) => (h.top = h.term !== q && score(h) === 0) ? 0 : 1;
+    keep.sort((a, b) => named(a) - named(b) || bandAt[a.where.band] - bandAt[b.where.band] || score(a) - score(b) || a.i - b.i);
     return keep.slice(0, MAX);
   }
 
@@ -107,7 +126,8 @@
     if (!res.length) { box.append(el('p', { cls: 'note', text: 'Nothing on this sheet matches “' + clean(q) + '”.' })); return; }
     let band = null;
     res.forEach((r, i) => {
-      if (r.where.band !== band) { band = r.where.band; box.append(el('div', { cls: 'search-band', text: band || 'Sheet' })); }
+      const group = r.top ? 'Best match' : r.where.band;
+      if (group !== band) { band = group; box.append(el('div', { cls: 'search-band', text: band || 'Sheet' })); }
       const sn = detailOf(r, qn);
       const line = el('span', { cls: 'search-snip' }, [document.createTextNode(sn.pre)].concat(sn.hit ? [el('mark', { text: sn.hit })] : [], [document.createTextNode(sn.post)]));
       const head = el('span', { cls: 'search-title' }, [document.createTextNode(r.title.length > 60 ? r.title.slice(0, 60) + '…' : r.title)]);
@@ -126,6 +146,8 @@
     const go = () => {
       for (let d = n.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
       if (n.matches('details')) n.open = true;
+      const c = n.closest('.card.folded, .card.user-hidden');
+      if (c && U.peekCard) U.peekCard(c);
       if (r.where.bandId) U.goTo(r.where.bandId);
       requestAnimationFrame(() => {
         n.scrollIntoView({ behavior: U.reduceMotion() ? 'auto' : 'smooth', block: 'center' });
